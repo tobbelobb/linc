@@ -39,12 +39,5 @@ for t: cxx{**.test...}
   $d/exe{$n}: libue{linc}: bin.whole = false
 }
 
-cxx = g++
-
 # Include our own header files
 cxx.poptions =+ "-I$out_root" "-I$src_root"
-# Include headers for the headers-only eigen library
-cxx.poptions =+ "-I$src_root/extern/eigen"
-
-# Follow cpp core guidelines
-cxx.poptions =+ "-I$src_root/extern/cppcore"
