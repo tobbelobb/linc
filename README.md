@@ -47,6 +47,14 @@ and is indended to be used through that repo.
 # bdep clean -a
 ```
 
+### Run ci service
+This will start builds on a lot of different machines,
+and provide you a link to the results and logs:
+```
+# bdep ci
+```
+
+
 ## More on build2 tests
 The test setup deserves some more explanation.
 There are two kinds of tests:
