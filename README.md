@@ -1,4 +1,8 @@
-This directory is used as the main base directory for build2 commands.
+This repo has just been created to make possible the use of build2's ci features.
+It contains a build2 project, source code, and nothing more.
+
+It is included as a submodule in https://gitlab.com/hangprinter/line-collision-detector
+and is indended to be used through that repo.
 
 
 ## Build2 cheat sheet
@@ -77,3 +81,7 @@ with `b` and `b test`.
 
 Build2 is nice, but not widely used, so many will need to skim through it's [docs](https://build2.org/build2/doc/build2-build-system-manual.xhtml)
 to fully control how this project is built and managed.
+
+## Licensing
+The cppcore gsl library is MIT licensed, and can be found here: https://github.com/microsoft/GSL
+The Eigen library is MPL2.0 licensed and has can be found here: https://gitlab.com/libeigen/eigen
