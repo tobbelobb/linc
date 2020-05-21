@@ -32,6 +32,16 @@ and is indended to be used through that repo.
 
 ```
 
+### Build with clang
+```
+b @../linc-clang/
+```
+
+### Clean the clang build
+```
+b clean: @../linc-clang/
+```
+
 ### Build with all configs
 ```
 # bdep update -a
@@ -54,6 +64,10 @@ and provide you a link to the results and logs:
 # bdep ci
 ```
 
+### Build with -O3
+```
+# b config.cxx.coptions=-O3  # Rebuild with -O3.
+```
 
 ## More on build2 tests
 The test setup deserves some more explanation.
