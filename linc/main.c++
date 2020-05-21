@@ -6,7 +6,7 @@
 #include <linc/params.h++>
 #include <linc/triangle-mesh.h++>
 
-int main(int argc, char *argv[]) {
+auto main(int argc, char *argv[]) -> int {
 
   if (not(argc == 3 or argc == 4)) {
     std::cerr << "Usage:\n"
@@ -15,8 +15,8 @@ int main(int argc, char *argv[]) {
   }
 
   gsl::span<char *> const args(argv, argc);
-  auto const modelFileName = gsl::at(args, 1);
-  auto const paramsFileName = gsl::at(args, 2);
+  auto *const modelFileName = gsl::at(args, 1);
+  auto *const paramsFileName = gsl::at(args, 2);
 
   TriangleMesh mesh{modelFileName};
   if (not mesh.isGood()) {

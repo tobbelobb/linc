@@ -15,7 +15,6 @@ struct PivotTokens {
   std::string y{};
   std::string z{};
 
-
   bool isEffector() const { return name.substr(0, 8) == "effector"; }
   bool isAnchor() const { return name.substr(0, 6) == "anchor"; }
 
