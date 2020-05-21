@@ -14,7 +14,7 @@
 // trim from start (in place)
 static inline void lTrimWhitespace(std::string &s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-            return not std::isspace(ch);
+            return std::isspace(ch) == 0;
           }));
 }
 
@@ -22,13 +22,13 @@ static inline void lTrimWhitespace(std::string &s) {
 // trim from start and end (in place)
 static inline void lrTrimNonNumber(std::string &s) {
   auto isNumber = [](unsigned char ch) {
-    return std::isdigit(ch) or ch == '-' or ch == '.';
+    return (std::isdigit(ch) != 0) or ch == '-' or ch == '.';
   };
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), isNumber));
   s.erase(std::find_if(s.rbegin(), s.rend(), isNumber).base(), s.end());
 }
 
-static inline float toFloat(std::string const &s) {
+static inline auto toFloat(std::string const &s) -> float {
   size_t charCount = 0;
   float res = std::stof(s, &charCount);
   if (s.size() != charCount) {
@@ -37,7 +37,7 @@ static inline float toFloat(std::string const &s) {
   return res;
 }
 
-PivotTokens tokenize(std::string const &line) {
+auto tokenize(std::string const &line) -> PivotTokens {
   PivotTokens tokens{};
   std::stringstream ss(line);
   std::getline(ss, tokens.name, ':');
@@ -52,7 +52,7 @@ PivotTokens tokenize(std::string const &line) {
   return tokens;
 }
 
-static Pivots::ColumnIndex pivotNameToColumn(std::string const &name) {
+static auto pivotNameToColumn(std::string const &name) -> Pivots::ColumnIndex {
   std::string const lastTwo = name.substr(name.size() - 2);
   if (lastTwo == "A1") {
     return Pivots::ColumnIndex::A1;
@@ -75,7 +75,7 @@ static Pivots::ColumnIndex pivotNameToColumn(std::string const &name) {
   return Pivots::ColumnIndex::INVALID;
 }
 
-static bool valid(PivotTokens const &tokens) {
+static auto valid(PivotTokens const &tokens) -> bool {
   if (tokens.hasEmptyMember()) {
     return false;
   }
@@ -94,6 +94,7 @@ static bool valid(PivotTokens const &tokens) {
   for (auto const &token : {tokens.x, tokens.y, tokens.z}) {
     try {
       float const tmp = toFloat(token);
+      (void)tmp;
     } catch (std::exception const &e) {
       std::cerr << "Could not convert to float: " << token << '\n';
       std::cerr << e.what() << '\n';
@@ -108,7 +109,7 @@ Pivots::Pivots(std::string const &fileName) {
   // whole file validation
 
   // line by line validation
-  for (std::string line{""}; std::getline(fileStream, line);) {
+  for (std::string line; std::getline(fileStream, line);) {
     lTrimWhitespace(line);
     if (line.empty() or line[0] == '#') {
       continue;
@@ -131,7 +132,7 @@ void Pivots::save(PivotTokens const &tokens) {
   }
 }
 
-static bool validateFileAsAWhole(std::string const &fileName) {
+static auto validateFileAsAWhole(std::string const &fileName) -> bool {
   std::ifstream fileStream{fileName};
   if (fileStream.fail()) {
     std::cerr << "Failed to open " << fileName << '\n';
@@ -145,12 +146,12 @@ static bool validateFileAsAWhole(std::string const &fileName) {
   };
   auto const lengthOfLongestNeededPivotName =
       (*std::max_element(neededPivotNames.begin(), neededPivotNames.end(),
-                         [](std::string const s, std::string const s2) {
+                         [](std::string const &s, std::string const &s2) {
                            return s.size() < s2.size();
                          }))
           .size();
   auto remainingPivotNames = neededPivotNames;
-  for (std::string line{""}; std::getline(fileStream, line);) {
+  for (std::string line; std::getline(fileStream, line);) {
     lTrimWhitespace(line);
     if (line.empty() or line[0] == '#') {
       continue;
@@ -178,9 +179,9 @@ static bool validateFileAsAWhole(std::string const &fileName) {
 
 // Look at each non-empty non-comment line and see
 // if we have valid tokens there
-static bool validateLineByLine(std::string const &fileName) {
+static auto validateLineByLine(std::string const &fileName) -> bool {
   std::ifstream fileStream{fileName};
-  for (std::string line{""}; std::getline(fileStream, line);) {
+  for (std::string line; std::getline(fileStream, line);) {
     if (line.empty() or line[0] == '#') {
       continue;
     }
@@ -194,7 +195,7 @@ static bool validateLineByLine(std::string const &fileName) {
   return true;
 }
 
-bool validateParamsFile(std::string const &fileName) {
+auto validateParamsFile(std::string const &fileName) -> bool {
   bool valid = true;
   if (not validateFileAsAWhole(fileName)) {
     valid = false;

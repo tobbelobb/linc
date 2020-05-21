@@ -4,7 +4,7 @@
 
 #include <linc/params.h++>
 
-int tokenizeWellFormedString() {
+auto tokenizeWellFormedString() -> int {
   std::string const inString{"effector-pivot-A1: ( 220,  -140.0, 130.0 ) "};
   PivotTokens const got = tokenize(inString);
 
@@ -17,7 +17,7 @@ int tokenizeWellFormedString() {
   return 0;
 }
 
-int tokenizeTooManyTokens() {
+auto tokenizeTooManyTokens() -> int {
   std::string const inString{"effector-pivot-A1: 220, -140.0, 130.0, 123.4"};
   PivotTokens const got = tokenize(inString);
   PivotTokens const expected{"effector-pivot-A1", "220", "-140.0", "130.0"};
@@ -29,11 +29,11 @@ int tokenizeTooManyTokens() {
   return 0;
 }
 
-int main(int argc, char **argv) {
+auto main(int argc, char **argv) -> int {
   // Give testscript some output to assert on
   if (argc > 1) {
     gsl::span<char *> const args(argv, argc);
-    auto const paramsFileName = gsl::at(args, 1);
+    auto *const paramsFileName = gsl::at(args, 1);
     Pivots pivots{paramsFileName};
     std::cout << pivots << '\n';
   }

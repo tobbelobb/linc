@@ -10,6 +10,6 @@ struct TriangleMesh {
 
   TriangleMesh(std::string const fileName) { m_stl = stl_open(fileName); }
 
-  bool writeBinaryStl(std::string fileName) const;
+  static bool writeBinaryStl(std::string const &fileName);
   bool isGood() const { return m_stl.m_initialized; }
 };

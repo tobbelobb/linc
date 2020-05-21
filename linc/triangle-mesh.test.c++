@@ -1,4 +1,4 @@
 #include <cassert>
 #include <iostream>
 
-int main() { std::cout << "Hello, Test!" << '\n'; }
+auto main() -> int { std::cout << "Hello, Test!" << '\n'; }

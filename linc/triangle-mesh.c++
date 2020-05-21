@@ -1,5 +1,5 @@
 #include <linc/triangle-mesh.h++>
 
-bool TriangleMesh::writeBinaryStl(std::string const fileName) const {
+auto TriangleMesh::writeBinaryStl(std::string const & /*fileName*/) -> bool {
   return true;
 }

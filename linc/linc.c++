@@ -1,7 +1,7 @@
 #include <linc/linc.h++>
 
-bool willCollide(TriangleMesh const &mesh, Pivots const &pivots,
-                 float layerHeight) {
+auto willCollide(TriangleMesh const &mesh, Pivots const &pivots,
+                 float layerHeight) -> bool {
   (void)pivots;
   (void)mesh;
   (void)layerHeight;

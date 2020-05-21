@@ -20,11 +20,12 @@
  *           https://github.com/admesh/admesh/issues
  */
 
-#include <assert.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include <gsl/pointers>
 
@@ -34,7 +35,8 @@
 #error "SEEK_SET not defined"
 #endif
 
-static FILE *stl_open_count_facets(stl_file &stl, std::string const fileName) {
+static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
+    -> gsl::owner<FILE *> {
   // Open the file in binary mode first.
   gsl::owner<FILE *> fp = fopen(fileName.c_str(), "rb");
   if (fp == nullptr) {
@@ -46,14 +48,15 @@ static FILE *stl_open_count_facets(stl_file &stl, std::string const fileName) {
 
   // Check for binary or ASCII file.
   fseek(fp, HEADER_SIZE, SEEK_SET);
-  unsigned char chtest[128];
-  if (!fread(chtest, sizeof(chtest), 1, fp)) {
+  constexpr auto chtest_size{128};
+  unsigned char chtest[chtest_size]; // This whole file thing is done the C way
+  if (fread(chtest, sizeof(chtest), 1, fp) == 0) {
     fclose(fp);
     return nullptr;
   }
   stl.stats.type = ascii;
-  for (size_t s = 0; s < sizeof(chtest); s++) {
-    if (chtest[s] > 127) {
+  for (unsigned char s : chtest) {
+    if (s > chtest_size - 1) {
       stl.stats.type = binary;
       break;
     }
@@ -74,8 +77,9 @@ static FILE *stl_open_count_facets(stl_file &stl, std::string const fileName) {
     num_facets = (file_size - HEADER_SIZE) / SIZEOF_STL_FACET;
 
     // Read the header.
-    if (fread(stl.stats.header, LABEL_SIZE, 1, fp) > 79)
+    if (fread(stl.stats.header, LABEL_SIZE, 1, fp) > 79) {
       stl.stats.header[80] = '\0';
+    }
 
     // Read the int following the header.  This should contain # of facets.
     uint32_t header_num_facets = 0;
@@ -99,13 +103,15 @@ static FILE *stl_open_count_facets(stl_file &stl, std::string const fileName) {
     int num_lines = 1;
     while (fgets(linebuf, 100, fp) != nullptr) {
       // Don't count short lines.
-      if (strlen(linebuf) <= 4)
+      if (strlen(linebuf) <= 4) {
         continue;
+      }
       // Skip solid/endsolid lines as broken STL file generators may put
       // several of them.
       if (strncmp(linebuf, "solid", 5) == 0 ||
-          strncmp(linebuf, "endsolid", 8) == 0)
+          strncmp(linebuf, "endsolid", 8) == 0) {
         continue;
+      }
       ++num_lines;
     }
 
@@ -113,8 +119,9 @@ static FILE *stl_open_count_facets(stl_file &stl, std::string const fileName) {
 
     // Get the header.
     int i = 0;
-    for (; i < 80 && (stl.stats.header[i] = getc(fp)) != '\n'; ++i)
+    for (; i < 80 && (stl.stats.header[i] = getc(fp)) != '\n'; ++i) {
       ;
+    }
     stl.stats.header[i] = '\0'; // Lose the '\n'
     stl.stats.header[80] = '\0';
 
@@ -130,11 +137,13 @@ static FILE *stl_open_count_facets(stl_file &stl, std::string const fileName) {
    starting at facet first_facet.  The second argument says if it's our first
    time running this for the stl and therefore we should reset our max and min
    stats. */
-static bool stl_read(stl_file &stl, FILE *fp, int first_facet, bool first) {
-  if (stl.stats.type == binary)
+static auto stl_read(stl_file &stl, FILE *fp, int first_facet, bool first)
+    -> bool {
+  if (stl.stats.type == binary) {
     fseek(fp, HEADER_SIZE, SEEK_SET);
-  else
+  } else {
     rewind(fp);
+  }
 
   char normal_buf[3][32];
   for (uint32_t i = first_facet; i < stl.stats.number_of_facets; ++i) {
@@ -143,8 +152,9 @@ static bool stl_read(stl_file &stl, FILE *fp, int first_facet, bool first) {
     if (stl.stats.type == binary) {
       // Read a single facet from a binary .STL file. We assume little-endian
       // architecture!
-      if (fread(&facet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET)
+      if (fread(&facet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
         return false;
+      }
     } else {
       // Read a single facet from an ASCII .STL file
       // skip solid/endsolid
@@ -183,7 +193,7 @@ static bool stl_read(stl_file &stl, FILE *fp, int first_facet, bool first) {
       // Skip the trailing whitespaces and empty lines.
       fscanf(fp, " ");
       fgets(buf, 2047, fp);
-      bool endfacet_ok =
+      bool const endfacet_ok =
           strncmp(buf, "endfacet", 8) == 0 &&
           (buf[8] == '\r' || buf[8] == '\n' || buf[8] == ' ' || buf[8] == '\t');
       assert(endfacet_ok);
@@ -194,12 +204,12 @@ static bool stl_read(stl_file &stl, FILE *fp, int first_facet, bool first) {
 
       // The facet normal has been parsed as a single string as to workaround
       // for not a numbers in the normal definition.
-      if (sscanf(normal_buf[0], "%f", &facet.normal(0)) != 1 ||
-          sscanf(normal_buf[1], "%f", &facet.normal(1)) != 1 ||
-          sscanf(normal_buf[2], "%f", &facet.normal(2)) != 1) {
+      if (sscanf((char *)normal_buf[0], "%f", &facet.normal(0)) != 1 ||
+          sscanf((char *)normal_buf[1], "%f", &facet.normal(1)) != 1 ||
+          sscanf((char *)normal_buf[2], "%f", &facet.normal(2)) != 1) {
         // Normal was mangled. Maybe denormals or "not a number" were stored?
         // Just reset the normal and silently ignore it.
-        memset(&facet.normal, 0, sizeof(facet.normal));
+        facet.normal = stl_zero;
       }
     }
 
@@ -213,11 +223,12 @@ static bool stl_read(stl_file &stl, FILE *fp, int first_facet, bool first) {
   return true;
 }
 
-stl_file stl_open(std::string fileName) {
+auto stl_open(const std::string &fileName) -> stl_file {
   stl_file stl{};
-  FILE *fp = stl_open_count_facets(stl, fileName);
-  if (fp == nullptr)
+  gsl::owner<FILE *> fp = stl_open_count_facets(stl, fileName);
+  if (fp == nullptr) {
     return stl;
+  }
   stl_allocate(stl);
   stl.m_initialized = stl_read(stl, fp, 0, true);
   fclose(fp);
@@ -231,7 +242,7 @@ void stl_allocate(stl_file &stl) {
   stl.neighbors_start.assign(stl.stats.number_of_facets, stl_neighbors());
 }
 
-void stl_facet_stats(stl_file &stl, stl_facet facet, bool &first) {
+void stl_facet_stats(stl_file &stl, const stl_facet &facet, bool &first) {
   // While we are going through all of the facets, let's find the
   // maximum and minimum values for x, y, and z
 
@@ -245,8 +256,8 @@ void stl_facet_stats(stl_file &stl, stl_facet facet, bool &first) {
   }
 
   // Now find the max and min values.
-  for (size_t i = 0; i < 3; ++i) {
-    stl.stats.min = stl.stats.min.cwiseMin(facet.vertex[i]);
-    stl.stats.max = stl.stats.max.cwiseMax(facet.vertex[i]);
+  for (const auto &i : facet.vertex) {
+    stl.stats.min = stl.stats.min.cwiseMin(i);
+    stl.stats.max = stl.stats.max.cwiseMax(i);
   }
 }

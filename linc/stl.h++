@@ -38,6 +38,8 @@ auto constexpr LABEL_SIZE = 80u;
 #define STL_MIN_FILE_SIZE 284
 #define ASCII_LINES_PER_FACET 7
 
+const Eigen::Matrix<float, 3, 1, Eigen::DontAlign> stl_zero{
+    Eigen::MatrixXf::Zero(3, 1)};
 typedef Eigen::Matrix<float, 3, 1, Eigen::DontAlign> stl_vertex;
 typedef Eigen::Matrix<float, 3, 1, Eigen::DontAlign> stl_normal;
 typedef Eigen::Matrix<int, 3, 1, Eigen::DontAlign> stl_triangle_vertex_indices;
@@ -168,7 +170,7 @@ struct indexed_triangle_set {
   // normals
 };
 
-stl_file stl_open(std::string fileName);
+stl_file stl_open(const std::string &fileName);
 extern void stl_stats_out(stl_file *stl, FILE *file, char *input_file);
 extern bool stl_print_neighbors(stl_file *stl, char *file);
 extern bool stl_write_ascii(stl_file *stl, const char *file, const char *label);
@@ -288,4 +290,4 @@ inline void stl_normalize_vector(stl_normal &normal) {
 
 void stl_allocate(stl_file &stl);
 void stl_read(stl_file &stl, int first_facet, bool first);
-void stl_facet_stats(stl_file &stl, stl_facet facet, bool &first);
+void stl_facet_stats(stl_file &stl, const stl_facet &facet, bool &first);
