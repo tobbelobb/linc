@@ -2,9 +2,9 @@
 
 #include <gsl/span_ext>
 
-#include <linc/linc.hxx>
-#include <linc/params.hxx>
-#include <linc/triangle-mesh.hxx>
+#include <linc/linc.h++>
+#include <linc/params.h++>
+#include <linc/triangle-mesh.h++>
 
 int main(int argc, char *argv[]) {
 

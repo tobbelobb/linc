@@ -1,6 +1,6 @@
 #pragma once
 
-#include <linc/stl.hxx>
+#include <linc/stl.h++>
 #include <string>
 
 struct TriangleMesh {

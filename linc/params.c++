@@ -8,7 +8,7 @@
 #include <sstream>
 #include <string>
 
-#include <linc/params.hxx>
+#include <linc/params.h++>
 
 // remove all ' ', '\n', '\r', '\f', '\t', '\v'
 // trim from start (in place)

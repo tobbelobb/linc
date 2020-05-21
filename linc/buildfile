@@ -41,3 +41,6 @@ for t: cxx{**.test...}
 
 # Include our own header files
 cxx.poptions =+ "-I$out_root" "-I$src_root"
+
+# Print the preprocessor options
+#info $cxx.poptions

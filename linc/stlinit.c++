@@ -28,7 +28,7 @@
 
 #include <gsl/pointers>
 
-#include <linc/stl.hxx>
+#include <linc/stl.h++>
 
 #ifndef SEEK_SET
 #error "SEEK_SET not defined"

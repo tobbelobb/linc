@@ -2,7 +2,7 @@
 
 #include <gsl/span_ext>
 
-#include <linc/params.hxx>
+#include <linc/params.h++>
 
 int tokenizeWellFormedString() {
   std::string const inString{"effector-pivot-A1: ( 220,  -140.0, 130.0 ) "};

@@ -1,4 +1,4 @@
-#include <linc/linc.hxx>
+#include <linc/linc.h++>
 
 bool willCollide(TriangleMesh const &mesh, Pivots const &pivots,
                  float layerHeight) {
