@@ -32,7 +32,7 @@ auto tokenizeTooManyTokens() -> int {
 auto main(int argc, char **argv) -> int {
   // Give testscript some output to assert on
   if (argc > 1) {
-    gsl::span<char *> const args(argv, argc);
+    gsl::span<char *> const args(argv, static_cast<unsigned int>(argc));
     auto *const paramsFileName = gsl::at(args, 1);
     Pivots pivots{paramsFileName};
     std::cout << pivots << '\n';

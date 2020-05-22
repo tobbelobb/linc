@@ -7,16 +7,17 @@
 #include <linc/triangle-mesh.h++>
 
 auto main(int argc, char *argv[]) -> int {
-
   if (not(argc == 3 or argc == 4)) {
     std::cerr << "Usage:\n"
               << *argv << " <3d-model> <params> [layer-height (mm)]\n";
     return 1;
   }
 
-  gsl::span<char *> const args(argv, argc);
+  gsl::span<char *> const args(argv, static_cast<unsigned int>(argc));
   auto *const modelFileName = gsl::at(args, 1);
   auto *const paramsFileName = gsl::at(args, 2);
+  // TODO: millimeter type
+  auto layerHeight = (argc > 3) ? std::stof(gsl::at(args, 3)) : 1.0f;
 
   TriangleMesh mesh{modelFileName};
   if (not mesh.isGood()) {
@@ -29,12 +30,6 @@ auto main(int argc, char *argv[]) -> int {
     return 1;
   }
   Pivots pivots{std::string{paramsFileName}};
-
-  // TODO: millimeter type
-  float layerHeight = 1.0;
-  if (argc > 3) {
-    layerHeight = std::stof(gsl::at(args, 3));
-  }
 
   if (willCollide(mesh, pivots, layerHeight)) {
     std::cout << "Collision detected\n";

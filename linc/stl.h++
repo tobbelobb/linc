@@ -100,8 +100,8 @@ struct stl_neighbors {
 struct stl_stats {
   stl_stats() { memset(&header, 0, LABEL_SIZE + 1); }
   char header[LABEL_SIZE + 1];
-  stl_type type = (stl_type)0;
-  uint32_t number_of_facets = 0;
+  stl_type type = binary;
+  long number_of_facets = 0;
   stl_vertex max = stl_vertex::Zero();
   stl_vertex min = stl_vertex::Zero();
   stl_vertex size = stl_vertex::Zero();
@@ -115,7 +115,7 @@ struct stl_stats {
   int facets_w_1_bad_edge = 0;
   int facets_w_2_bad_edge = 0;
   int facets_w_3_bad_edge = 0;
-  int original_num_facets = 0;
+  long original_num_facets = 0;
   int edges_fixed = 0;
   int degenerate_facets = 0;
   int facets_removed = 0;

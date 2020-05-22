@@ -37,6 +37,7 @@
 #endif
 
 // TODO: un-NOLINT this file
+#include <Eigen/src/Core/util/DisableStupidWarnings.h>
 
 template <size_t N>
 constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
@@ -72,7 +73,7 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
   }
   rewind(fp);
 
-  uint32_t num_facets = 0;
+  auto num_facets = 0l;
 
   // Get the header and the number of facets in the .STL file.
   // If the .STL file is binary, then do the following:
@@ -100,7 +101,7 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     // fix to silence a warning about unused return value.
     // obviously if it fails we have problems....
     fclose(fp);
-    gsl::owner<FILE *> fp = fopen(fileName.c_str(), "r");
+    fp = fopen(fileName.c_str(), "r");
 
     // do another null check to be safe
     if (fp == nullptr) {
@@ -112,7 +113,7 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     constexpr auto linebuf_size{100};
     constexpr auto short_line_limit{4};
     char linebuf[linebuf_size]; // NOLINT
-    size_t num_lines = 1;
+    auto num_lines = 1l;
     while (fgets((char *)linebuf, linebuf_size, fp) != nullptr) {
       // Don't count short lines.
       if (strlen((char *)linebuf) <= short_line_limit) {
@@ -288,3 +289,5 @@ void stl_facet_stats(stl_file &stl, const stl_facet &facet, bool &first) {
     stl.stats.max = stl.stats.max.cwiseMax(i);
   }
 }
+
+#include <Eigen/src/Core/util/ReenableStupidWarnings.h>

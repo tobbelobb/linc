@@ -66,8 +66,14 @@
   #endif
   #if __GNUC__>=6
     #pragma GCC diagnostic ignored "-Wignored-attributes"
+    #pragma GCC diagnostic ignored "-Wconversion"
+    #pragma GCC diagnostic ignored "-Wold-style-cast"
+    #pragma GCC diagnostic ignored "-Wsign-conversion"
+    #pragma GCC diagnostic ignored "-Wduplicated-branches"
+    #pragma GCC diagnostic ignored "-Wuseless-cast"
+
   #endif
-  #if __GNUC__==7
+  #if __GNUC__ == 7
     // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=89325
     #pragma GCC diagnostic ignored "-Wattributes"
   #endif
