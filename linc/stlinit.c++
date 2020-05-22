@@ -28,12 +28,21 @@
 #include <cstring>
 
 #include <gsl/pointers>
+#include <gsl/span_ext>
 
 #include <linc/stl.h++>
 
 #ifndef SEEK_SET
 #error "SEEK_SET not defined"
 #endif
+
+// TODO: un-NOLINT this file
+
+template <size_t N>
+constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
+    -> size_t {
+  return N - 1;
+}
 
 static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     -> gsl::owner<FILE *> {
@@ -49,8 +58,8 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
   // Check for binary or ASCII file.
   fseek(fp, HEADER_SIZE, SEEK_SET);
   constexpr auto chtest_size{128};
-  unsigned char chtest[chtest_size]; // This whole file thing is done the C way
-  if (fread(chtest, sizeof(chtest), 1, fp) == 0) {
+  unsigned char chtest[chtest_size]; // NOLINT
+  if (fread((unsigned char *)chtest, sizeof(chtest), 1, fp) == 0) {
     fclose(fp);
     return nullptr;
   }
@@ -77,8 +86,8 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     num_facets = (file_size - HEADER_SIZE) / SIZEOF_STL_FACET;
 
     // Read the header.
-    if (fread(stl.stats.header, LABEL_SIZE, 1, fp) > 79) {
-      stl.stats.header[80] = '\0';
+    if (fread(stl.stats.header, LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) { // NOLINT
+      stl.stats.header[LABEL_SIZE] = '\0';                             // NOLINT
     }
 
     // Read the int following the header.  This should contain # of facets.
@@ -90,7 +99,8 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     // Reopen the file in text mode (for getting correct newlines on Windows)
     // fix to silence a warning about unused return value.
     // obviously if it fails we have problems....
-    fp = freopen(fileName.c_str(), "r", fp);
+    fclose(fp);
+    gsl::owner<FILE *> fp = fopen(fileName.c_str(), "r");
 
     // do another null check to be safe
     if (fp == nullptr) {
@@ -99,17 +109,19 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     }
 
     // Find the number of facets.
-    char linebuf[100];
-    int num_lines = 1;
-    while (fgets(linebuf, 100, fp) != nullptr) {
+    constexpr auto linebuf_size{100};
+    constexpr auto short_line_limit{4};
+    char linebuf[linebuf_size]; // NOLINT
+    size_t num_lines = 1;
+    while (fgets((char *)linebuf, linebuf_size, fp) != nullptr) {
       // Don't count short lines.
-      if (strlen(linebuf) <= 4) {
+      if (strlen((char *)linebuf) <= short_line_limit) {
         continue;
       }
       // Skip solid/endsolid lines as broken STL file generators may put
       // several of them.
-      if (strncmp(linebuf, "solid", 5) == 0 ||
-          strncmp(linebuf, "endsolid", 8) == 0) {
+      if (strncmp((char *)linebuf, "solid", strlen("solid")) == 0 ||
+          strncmp((char *)linebuf, "endsolid", strlen("endsolid")) == 0) {
         continue;
       }
       ++num_lines;
@@ -118,12 +130,14 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     rewind(fp);
 
     // Get the header.
-    int i = 0;
-    for (; i < 80 && (stl.stats.header[i] = getc(fp)) != '\n'; ++i) {
+    size_t i = 0;
+    for (; i < LABEL_SIZE &&
+           (gsl::at(stl.stats.header, i) = (char)getc(fp)) != '\n';
+         ++i) {
       ;
     }
-    stl.stats.header[i] = '\0'; // Lose the '\n'
-    stl.stats.header[80] = '\0';
+    gsl::at(stl.stats.header, i) = '\0'; // Lose the '\n'
+    gsl::at(stl.stats.header, LABEL_SIZE) = '\0';
 
     num_facets = num_lines / ASCII_LINES_PER_FACET;
   }
@@ -145,7 +159,8 @@ static auto stl_read(stl_file &stl, FILE *fp, int first_facet, bool first)
     rewind(fp);
   }
 
-  char normal_buf[3][32];
+  constexpr auto chars_per_float{32};
+  char normal_buf[3][chars_per_float]; // NOLINT
   for (uint32_t i = first_facet; i < stl.stats.number_of_facets; ++i) {
     stl_facet facet;
 
@@ -160,53 +175,65 @@ static auto stl_read(stl_file &stl, FILE *fp, int first_facet, bool first)
       // skip solid/endsolid
       // (in this order, otherwise it won't work when they are paired in the
       // middle of a file)
-      fscanf(fp, " endsolid%*[^\n]\n");
-      fscanf(fp,
-             " solid%*[^\n]\n"); // name might contain spaces so %*s doesn't
-                                 // work and it also can be empty (just "solid")
+      fscanf(fp, " endsolid%*[^\n]\n"); // NOLINT
+      // name might contain spaces so %*s doesn't
+      // work and it also can be empty (just "solid")
+      fscanf(fp, " solid%*[^\n]\n"); // NOLINT
       // Leading space in the fscanf format skips all leading white spaces
       // including numerous new lines and tabs.
-      int res_normal = fscanf(fp, " facet normal %31s %31s %31s", normal_buf[0],
-                              normal_buf[1], normal_buf[2]);
-      assert(res_normal == 3);
-      int res_outer_loop = fscanf(fp, " outer loop");
-      assert(res_outer_loop == 0);
-      int res_vertex1 = fscanf(fp, " vertex %f %f %f", &facet.vertex[0](0),
-                               &facet.vertex[0](1), &facet.vertex[0](2));
-      assert(res_vertex1 == 3);
-      int res_vertex2 = fscanf(fp, " vertex %f %f %f", &facet.vertex[1](0),
-                               &facet.vertex[1](1), &facet.vertex[1](2));
-      assert(res_vertex2 == 3);
+      int res_normal =
+          fscanf(fp, " facet normal %31s %31s %31s",            /* NOLINT */
+                 (char *)normal_buf[0],                         /* NOLINT */
+                 (char *)normal_buf[1], (char *)normal_buf[2]); // NOLINT
+      assert(res_normal == 3);                                  // NOLINT
+      int res_outer_loop = fscanf(fp, " outer loop");           // NOLINT
+      assert(res_outer_loop == 0);                              // NOLINT
+      int res_vertex1 = fscanf(fp, " vertex %f %f %f",          /* NOLINT */
+                               &facet.vertex[0](0),             /* NOLINT */
+                               &facet.vertex[0](1),             /* NOLINT */
+                               &facet.vertex[0](2));            // NOLINT
+      assert(res_vertex1 == 3);                                 // NOLINT
+      int res_vertex2 = fscanf(fp, " vertex %f %f %f",          /* NOLINT */
+                               &facet.vertex[1](0),             /* NOLINT */
+                               &facet.vertex[1](1),             /* NOLINT */
+                               &facet.vertex[1](2));            // NOLINT
+      assert(res_vertex2 == 3);                                 // NOLINT
       // Trailing whitespace is there to eat all whitespaces and empty lines up
       // to the next non-whitespace.
-      int res_vertex3 = fscanf(fp, " vertex %f %f %f ", &facet.vertex[2](0),
-                               &facet.vertex[2](1), &facet.vertex[2](2));
-      assert(res_vertex3 == 3);
+      int res_vertex3 = fscanf(fp, " vertex %f %f %f ", /* NOLINT */
+                               &facet.vertex[2](0),     /* NOLINT */
+                               &facet.vertex[2](1),     /* NOLINT */
+                               &facet.vertex[2](2));    // NOLINT
+      assert(res_vertex3 == 3);                         // NOLINT
       // Some G-code generators tend to produce text after "endloop" and
       // "endfacet". Just ignore it.
-      char buf[2048];
-      fgets(buf, 2047, fp);
+      constexpr auto buf_size{2048};
+      char buf[buf_size]; // NOLINT
+      fgets((char *)buf, buf_size - 1, fp);
+      constexpr auto chars_in_endloop{length("endloop")};
       bool endloop_ok =
-          strncmp(buf, "endloop", 7) == 0 &&
-          (buf[7] == '\r' || buf[7] == '\n' || buf[7] == ' ' || buf[7] == '\t');
-      assert(endloop_ok);
+          strncmp((char *)buf, "endloop", chars_in_endloop) == 0 &&
+          (buf[chars_in_endloop] == '\r' || buf[chars_in_endloop] == '\n' ||
+           buf[chars_in_endloop] == ' ' || buf[chars_in_endloop] == '\t');
+      assert(endloop_ok); // NOLINT
       // Skip the trailing whitespaces and empty lines.
-      fscanf(fp, " ");
-      fgets(buf, 2047, fp);
+      fscanf(fp, " "); // NOLINT
+      fgets((char *)buf, buf_size - 1, fp);
+      constexpr auto chars_in_endfacet{length("endfacet")};
       bool const endfacet_ok =
-          strncmp(buf, "endfacet", 8) == 0 &&
-          (buf[8] == '\r' || buf[8] == '\n' || buf[8] == ' ' || buf[8] == '\t');
-      assert(endfacet_ok);
-      if (res_normal != 3 || res_outer_loop != 0 || res_vertex1 != 3 ||
-          res_vertex2 != 3 || res_vertex3 != 3 || !endloop_ok || !endfacet_ok) {
+          strncmp((char *)buf, "endfacet", chars_in_endfacet) == 0 &&
+          (buf[chars_in_endfacet] == '\r' || buf[chars_in_endfacet] == '\n' ||
+           buf[chars_in_endfacet] == ' ' || buf[chars_in_endfacet] == '\t');
+      assert(endfacet_ok); // NOLINT
+      if (!endloop_ok || !endfacet_ok) {
         return false;
       }
 
       // The facet normal has been parsed as a single string as to workaround
       // for not a numbers in the normal definition.
-      if (sscanf((char *)normal_buf[0], "%f", &facet.normal(0)) != 1 ||
-          sscanf((char *)normal_buf[1], "%f", &facet.normal(1)) != 1 ||
-          sscanf((char *)normal_buf[2], "%f", &facet.normal(2)) != 1) {
+      if (sscanf(normal_buf[0], "%f", &facet.normal(0)) != 1 || // NOLINT
+          sscanf(normal_buf[1], "%f", &facet.normal(1)) != 1 || // NOLINT
+          sscanf(normal_buf[2], "%f", &facet.normal(2)) != 1) { // NOLINT
         // Normal was mangled. Maybe denormals or "not a number" were stored?
         // Just reset the normal and silently ignore it.
         facet.normal = stl_zero;
