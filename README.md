@@ -8,65 +8,75 @@ and is indended to be used through that repo.
 ## Build2 cheat sheet
 ### Build
 ```
-# b
+b
 ```
 
 ### Build and run the tests
 ```
-# b test
+b test
 ```
 
 ### Clean
 ```
-# b clean
+b clean
 ```
 
 ### Check which configs exist
 ```
-# bdep config list
+bdep config list
 ```
 
 ### Create a config
 ```
-# bdep init --config-create ../linc-gcc8 cc config.cxx=g++-8
+bdep init --config-create ../linc-gcc8 cc config.cxx=g++-8
 
+```
+
+### The two configs already in this repo
+```
+bdep init --config-create ../linc-gcc @gcc cc config.cxx=g++
+bdep init --config-create ../linc-clang @clang cc config.cxx=clang++-10
 ```
 
 ### Build with clang
 ```
 b @../linc-clang/
+# or
+bdep update @clang
 ```
 
 ### Clean the clang build
 ```
 b clean: @../linc-clang/
+# or
+bdep clean @clang
 ```
 
 ### Build with all configs
 ```
-# bdep update -a
+bdep update -a
 ```
 
 ### Build and run tests with all configs
 ```
-# bdep test -a
+bdep test -a
 ```
 
 ### Clean for all configs
 ```
-# bdep clean -a
+bdep clean -a
 ```
 
 ### Run ci service
 This will start builds on a lot of different machines,
 and provide you a link to the results and logs:
 ```
-# bdep ci
+bdep ci
 ```
 
 ### Build with -O3
 ```
-# b config.cxx.coptions=-O3  # Rebuild with -O3.
+b config.cxx.coptions=-O3  # Rebuild with -O3.
 ```
 
 ## More on build2 tests
