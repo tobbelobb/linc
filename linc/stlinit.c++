@@ -27,8 +27,8 @@
 #include <cstdlib>
 #include <cstring>
 
-// TODO: replace with proper logging
-#include <iostream>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
 
 #include <gsl/pointers>
 #include <gsl/span_ext>
@@ -147,6 +147,12 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
 
   m_stats.number_of_facets += num_facets;
   m_stats.original_num_facets = m_stats.number_of_facets;
+
+  // Set the default logger to file logger
+  auto file_logger = spdlog::basic_logger_mt("basic_logger", "logs/basic.txt");
+  spdlog::set_default_logger(file_logger);
+  spdlog::info("Found {} facets", m_stats.number_of_facets);
+
   return fp;
 }
 
