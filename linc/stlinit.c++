@@ -27,6 +27,9 @@
 #include <cstdlib>
 #include <cstring>
 
+// TODO: replace with proper logging
+#include <iostream>
+
 #include <gsl/pointers>
 #include <gsl/span_ext>
 
@@ -45,8 +48,7 @@ constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
   return N - 1;
 }
 
-static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
-    -> gsl::owner<FILE *> {
+auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
   // Open the file in binary mode first.
   gsl::owner<FILE *> fp = fopen(fileName.c_str(), "rb");
   if (fp == nullptr) {
@@ -64,20 +66,20 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     fclose(fp);
     return nullptr;
   }
-  stl.stats.type = ascii;
+  m_stats.type = Stl::Type::ASCII;
   for (unsigned char s : chtest) {
     if (s > chtest_size - 1) {
-      stl.stats.type = binary;
+      m_stats.type = Stl::Type::BINARY;
       break;
     }
   }
   rewind(fp);
 
-  auto num_facets = 0l;
+  auto num_facets = 0L;
 
   // Get the header and the number of facets in the .STL file.
   // If the .STL file is binary, then do the following:
-  if (stl.stats.type == binary) {
+  if (m_stats.type == Stl::Type::BINARY) {
     // Test if the STL file has the right size.
     if (((file_size - HEADER_SIZE) % SIZEOF_STL_FACET != 0) ||
         (file_size < STL_MIN_FILE_SIZE)) {
@@ -87,8 +89,8 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     num_facets = (file_size - HEADER_SIZE) / SIZEOF_STL_FACET;
 
     // Read the header.
-    if (fread(stl.stats.header, LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) { // NOLINT
-      stl.stats.header[LABEL_SIZE] = '\0';                             // NOLINT
+    if (fread(m_stats.header, LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) { // NOLINT
+      m_stats.header[LABEL_SIZE] = '\0';                             // NOLINT
     }
 
     // Read the int following the header.  This should contain # of facets.
@@ -110,13 +112,13 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     }
 
     // Find the number of facets.
-    constexpr auto linebuf_size{100};
-    constexpr auto short_line_limit{4};
-    char linebuf[linebuf_size]; // NOLINT
-    auto num_lines = 1l;
-    while (fgets((char *)linebuf, linebuf_size, fp) != nullptr) {
+    constexpr auto LINEBUF_SIZE{100};
+    char linebuf[LINEBUF_SIZE]; // NOLINT
+    auto num_lines = 1L;
+    while (fgets((char *)linebuf, LINEBUF_SIZE, fp) != nullptr) {
       // Don't count short lines.
-      if (strlen((char *)linebuf) <= short_line_limit) {
+      constexpr auto SHORT_LINE_LIMIT{4};
+      if (strlen((char *)linebuf) <= SHORT_LINE_LIMIT) {
         continue;
       }
       // Skip solid/endsolid lines as broken STL file generators may put
@@ -133,18 +135,18 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
     // Get the header.
     size_t i = 0;
     for (; i < LABEL_SIZE &&
-           (gsl::at(stl.stats.header, i) = (char)getc(fp)) != '\n';
+           (gsl::at(m_stats.header, i) = (char)getc(fp)) != '\n';
          ++i) {
       ;
     }
-    gsl::at(stl.stats.header, i) = '\0'; // Lose the '\n'
-    gsl::at(stl.stats.header, LABEL_SIZE) = '\0';
+    gsl::at(m_stats.header, i) = '\0'; // Lose the '\n'
+    gsl::at(m_stats.header, LABEL_SIZE) = '\0';
 
     num_facets = num_lines / ASCII_LINES_PER_FACET;
   }
 
-  stl.stats.number_of_facets += num_facets;
-  stl.stats.original_num_facets = stl.stats.number_of_facets;
+  m_stats.number_of_facets += num_facets;
+  m_stats.original_num_facets = m_stats.number_of_facets;
   return fp;
 }
 
@@ -152,20 +154,19 @@ static auto stl_open_count_facets(stl_file &stl, std::string const &fileName)
    starting at facet first_facet.  The second argument says if it's our first
    time running this for the stl and therefore we should reset our max and min
    stats. */
-static auto stl_read(stl_file &stl, FILE *fp, int first_facet, bool first)
-    -> bool {
-  if (stl.stats.type == binary) {
+auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
+  if (m_stats.type == Stl::Type::BINARY) {
     fseek(fp, HEADER_SIZE, SEEK_SET);
   } else {
     rewind(fp);
   }
 
-  constexpr auto chars_per_float{32};
-  char normal_buf[3][chars_per_float]; // NOLINT
-  for (uint32_t i = first_facet; i < stl.stats.number_of_facets; ++i) {
-    stl_facet facet;
+  constexpr auto CHARS_PER_FLOAT{32};
+  char normal_buf[3][CHARS_PER_FLOAT]; // NOLINT
+  for (uint32_t i = first_facet; i < m_stats.number_of_facets; ++i) {
+    Facet facet;
 
-    if (stl.stats.type == binary) {
+    if (m_stats.type == Stl::Type::BINARY) {
       // Read a single facet from a binary .STL file. We assume little-endian
       // architecture!
       if (fread(&facet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
@@ -208,9 +209,9 @@ static auto stl_read(stl_file &stl, FILE *fp, int first_facet, bool first)
       assert(res_vertex3 == 3);                         // NOLINT
       // Some G-code generators tend to produce text after "endloop" and
       // "endfacet". Just ignore it.
-      constexpr auto buf_size{2048};
-      char buf[buf_size]; // NOLINT
-      fgets((char *)buf, buf_size - 1, fp);
+      constexpr auto BUF_SIZE{2048};
+      char buf[BUF_SIZE]; // NOLINT
+      fgets((char *)buf, BUF_SIZE - 1, fp);
       constexpr auto chars_in_endloop{length("endloop")};
       bool endloop_ok =
           strncmp((char *)buf, "endloop", chars_in_endloop) == 0 &&
@@ -219,7 +220,7 @@ static auto stl_read(stl_file &stl, FILE *fp, int first_facet, bool first)
       assert(endloop_ok); // NOLINT
       // Skip the trailing whitespaces and empty lines.
       fscanf(fp, " "); // NOLINT
-      fgets((char *)buf, buf_size - 1, fp);
+      fgets((char *)buf, BUF_SIZE - 1, fp);
       constexpr auto chars_in_endfacet{length("endfacet")};
       bool const endfacet_ok =
           strncmp((char *)buf, "endfacet", chars_in_endfacet) == 0 &&
@@ -237,56 +238,54 @@ static auto stl_read(stl_file &stl, FILE *fp, int first_facet, bool first)
           sscanf(normal_buf[2], "%f", &facet.normal(2)) != 1) { // NOLINT
         // Normal was mangled. Maybe denormals or "not a number" were stored?
         // Just reset the normal and silently ignore it.
-        facet.normal = stl_zero;
+        facet.normal = Normal::Zero();
       }
     }
 
     // Write the facet into memory.
-    stl.facet_start[i] = facet;
-    stl_facet_stats(stl, facet, first);
+    m_facets[i] = facet;
+    saveFacetStats(facet, first);
   }
 
-  stl.stats.size = stl.stats.max - stl.stats.min;
-  stl.stats.bounding_diameter = stl.stats.size.norm();
+  m_stats.size = m_stats.max - m_stats.min;
+  m_stats.bounding_diameter = m_stats.size.norm();
   return true;
 }
 
-auto stl_open(const std::string &fileName) -> stl_file {
-  stl_file stl{};
-  gsl::owner<FILE *> fp = stl_open_count_facets(stl, fileName);
+Stl::Stl(std::string const &fileName) {
+  gsl::owner<FILE *> fp = this->openCountFacets(fileName);
   if (fp == nullptr) {
-    return stl;
+    return;
   }
-  stl_allocate(stl);
-  stl.m_initialized = stl_read(stl, fp, 0, true);
+  allocate();
+  m_initialized = read(fp, 0, true);
   fclose(fp);
-  return stl;
 }
 
-void stl_allocate(stl_file &stl) {
+void Stl::allocate() {
   //  Allocate memory for the entire .STL file.
-  stl.facet_start.assign(stl.stats.number_of_facets, stl_facet());
+  m_facets.assign(m_stats.number_of_facets, Facet());
   // Allocate memory for the neighbors list.
-  stl.neighbors_start.assign(stl.stats.number_of_facets, stl_neighbors());
+  m_neighbors.assign(m_stats.number_of_facets, Neighbors());
 }
 
-void stl_facet_stats(stl_file &stl, const stl_facet &facet, bool &first) {
+void Stl::saveFacetStats(Facet const &facet, bool &first) {
   // While we are going through all of the facets, let's find the
   // maximum and minimum values for x, y, and z
 
   if (first) {
     // Initialize the max and min values the first time through
-    stl.stats.min = facet.vertex[0];
-    stl.stats.max = facet.vertex[0];
-    stl_vertex diff = (facet.vertex[1] - facet.vertex[0]).cwiseAbs();
-    stl.stats.shortest_edge = std::max(diff(0), std::max(diff(1), diff(2)));
+    m_stats.min = facet.vertex[0];
+    m_stats.max = facet.vertex[0];
+    Vertex diff = (facet.vertex[1] - facet.vertex[0]).cwiseAbs();
+    m_stats.shortest_edge = std::max(diff(0), std::max(diff(1), diff(2)));
     first = false;
   }
 
   // Now find the max and min values.
   for (const auto &i : facet.vertex) {
-    stl.stats.min = stl.stats.min.cwiseMin(i);
-    stl.stats.max = stl.stats.max.cwiseMax(i);
+    m_stats.min = m_stats.min.cwiseMin(i);
+    m_stats.max = m_stats.max.cwiseMax(i);
   }
 }
 

@@ -4,11 +4,13 @@
 #include <string>
 
 struct TriangleMesh {
-  stl_file m_stl;
+private:
+  Stl m_stl;
 
-  TriangleMesh() = delete; // You can not initialize based on nothing
+public:
+  TriangleMesh() = delete;
 
-  TriangleMesh(std::string const fileName) { m_stl = stl_open(fileName); }
+  TriangleMesh(std::string fileName) : m_stl(fileName) {}
 
   static bool writeBinaryStl(std::string const &fileName);
   bool isGood() const { return m_stl.m_initialized; }

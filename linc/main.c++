@@ -1,4 +1,5 @@
 #include <iostream>
+#include <set>
 
 #include <gsl/span_ext>
 
@@ -7,7 +8,8 @@
 #include <linc/triangle-mesh.h++>
 
 auto main(int argc, char *argv[]) -> int {
-  if (not(argc == 3 or argc == 4)) {
+
+  if (not(std::set<int>{{3, 4}}.contains(argc))) {
     std::cerr << "Usage:\n"
               << *argv << " <3d-model> <params> [layer-height (mm)]\n";
     return 1;
@@ -17,7 +19,7 @@ auto main(int argc, char *argv[]) -> int {
   auto *const modelFileName = gsl::at(args, 1);
   auto *const paramsFileName = gsl::at(args, 2);
   // TODO: millimeter type
-  auto layerHeight = (argc > 3) ? std::stof(gsl::at(args, 3)) : 1.0f;
+  auto layerHeight = (argc > 3) ? std::stof(gsl::at(args, 3)) : 1.0F;
 
   TriangleMesh mesh{modelFileName};
   if (not mesh.isGood()) {
@@ -29,7 +31,7 @@ auto main(int argc, char *argv[]) -> int {
     std::cerr << "Validation of " << paramsFileName << " failed\n";
     return 1;
   }
-  Pivots pivots{std::string{paramsFileName}};
+  Pivots pivots{paramsFileName};
 
   if (willCollide(mesh, pivots, layerHeight)) {
     std::cout << "Collision detected\n";
