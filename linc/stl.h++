@@ -31,8 +31,8 @@
 auto constexpr LABEL_SIZE = 80U;
 // Binary STL, sizeof header (free form) + number of faces.
 auto constexpr HEADER_SIZE = 84U;
-auto constexpr STL_MIN_FILE_SIZE = 284U;
-auto constexpr ASCII_LINES_PER_FACET = 7u;
+auto constexpr STL_MIN_FILE_SIZE = 284L;
+auto constexpr ASCII_LINES_PER_FACET = 7U;
 auto constexpr SIZEOF_STL_FACET = 50U;
 
 using Vertex = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;

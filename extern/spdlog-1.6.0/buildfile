@@ -1,6 +1,6 @@
 hxx{*}: extension = h
 
-lib{spdlog}: {hxx ixx txx}{**}
+lib{spdlog}: {hxx ixx txx}{include/**}
 
 # Export options
 lib{spdlog}:

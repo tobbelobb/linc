@@ -169,7 +169,7 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
 
   constexpr auto CHARS_PER_FLOAT{32};
   char normal_buf[3][CHARS_PER_FLOAT]; // NOLINT
-  for (uint32_t i = first_facet; i < m_stats.number_of_facets; ++i) {
+  for (long i = first_facet; i < m_stats.number_of_facets; ++i) {
     Facet facet;
 
     if (m_stats.type == Stl::Type::BINARY) {
