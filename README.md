@@ -92,7 +92,7 @@ Associations between executables and testscripts are created in the buildfile as
 
 #### Unit tests
 These are written in c++.
-They are defined in files `somename.test.cxx`, who are compiled into executables `somename.test`.
+They are defined in files `somename.test.c++`, who are compiled into executables `somename.test`.
 The test executables end up in the same directory where the main `linc` binary itself ends up.
 They are also symlinked from the source directory like the `linc` binary.
 To run a unit tests means to execute its executable with no arguments.
@@ -103,10 +103,10 @@ In the testscript we can give the test executable arguments and check the output
 So we can create functional tests based on unit tests.
 
 #### Automatic magic
-Also note that the buildfile need not be changed for new `.test.cxx`, `.test.hxx`, or `.testscript`
+Also note that the buildfile need not be changed for new `.test.c++`, `.test.h++`, or `.testscript`
 files to be compiled and executed together with the other tests by the `b test` command.
 
-New `.hxx` and `.cxx` files are also automatically compiled into both main executable and unit test executables.
+New `.h++` and `.c++` files are also automatically compiled into both main executable and unit test executables.
 
 Both build and unit testing is incremental, so only meaningfully changed source code is compiled and tested
 with `b` and `b test`.
@@ -116,4 +116,5 @@ to fully control how this project is built and managed.
 
 ## Licensing
 The cppcore gsl library is MIT licensed, and can be found here: https://github.com/microsoft/GSL
-The Eigen library is MPL2.0 licensed and has can be found here: https://gitlab.com/libeigen/eigen
+The Eigen library is MPL2.0 licensed and can be found here: https://gitlab.com/libeigen/eigen
+The spdlog library is MIT licensed, and can be found here: https://github.com/gabime/spdlog
