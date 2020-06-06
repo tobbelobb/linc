@@ -6,8 +6,11 @@ include ../extern/spdlog-1.6.0/
 libs =
 libs += ../extern/eigen/lib{eigen}
 libs += ../extern/cppcore/lib{cppcore}
-libs += ../extern/spdlog-1.6.0/lib{spdlog}
-#import libs += libhello%lib{hello}#
+
+# There is a non-slow version
+# Build the static lib inside external/spdlib directory
+# Then remove _slow
+libs += ../extern/spdlog-1.6.0/lib{spdlog_slow}
 
 # ./ means "when building this dir, also build following target"
 # executable linc depends on utility library linc, main.cxx.
