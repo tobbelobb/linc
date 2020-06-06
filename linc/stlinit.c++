@@ -149,7 +149,7 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
   m_stats.original_num_facets = m_stats.number_of_facets;
 
   // Set the default logger to file logger
-  auto file_logger = spdlog::basic_logger_mt("basic_logger", "logs/basic.txt");
+  auto file_logger = spdlog::basic_logger_mt("basic_logger", "linc.log");
   spdlog::set_default_logger(file_logger);
   spdlog::info("Found {} facets", m_stats.number_of_facets);
 
