@@ -1,0 +1,9 @@
+hxx{*}: extension =
+
+lib{eigen}: {hxx ixx txx}{**}
+
+# Export options
+lib{eigen}:
+{
+  cxx.export.poptions = "-I$src_root/extern/eigen/"
+}

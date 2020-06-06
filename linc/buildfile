@@ -1,4 +1,12 @@
+include ../extern/
+include ../extern/eigen/
+include ../extern/cppcore/
+include ../extern/spdlog-1.6.0/
+
 libs =
+libs += ../extern/eigen/lib{eigen}
+libs += ../extern/cppcore/lib{cppcore}
+libs += ../extern/spdlog-1.6.0/lib{spdlog}
 #import libs += libhello%lib{hello}#
 
 # ./ means "when building this dir, also build following target"

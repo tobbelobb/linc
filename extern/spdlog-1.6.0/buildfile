@@ -1,0 +1,9 @@
+hxx{*}: extension = h
+
+lib{spdlog}: {hxx ixx txx}{**}
+
+# Export options
+lib{spdlog}:
+{
+  cxx.export.poptions = "-I$src_root/extern/spdlog-1.6.0/include/"
+}
