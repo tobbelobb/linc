@@ -29,11 +29,15 @@ auto tokenizeTooManyTokens() -> int {
 
 auto main() -> int {
 
-  if (not(tokenizeWellFormedString() == 0))
+  if (not(tokenizeWellFormedString() == 0)) {
     return 1;
 
-  if (not(tokenizeTooManyTokens() == 0))
+}
+
+  if (not(tokenizeTooManyTokens() == 0)) {
     return 1;
+
+}
 
   return 0;
 }
