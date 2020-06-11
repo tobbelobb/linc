@@ -28,6 +28,10 @@
 #include <Eigen/Geometry>
 #include <gsl/pointers>
 
+// Set the default logger to file logger
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
+
 // Size of the binary STL header, free form.
 auto constexpr LABEL_SIZE = 80U;
 // Binary STL, sizeof header (free form) + number of faces.

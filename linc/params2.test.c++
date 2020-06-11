@@ -1,7 +1,5 @@
 #include <iostream>
 
-#include <doctest/doctest.h>
-
 #include <linc/params.h++>
 
 auto tokenizeWellFormedString() -> int {
@@ -10,8 +8,8 @@ auto tokenizeWellFormedString() -> int {
 
   PivotTokens const expected{"effector-pivot-A1", "220", "-140.0", "130.0"};
   if (not(got == expected)) {
-    std::cout << "Expected: " << expected << '\n';
-    std::cout << "Got:      " << got << '\n';
+    std::cerr << "Expected: " << expected << '\n';
+    std::cerr << "Got:      " << got << '\n';
     return 1;
   }
   return 0;
@@ -22,15 +20,20 @@ auto tokenizeTooManyTokens() -> int {
   PivotTokens const got = tokenize(inString);
   PivotTokens const expected{"effector-pivot-A1", "220", "-140.0", "130.0"};
   if (not(got == expected)) {
-    std::cout << "Expected: " << expected << '\n';
-    std::cout << "Got:      " << got << '\n';
+    std::cerr << "Expected: " << expected << '\n';
+    std::cerr << "Got:      " << got << '\n';
     return 1;
   }
   return 0;
 }
 
-TEST_CASE("Tokenize well formed string") {
-  REQUIRE(tokenizeWellFormedString() == 0);
-}
+auto main() -> int {
 
-TEST_CASE("Tokenize too many tokens") { REQUIRE(tokenizeTooManyTokens() == 0); }
+  if (not(tokenizeWellFormedString() == 0))
+    return 1;
+
+  if (not(tokenizeTooManyTokens() == 0))
+    return 1;
+
+  return 0;
+}

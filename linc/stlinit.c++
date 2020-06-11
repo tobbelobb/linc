@@ -27,9 +27,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/spdlog.h>
-
 #include <gsl/pointers>
 #include <gsl/span_ext>
 
@@ -42,6 +39,8 @@
 // TODO: un-NOLINT this file
 #include <Eigen/src/Core/util/DisableStupidWarnings.h>
 
+static auto file_logger = spdlog::basic_logger_mt("basic_logger", "linc.log");
+
 template <size_t N>
 constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
     -> size_t {
@@ -49,6 +48,7 @@ constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
 }
 
 auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
+  spdlog::set_default_logger(file_logger);
   // Open the file in binary mode first.
   gsl::owner<FILE *> fp = fopen(fileName.c_str(), "rb");
   if (fp == nullptr) {
@@ -148,9 +148,6 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
   m_stats.number_of_facets += num_facets;
   m_stats.original_num_facets = m_stats.number_of_facets;
 
-  // Set the default logger to file logger
-  auto file_logger = spdlog::basic_logger_mt("basic_logger", "linc.log");
-  spdlog::set_default_logger(file_logger);
   spdlog::info("Found {} facets", m_stats.number_of_facets);
 
   return fp;

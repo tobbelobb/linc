@@ -1,4 +1,6 @@
+auto main() -> int {
+  if (not((2 + 2) == 4))
+    return 1;
 
-#include <doctest/doctest.h>
-
-TEST_CASE("params test case number 1") { REQUIRE((2 + 2) == 4); }
+  return 0;
+}

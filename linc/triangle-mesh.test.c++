@@ -1,3 +1,6 @@
-#include <doctest/doctest.h>
+auto main() -> int {
+  if (not((1 + 1) == 2))
+    return 1;
 
-TEST_CASE("Triangle mesh test test case") { REQUIRE((1 + 1) == 2); }
+  return 0;
+}
