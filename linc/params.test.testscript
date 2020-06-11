@@ -2,8 +2,8 @@
 : Checks standard case
 :
 : Checks what gets printed
-: when test executable called with the test params.
-$* "$src_base/params" >>EOE
+: when test executable called with the params example.
+$* "$src_base/params-example" >>EOE
 effector:
  220 -220  230    5   -5 -230
 -140 -140 -130  270  270 -130

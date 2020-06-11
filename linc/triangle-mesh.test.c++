@@ -1,4 +1,3 @@
-#include <cassert>
-#include <iostream>
+#include <doctest/doctest.h>
 
-auto main() -> int { std::cout << "Hello, Test!" << '\n'; }
+TEST_CASE("Triangle mesh test test case") { REQUIRE((1 + 1) == 2); }

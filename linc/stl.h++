@@ -22,6 +22,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string>
 #include <vector>
 
 #include <Eigen/Geometry>
@@ -74,6 +75,19 @@ public:
   };
 
   enum class Type { BINARY, ASCII, INMEMORY };
+
+  friend std::ostream &operator<<(std::ostream &os, Type const type) {
+    switch (type) {
+    case (Type::BINARY):
+      return os << "BINARY";
+    case (Type::ASCII):
+      return os << "ASCII";
+    case (Type::INMEMORY):
+      return os << "INMEMORY";
+    default:
+      return os << "NONE";
+    }
+  }
 
   struct Stats {
     char header[LABEL_SIZE + 1] = {0};

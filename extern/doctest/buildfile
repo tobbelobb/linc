@@ -1,0 +1,9 @@
+hxx{*}: extension = h
+
+lib{doctest}: {hxx ixx txx}{**}
+
+# Export options
+lib{doctest}:
+{
+  cxx.export.poptions = "-I$src_root/extern/doctest/"
+}

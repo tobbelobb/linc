@@ -115,6 +115,8 @@ Build2 is nice, but not widely used, so many will need to skim through it's [doc
 to fully control how this project is built and managed.
 
 ## Licensing
-The cppcore gsl library is MIT licensed, and can be found here: https://github.com/microsoft/GSL
+The cppcore Gsl library is MIT licensed, and can be found here: https://github.com/microsoft/GSL
 The Eigen library is MPL2.0 licensed and can be found here: https://gitlab.com/libeigen/eigen
-The spdlog library is MIT licensed, and can be found here: https://github.com/gabime/spdlog
+The Spdlog library is MIT licensed, and can be found here: https://github.com/gabime/spdlog
+The Doctest library is MIT licensed and can be found here: https://github.com/onqtam/doctest
+
