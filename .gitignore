@@ -1,4 +1,5 @@
 compile_commands.json
 linc/linc
-linc/logs
+linc.log
 out-root.build
+
