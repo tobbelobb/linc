@@ -96,7 +96,7 @@ public:
   struct Stats {
     char header[LABEL_SIZE + 1] = {0};
     Type type = Stl::Type::BINARY;
-    long number_of_facets = 0;
+    size_t number_of_facets = 0;
     Vertex max = Vertex::Zero();
     Vertex min = Vertex::Zero();
     Vertex size = Vertex::Zero();
@@ -110,7 +110,7 @@ public:
     int facets_w_1_bad_edge = 0;
     int facets_w_2_bad_edge = 0;
     int facets_w_3_bad_edge = 0;
-    long original_num_facets = 0;
+    size_t original_num_facets = 0;
     int edges_fixed = 0;
     int degenerate_facets = 0;
     int facets_removed = 0;
@@ -127,7 +127,7 @@ public:
   Stats m_stats;
 
   Stl() = delete;
-  Stl(std::string const &fileName);
+  explicit Stl(std::string const &fileName);
 
   void clear() {
     m_facets.clear();

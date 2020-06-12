@@ -6,7 +6,7 @@
 
 static auto
 getPath(std::string const &newFile,
-        std::string const& thisFile = SourceLoc::current().file_name())
+        std::string const &thisFile = SourceLoc::current().file_name())
     -> std::string {
   return thisFile.substr(0, thisFile.find("stlinit.test.c++")) + newFile;
 }
@@ -16,21 +16,21 @@ auto main() -> int {
   try {
     {
       Stl const stl{getPath("test-models/small-cube-ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 12L);
+      compare(stl.m_stats.number_of_facets, 12U);
       compare(stl.m_stats.type, Stl::Type::ASCII);
       check(stl.m_stats.size.isApprox(Vertex{10, 10, 10},
                                       allowedMisPrecisionPercentage));
     }
     {
       Stl const stl{getPath("test-models/small-cube-binary.stl")};
-      compare(stl.m_stats.number_of_facets, 12L);
+      compare(stl.m_stats.number_of_facets, 12U);
       compare(stl.m_stats.type, Stl::Type::BINARY);
       check(stl.m_stats.size.isApprox(Vertex{10, 10, 10},
                                       allowedMisPrecisionPercentage));
     }
     {
       Stl const stl{getPath("test-models/3DBenchy.stl")};
-      compare(stl.m_stats.number_of_facets, 225706L);
+      compare(stl.m_stats.number_of_facets, 225706U);
       compare(stl.m_stats.type, Stl::Type::BINARY);
       check(stl.m_stats.size.isApprox(Vertex{60, 31, 48},
                                       allowedMisPrecisionPercentage));

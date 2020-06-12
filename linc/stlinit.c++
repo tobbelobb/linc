@@ -114,7 +114,7 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
     // Find the number of facets.
     constexpr auto LINEBUF_SIZE{100};
     char linebuf[LINEBUF_SIZE]; // NOLINT
-    auto num_lines = 1L;
+    auto num_lines = 1U;
     while (fgets((char *)linebuf, LINEBUF_SIZE, fp) != nullptr) {
       // Don't count short lines.
       constexpr auto SHORT_LINE_LIMIT{4};
@@ -166,7 +166,7 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
 
   constexpr auto CHARS_PER_FLOAT{32};
   char normal_buf[3][CHARS_PER_FLOAT]; // NOLINT
-  for (long i = first_facet; i < m_stats.number_of_facets; ++i) {
+  for (size_t i = first_facet; i < m_stats.number_of_facets; ++i) {
     Facet facet;
 
     if (m_stats.type == Stl::Type::BINARY) {
