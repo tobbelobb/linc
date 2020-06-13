@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -28,10 +29,8 @@
 #include <Eigen/Geometry>
 #include <gsl/pointers>
 
-// Set the default logger to file logger
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/spdlog.h>
-
+// Size of the ascii table
+auto constexpr ASCII_TABLE_SIZE = 128U;
 // Size of the binary STL header, free form.
 auto constexpr LABEL_SIZE = 80U;
 // Binary STL, sizeof header (free form) + number of faces.
@@ -50,16 +49,15 @@ class Stl {
 public:
   struct Facet {
     Normal normal;
-    Vertex vertex[3];
-    char extra[2];
+    Vertex vertices[3];
+    std::byte extra[2];
 
-    Facet rotated(const Eigen::Quaternion<float, Eigen::DontAlign> &rot) const {
-      Facet out;
-      out.normal = rot * this->normal;
-      out.vertex[0] = rot * this->vertex[0];
-      out.vertex[1] = rot * this->vertex[1];
-      out.vertex[2] = rot * this->vertex[2];
-      return out;
+    friend std::ostream &operator<<(std::ostream &os, Facet const facet) {
+      return os << "facet normal \n"
+                << facet.normal << "\nouter loop vertex \n"
+                << facet.vertices[0] << "\nvertex \n"
+                << facet.vertices[1] << "\nvertex \n"
+                << facet.vertices[2] << "\nendloop endfacet\n";
     }
   };
 
@@ -103,22 +101,6 @@ public:
     float bounding_diameter = 0.0F;
     float shortest_edge = 0.0F;
     float volume = -1.0F;
-    int connected_edges = 0;
-    int connected_facets_1_edge = 0;
-    int connected_facets_2_edge = 0;
-    int connected_facets_3_edge = 0;
-    int facets_w_1_bad_edge = 0;
-    int facets_w_2_bad_edge = 0;
-    int facets_w_3_bad_edge = 0;
-    size_t original_num_facets = 0;
-    int edges_fixed = 0;
-    int degenerate_facets = 0;
-    int facets_removed = 0;
-    int facets_added = 0;
-    int facets_reversed = 0;
-    int backwards_edges = 0;
-    int normals_fixed = 0;
-    int number_of_parts = 0;
   };
 
   bool m_initialized = false;
@@ -150,7 +132,7 @@ private:
 
 static_assert(offsetof(Stl::Facet, normal) == 0,
               "stl_facet.normal offset is not 0");
-static_assert(offsetof(Stl::Facet, vertex) == 12,
+static_assert(offsetof(Stl::Facet, vertices) == 12,
               "stl_facet.vertex offset is not 12");
 static_assert(offsetof(Stl::Facet, extra) == 48,
               "stl_facet.extra offset is not 48");
@@ -217,8 +199,8 @@ inline void stl_transform(
   for (size_t i = 0; i < stl->m_stats.number_of_facets; ++i) {
     Stl::Facet &f = stl->m_facets[i];
     for (size_t j = 0; j < 3; ++j)
-      f.vertex[j] =
-          (t * f.vertex[j].template cast<T>()).template cast<float>().eval();
+      f.vertices[j] =
+          (t * f.vertices[j].template cast<T>()).template cast<float>().eval();
     f.normal = (r * f.normal.template cast<T>()).template cast<float>().eval();
   }
 
@@ -232,8 +214,8 @@ inline void stl_transform(Stl *stl,
   for (size_t i = 0; i < stl->m_stats.number_of_facets; ++i) {
     Stl::Facet &f = stl->m_facets[i];
     for (size_t j = 0; j < 3; ++j)
-      f.vertex[j] =
-          (m * f.vertex[j].template cast<T>()).template cast<float>().eval();
+      f.vertices[j] =
+          (m * f.vertices[j].template cast<T>()).template cast<float>().eval();
     f.normal = (r * f.normal.template cast<T>()).template cast<float>().eval();
   }
 
@@ -280,9 +262,9 @@ extern bool its_write_off(const indexed_triangle_set &its, const char *file);
 extern bool its_write_vrml(const indexed_triangle_set &its, const char *file);
 
 extern bool stl_write_dxf(Stl *stl, const char *file, char *label);
-inline void stl_calculate_normal(Normal &normal, Stl::Facet *facet) {
-  normal = (facet->vertex[1] - facet->vertex[0])
-               .cross(facet->vertex[2] - facet->vertex[0]);
+inline void stl_calculate_normal(Normal &normal, Stl::Facet const &facet) {
+  normal = (facet.vertices[1] - facet.vertices[0])
+               .cross(facet.vertices[2] - facet.vertices[0]);
 }
 inline void Normalize_vector(Normal &normal) {
   double length = normal.cast<double>().norm();

@@ -11,10 +11,11 @@ Model Model::cut(SI::milli_metre_t<double> absoluteZ) {
     Stl::Facet const &facet = m_mesh.m_stl.m_facets[facetIdx];
     // find facet extents
     TriangleMeshCutter::Range const zRange{
-        .min = std::min(facet.vertex[0].z(),
-                        std::min(facet.vertex[1].z(), facet.vertex[2].z())),
-        .max = std::max(facet.vertex[0].z(),
-                        std::max(facet.vertex[1].z(), facet.vertex[2].z()))};
+        .min = std::min(facet.vertices[0].z(),
+                        std::min(facet.vertices[1].z(), facet.vertices[2].z())),
+        .max =
+            std::max(facet.vertices[0].z(),
+                     std::max(facet.vertices[1].z(), facet.vertices[2].z()))};
 
     TriangleMeshCutter::FacetMeta facetMeta{facet, facetIdx, zRange};
 

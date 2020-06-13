@@ -30,6 +30,11 @@
 #include <gsl/pointers>
 #include <gsl/span_ext>
 
+// Set the default logger to file logger
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
+
 #include <linc/stl.h++>
 
 #ifndef SEEK_SET
@@ -38,8 +43,7 @@
 
 // TODO: un-NOLINT this file
 #include <Eigen/src/Core/util/DisableStupidWarnings.h>
-
-static auto file_logger = spdlog::basic_logger_mt("basic_logger", "linc.log");
+static auto logger = spdlog::basic_logger_mt("logger_name", "linc.log");
 
 template <size_t N>
 constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
@@ -48,10 +52,11 @@ constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
 }
 
 auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
-  spdlog::set_default_logger(file_logger);
+  SPDLOG_TRACE("({})", fileName);
   // Open the file in binary mode first.
   gsl::owner<FILE *> fp = fopen(fileName.c_str(), "rb");
   if (fp == nullptr) {
+    SPDLOG_DEBUG("Could not open file. Returning.");
     return nullptr;
   }
   // Find size of file.
@@ -60,15 +65,16 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
 
   // Check for binary or ASCII file.
   fseek(fp, HEADER_SIZE, SEEK_SET);
-  constexpr auto chtest_size{128};
-  unsigned char chtest[chtest_size]; // NOLINT
+  unsigned char chtest[ASCII_TABLE_SIZE]; // NOLINT
   if (fread((unsigned char *)chtest, sizeof(chtest), 1, fp) == 0) {
+    SPDLOG_DEBUG("File is shorter than {} bytes. Returning.",
+                 HEADER_SIZE + sizeof(chtest));
     fclose(fp);
     return nullptr;
   }
   m_stats.type = Stl::Type::ASCII;
   for (unsigned char s : chtest) {
-    if (s > chtest_size - 1) {
+    if (s > ASCII_TABLE_SIZE - 1) {
       m_stats.type = Stl::Type::BINARY;
       break;
     }
@@ -146,9 +152,8 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
   }
 
   m_stats.number_of_facets += num_facets;
-  m_stats.original_num_facets = m_stats.number_of_facets;
 
-  spdlog::info("Found {} facets", m_stats.number_of_facets);
+  SPDLOG_INFO("Found {} facets", m_stats.number_of_facets);
 
   return fp;
 }
@@ -194,41 +199,45 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
       int res_outer_loop = fscanf(fp, " outer loop");           // NOLINT
       assert(res_outer_loop == 0);                              // NOLINT
       int res_vertex1 = fscanf(fp, " vertex %f %f %f",          /* NOLINT */
-                               &facet.vertex[0](0),             /* NOLINT */
-                               &facet.vertex[0](1),             /* NOLINT */
-                               &facet.vertex[0](2));            // NOLINT
+                               &facet.vertices[0].x(),          /* NOLINT */
+                               &facet.vertices[0].y(),          /* NOLINT */
+                               &facet.vertices[0].z());         // NOLINT
       assert(res_vertex1 == 3);                                 // NOLINT
       int res_vertex2 = fscanf(fp, " vertex %f %f %f",          /* NOLINT */
-                               &facet.vertex[1](0),             /* NOLINT */
-                               &facet.vertex[1](1),             /* NOLINT */
-                               &facet.vertex[1](2));            // NOLINT
+                               &facet.vertices[1].x(),          /* NOLINT */
+                               &facet.vertices[1].y(),          /* NOLINT */
+                               &facet.vertices[1].z());         // NOLINT
       assert(res_vertex2 == 3);                                 // NOLINT
       // Trailing whitespace is there to eat all whitespaces and empty lines up
       // to the next non-whitespace.
       int res_vertex3 = fscanf(fp, " vertex %f %f %f ", /* NOLINT */
-                               &facet.vertex[2](0),     /* NOLINT */
-                               &facet.vertex[2](1),     /* NOLINT */
-                               &facet.vertex[2](2));    // NOLINT
+                               &facet.vertices[2].x(),  /* NOLINT */
+                               &facet.vertices[2].y(),  /* NOLINT */
+                               &facet.vertices[2].z()); // NOLINT
       assert(res_vertex3 == 3);                         // NOLINT
       // Some G-code generators tend to produce text after "endloop" and
       // "endfacet". Just ignore it.
       constexpr auto BUF_SIZE{2048};
       char buf[BUF_SIZE]; // NOLINT
       fgets((char *)buf, BUF_SIZE - 1, fp);
-      constexpr auto chars_in_endloop{length("endloop")};
+      constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
       bool endloop_ok =
-          strncmp((char *)buf, "endloop", chars_in_endloop) == 0 &&
-          (buf[chars_in_endloop] == '\r' || buf[chars_in_endloop] == '\n' ||
-           buf[chars_in_endloop] == ' ' || buf[chars_in_endloop] == '\t');
+          strncmp((char *)buf, "endloop", CHARS_IN_ENDLOOP) == 0 &&
+          (buf[CHARS_IN_ENDLOOP] == '\r' || buf[CHARS_IN_ENDLOOP] == '\n' ||
+           buf[CHARS_IN_ENDLOOP] == ' ' || buf[CHARS_IN_ENDLOOP] == '\t');
+      if (not endloop_ok) {
+        SPDLOG_ERROR("Found 4 vertices in single facet. Returning.");
+        return false;
+      }
       assert(endloop_ok); // NOLINT
       // Skip the trailing whitespaces and empty lines.
       fscanf(fp, " "); // NOLINT
       fgets((char *)buf, BUF_SIZE - 1, fp);
-      constexpr auto chars_in_endfacet{length("endfacet")};
+      constexpr auto CHARS_IN_ENDFACET{length("endfacet")};
       bool const endfacet_ok =
-          strncmp((char *)buf, "endfacet", chars_in_endfacet) == 0 &&
-          (buf[chars_in_endfacet] == '\r' || buf[chars_in_endfacet] == '\n' ||
-           buf[chars_in_endfacet] == ' ' || buf[chars_in_endfacet] == '\t');
+          strncmp((char *)buf, "endfacet", CHARS_IN_ENDFACET) == 0 &&
+          (buf[CHARS_IN_ENDFACET] == '\r' || buf[CHARS_IN_ENDFACET] == '\n' ||
+           buf[CHARS_IN_ENDFACET] == ' ' || buf[CHARS_IN_ENDFACET] == '\t');
       assert(endfacet_ok); // NOLINT
       if (!endloop_ok || !endfacet_ok) {
         return false;
@@ -256,6 +265,11 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
 }
 
 Stl::Stl(std::string const &fileName) {
+  spdlog::set_default_logger(logger);
+  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
+  spdlog::set_level(spdlog::level::trace);
+  SPDLOG_TRACE("({})", fileName);
+
   gsl::owner<FILE *> fp = this->openCountFacets(fileName);
   if (fp == nullptr) {
     return;
@@ -278,15 +292,15 @@ void Stl::saveFacetStats(Facet const &facet, bool &first) {
 
   if (first) {
     // Initialize the max and min values the first time through
-    m_stats.min = facet.vertex[0];
-    m_stats.max = facet.vertex[0];
-    Vertex diff = (facet.vertex[1] - facet.vertex[0]).cwiseAbs();
+    m_stats.min = facet.vertices[0];
+    m_stats.max = facet.vertices[0];
+    Vertex diff = (facet.vertices[1] - facet.vertices[0]).cwiseAbs();
     m_stats.shortest_edge = std::max(diff(0), std::max(diff(1), diff(2)));
     first = false;
   }
 
   // Now find the max and min values.
-  for (const auto &i : facet.vertex) {
+  for (const auto &i : facet.vertices) {
     m_stats.min = m_stats.min.cwiseMin(i);
     m_stats.max = m_stats.max.cwiseMax(i);
   }
