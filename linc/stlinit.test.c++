@@ -15,7 +15,15 @@ auto main() -> int {
   auto constexpr allowedMisPrecisionPercentage = 0.0001F;
   try {
     {
-      Stl const stl{getPath("test-models/small-cube-ascii.stl")};
+      Stl const stl{getPath("test-models/empty.stl")};
+      compare(stl.m_stats.number_of_facets, 0U);
+      compare(stl.m_stats.type, Stl::Type::BINARY);
+      check(stl.m_stats.size.isApprox(Vertex{0, 0, 0},
+                                      allowedMisPrecisionPercentage));
+      check(not stl.m_initialized);
+    }
+    {
+      Stl const stl{getPath("test-models/small-cube.ascii.stl")};
       compare(stl.m_stats.number_of_facets, 12U);
       compare(stl.m_stats.type, Stl::Type::ASCII);
       check(stl.m_stats.size.isApprox(Vertex{10, 10, 10},
@@ -23,14 +31,14 @@ auto main() -> int {
       check(stl.m_initialized);
     }
     {
-      Stl const stl{getPath("test-models/small-cube-binary.stl")};
+      Stl const stl{getPath("test-models/small-cube.binary.stl")};
       compare(stl.m_stats.number_of_facets, 12U);
       compare(stl.m_stats.type, Stl::Type::BINARY);
       check(stl.m_stats.size.isApprox(Vertex{10, 10, 10},
                                       allowedMisPrecisionPercentage));
     }
     {
-      Stl const stl{getPath("test-models/3DBenchy.stl")};
+      Stl const stl{getPath("test-models/3DBenchy.binary.stl")};
       compare(stl.m_stats.number_of_facets, 225706U);
       compare(stl.m_stats.type, Stl::Type::BINARY);
       check(stl.m_stats.size.isApprox(Vertex{60, 31, 48},
@@ -40,16 +48,7 @@ auto main() -> int {
       check(stl.m_initialized);
     }
     {
-      Stl const stl{getPath("test-models/empty.stl")};
-      // Parsing will fail. Check defaults
-      compare(stl.m_stats.number_of_facets, 0U);
-      compare(stl.m_stats.type, Stl::Type::BINARY);
-      check(stl.m_stats.size.isApprox(Vertex{0, 0, 0},
-                                      allowedMisPrecisionPercentage));
-      check(not stl.m_initialized);
-    }
-    {
-      Stl const stl{getPath("test-models/standing-triangle-ascii.stl")};
+      Stl const stl{getPath("test-models/standing-triangle.ascii.stl")};
       // contents
       compare(stl.m_facets.size(), 1U);
       compare(stl.m_facets[0].normal, Normal{1, 0, 0});
@@ -71,10 +70,10 @@ auto main() -> int {
       check(stl.m_initialized);
     }
     {
-      Stl const stl{getPath("test-models/fourVertices.ascii.stl")};
+      Stl const stl{getPath("test-models/four-vertices.ascii.stl")};
       // contents
       compare(stl.m_facets.size(), 4U);
-      // TODO: what ended up in normal and vertices contents?
+      compare(stl.m_stats.number_of_facets, 4U);
     }
   } catch (...) {
     return 1;

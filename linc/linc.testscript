@@ -21,21 +21,21 @@ EOE
 
 : Small-cube-nonfile-params
 : Loading working stl file but non-existent params file
-$* "$src_base/test-models/small-cube-ascii.stl" 'nonofile' &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" 'nonofile' &linc.log 2>>EOE != 0
 Failed to open nonofile
 Validation of nonofile failed
 EOE
 
 : Small-cube-input
 : Loading working small stl file
-$* "$src_base/test-models/small-cube-ascii.stl" "$src_base/params-example" &linc.log > 'No collision detected'
+$* "$src_base/test-models/small-cube.ascii.stl" "$src_base/params-example" &linc.log > 'No collision detected'
 
 : Missing-pivot-names
 : Checks stderr when only one pivot is described in params file
 cat <<EOI >=test.params;
 effector-pivot-A1: ( 220.0, -140.0, 130.0)
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Did not find anchor-pivot-A1 in test.params
 Did not find anchor-pivot-A2 in test.params
 Did not find anchor-pivot-B1 in test.params
@@ -57,7 +57,7 @@ effector-pivot-A1: ( 220.0, -140.0, 130.0)
 effector-pivot-B1: (1220.0, -140.0, 130.0)
 effector-pivot-A1: ( 221.0, -140.0, 130.0)
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Found effector-pivot-A1 twice in test.params
 Validation of test.params failed
 EOE
@@ -78,7 +78,7 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 lanchor-pivot-C2: -1670.30,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Did not find effector-pivot-A1 in test.params
 Invalid pivot name does not start with 'effector' or 'anchor': beeffector-pivot-A1
 Invalid line:
@@ -102,7 +102,7 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 lanchor-pivot-C2: -1670.30,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Invalid pivot name does not start with 'effector' or 'anchor': lanchor-pivot-C2
 Invalid line:
 lanchor-pivot-C2: -1670.30,   611.63, -31.23
@@ -125,7 +125,7 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -1670.30,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Did not find effector-pivot-A1 in test.params
 Validation of test.params failed
 EOE
@@ -146,7 +146,7 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -1670.30,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Invalid line:
 effector-pivot-A1: 220.0, -140.0
 Validation of test.params failed
@@ -168,7 +168,7 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -1670.30,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log > 'No collision detected'
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log > 'No collision detected'
 
 : Space-separated-z-coordinate
 : Checks behaviour when there's a space in one of the coordinates
@@ -186,7 +186,7 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -1670.30,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Could not convert to float: 130.0 999
 Could not parse all characters
 Invalid line:
@@ -211,7 +211,7 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Could not convert to float: -
 stof
 Invalid line:
@@ -235,7 +235,7 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -1670.30,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube-ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Invalid line:
 effector-pivot-B2:    5.0,  270.0 130.0
 Validation of test.params failed
