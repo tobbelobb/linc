@@ -128,6 +128,8 @@ private:
   gsl::owner<FILE *> openCountFacets(std::string const &fileName);
   void allocate();
   bool read(FILE *fp);
+  bool readBinary(FILE *fp);
+  bool readAscii(FILE *fp);
   void computeSomeStats();
 };
 

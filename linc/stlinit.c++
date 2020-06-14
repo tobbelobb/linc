@@ -26,6 +26,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <set>
 
 #include <gsl/pointers>
 #include <gsl/span_ext>
@@ -160,118 +161,153 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
   return fp;
 }
 
-// Reads the contents of the file pointed to by fp into the stl structure
-auto Stl::read(FILE *fp) -> bool {
-  if (m_stats.type == Stl::Type::BINARY) {
-    fseek(fp, HEADER_SIZE, SEEK_SET);
-  } else {
-    rewind(fp);
-  }
+static inline void skipWhitespace(FILE *fp) {
+  fscanf(fp, " "); // NOLINT
+}
 
+static void skipSolidEndsolid(FILE *fp) {
+  fscanf(fp, " endsolid%*[^\n]\n"); // NOLINT
+  fscanf(fp, " solid%*[^\n]\n");    // NOLINT
+  skipWhitespace(fp);
+}
+
+static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
+  constexpr auto BUF_SIZE{2048};
+  char buf[BUF_SIZE]; // NOLINT
+  fgets((char *)buf, BUF_SIZE - 1, fp);
   constexpr auto CHARS_PER_FLOAT{32};
   char normal_buf[3][CHARS_PER_FLOAT]; // NOLINT
-  for (Facet &facet : m_facets) {
-    if (m_stats.type == Stl::Type::BINARY) {
-      // Read a single facet from a binary .STL file.
-      // We assume little-endian architecture!
-      if (fread(&facet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
-        return false;
-      }
-    } else {
-      // Read a single facet from an ASCII .STL file
-      // skip solid/endsolid
-      // (in this order, otherwise it won't work when they are paired in the
-      // middle of a file)
-      fscanf(fp, " endsolid%*[^\n]\n"); // NOLINT
-      // name might contain spaces so %*s doesn't
-      // work and it also can be empty (just "solid")
-      fscanf(fp, " solid%*[^\n]\n"); // NOLINT
-      fscanf(fp, " ");
-      constexpr auto BUF_SIZE{2048};
-      char buf[BUF_SIZE]; // NOLINT
-      fgets((char *)buf, BUF_SIZE - 1, fp);
-      int res_normal =
-          sscanf(buf, "facet normal %31s %31s %31s",            /* NOLINT */
-                 (char *)normal_buf[0],                         /* NOLINT */
-                 (char *)normal_buf[1], (char *)normal_buf[2]); // NOLINT
-      // The facet normal has been parsed as a single string as to workaround
-      // for not a numbers in the normal definition.
-      if (res_normal != 3 or
-          sscanf(normal_buf[0], "%f", &facet.normal.x()) != 1 or // NOLINT
-          sscanf(normal_buf[1], "%f", &facet.normal.y()) != 1 or // NOLINT
-          sscanf(normal_buf[2], "%f", &facet.normal.z()) != 1 or
-          std::isnan(facet.normal.x()) or std::isnan(facet.normal.y()) or
-          std::isnan(facet.normal.z())) { // NOLINT
-        SPDLOG_WARN(
-            "Found bogus normal. Will set normal to zero and continue.");
-        facet.normal = Normal::Zero();
-      }
-      if (fscanf(fp, " outer loop") == EOF) { /* NOLINT */
-        SPDLOG_ERROR("Unexpected end of file. Aborting file parse.");
-        return false;
-      }
+  int res_normal =
+      sscanf(buf, "facet normal %31s %31s %31s",            /* NOLINT */
+             (char *)normal_buf[0],                         /* NOLINT */
+             (char *)normal_buf[1], (char *)normal_buf[2]); // NOLINT
+  // The facet normal has been parsed as a single string as to workaround
+  // for not a numbers in the normal definition.
+  return (res_normal == 3 and
+          sscanf(normal_buf[0], "%f", &facet.normal.x()) == 1 and // NOLINT
+          sscanf(normal_buf[1], "%f", &facet.normal.y()) == 1 and // NOLINT
+          sscanf(normal_buf[2], "%f", &facet.normal.z()) == 1 and // NOLINT
+          not(std::isnan(facet.normal.x()) or std::isnan(facet.normal.y()) or
+              std::isnan(facet.normal.z()))); // NOLINT
+}
 
-      for (auto const vertex : {0, 1, 2}) {
-        auto matchedNumbers = fscanf(fp, " vertex %f %f %f ",      /* NOLINT */
-                                     &facet.vertices[vertex].x(),  /* NOLINT */
-                                     &facet.vertices[vertex].y(),  /* NOLINT */
-                                     &facet.vertices[vertex].z()); // NOLINT
+static auto parseOuterLoop(FILE *fp) -> bool {
+  return (fscanf(fp, " outer loop") != EOF); /* NOLINT */
+}
 
-        if (matchedNumbers != 3) {
-          SPDLOG_ERROR("Ill formed vertex. Aborting file parse.");
-          return false;
-        }
-      }
-
-      auto endloopFound = [](char *buffer)
-          -> bool { /* NOLINT */
-                    constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
-                    return strncmp(buffer, "endloop", CHARS_IN_ENDLOOP) == 0 and
-                           (buffer[CHARS_IN_ENDLOOP] == '\r' or /* NOLINT */
-                            buffer[CHARS_IN_ENDLOOP] == '\n' or /* NOLINT */
-                            buffer[CHARS_IN_ENDLOOP] == ' ' or  /* NOLINT */
-                            buffer[CHARS_IN_ENDLOOP] == '\t');  /* NOLINT */
-      };
-
-      fgets((char *)buf, BUF_SIZE - 1, fp);
-      bool endloop_ok = endloopFound((char *)buf);
-      if (not endloop_ok) {
-        // Try to parse a fourth throwaway vertex
-        Vertex throwaway{0.0F, 0.0F, 0.0F};
-        int res_vertex4 = sscanf(buf, "vertex %f %f %f ", /* NOLINT */
-                                 &throwaway.x(),          /* NOLINT */
-                                 &throwaway.y(),          /* NOLINT */
-                                 &throwaway.z());         // NOLINT
-        if (res_vertex4 == 3) {
-          SPDLOG_WARN(
-              "Found 4 vertices in single facet. Throwing away fourth vertex.");
-          fscanf(fp, " ");                      // NOLINT
-          fgets((char *)buf, BUF_SIZE - 1, fp); // NOLINT
-          endloop_ok = endloopFound((char *)buf);
-          if (not endloop_ok) {
-            SPDLOG_ERROR("Could not find endloop. Aborting file parse.");
-            return false;
-          }
-        } else {
-          SPDLOG_ERROR("File is not proper stl. Aborting file parse.");
-          return false;
-        }
-      }
-      // Skip the trailing whitespaces and empty lines.
-      fscanf(fp, " "); // NOLINT
-      fgets((char *)buf, BUF_SIZE - 1, fp);
-      constexpr auto CHARS_IN_ENDFACET{length("endfacet")};
-      bool const endfacet_ok =
-          strncmp((char *)buf, "endfacet", CHARS_IN_ENDFACET) == 0 &&
-          (buf[CHARS_IN_ENDFACET] == '\r' || buf[CHARS_IN_ENDFACET] == '\n' ||
-           buf[CHARS_IN_ENDFACET] == ' ' || buf[CHARS_IN_ENDFACET] == '\t');
-      assert(endfacet_ok); // NOLINT
-      if (!endloop_ok || !endfacet_ok) {
-        return false;
-      }
+static auto parseVertices(FILE *fp, Stl::Facet &facet) {
+  for (auto const vertex : {0, 1, 2}) {
+    auto matchedNumbers = fscanf(fp, " vertex %f %f %f ",      /* NOLINT */
+                                 &facet.vertices[vertex].x(),  /* NOLINT */
+                                 &facet.vertices[vertex].y(),  /* NOLINT */
+                                 &facet.vertices[vertex].z()); /* NOLINT */
+    if (matchedNumbers != 3) {
+      return false;
     }
   }
   return true;
+}
+
+static auto endloopFound(char *buffer) -> bool { /* NOLINT */
+  constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
+  return strncmp(buffer, "endloop", CHARS_IN_ENDLOOP) == 0 and
+         (buffer[CHARS_IN_ENDLOOP] == '\r' or /* NOLINT */
+          buffer[CHARS_IN_ENDLOOP] == '\n' or /* NOLINT */
+          buffer[CHARS_IN_ENDLOOP] == ' ' or  /* NOLINT */
+          buffer[CHARS_IN_ENDLOOP] == '\t');  /* NOLINT */
+}
+
+static auto parseShadowVertex(char *buf) -> bool {
+  Vertex throwaway{0.0F, 0.0F, 0.0F};
+  return sscanf(buf, "vertex %f %f %f ", /* NOLINT */
+                &throwaway.x(),          /* NOLINT */
+                &throwaway.y(),          /* NOLINT */
+                &throwaway.z()) == 3;    // NOLINT
+}
+
+static auto parseEndloop(FILE *fp) -> bool {
+  constexpr auto BUF_SIZE{2048};
+  char buf[BUF_SIZE]; // NOLINT
+  fgets((char *)buf, BUF_SIZE - 1, fp);
+  if (not endloopFound((char *)buf)) {
+    // Try to parse a fourth throwaway vertex
+    if (parseShadowVertex((char *)buf)) {
+      SPDLOG_WARN(
+          "Found 4 vertices in single facet. Throwing away fourth vertex.");
+      skipWhitespace(fp);
+      if (not parseEndloop(fp)) {
+        SPDLOG_ERROR("Could not find endloop. Aborting file parse.");
+        return false;
+      }
+    } else {
+      SPDLOG_ERROR("File is not proper stl. Aborting file parse.");
+      return false;
+    }
+  }
+  return true;
+}
+
+static auto parseEndFacet(FILE *fp) -> bool {
+  skipWhitespace(fp);
+  constexpr auto BUF_SIZE{2048};
+  char buf[BUF_SIZE]; // NOLINT
+  fgets((char *)buf, BUF_SIZE - 1, fp);
+  constexpr auto CHARS_IN_ENDFACET{length("endfacet")};
+  return strncmp((char *)buf, "endfacet", CHARS_IN_ENDFACET) == 0 and
+         std::set<char>({'\r', '\n', ' ', '\t'})
+             .contains(buf[CHARS_IN_ENDFACET]);
+}
+
+// Read a single facet from an ASCII .STL file
+static auto readAsciiFacet(FILE *fp, Stl::Facet &facet) -> bool {
+  skipSolidEndsolid(fp);
+  if (not parseNormal(fp, facet)) {
+    SPDLOG_WARN("Found bogus normal. Will set normal to zero and continue.");
+    facet.normal = Normal::Zero();
+  }
+  if (not parseOuterLoop(fp)) {
+    SPDLOG_ERROR("Unexpected end of file. Aborting file parse.");
+    return false;
+  }
+  if (not parseVertices(fp, facet)) {
+    SPDLOG_ERROR("Ill formed vertex. Aborting file parse.");
+    return false;
+  }
+  if (not parseEndloop(fp)) {
+    return false;
+  }
+  return parseEndFacet(fp);
+}
+
+auto Stl::readAscii(FILE *fp) -> bool {
+  rewind(fp);
+  for (Facet &facet : m_facets) {
+    if (not readAsciiFacet(fp, facet)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+auto Stl::readBinary(FILE *fp) -> bool {
+  fseek(fp, HEADER_SIZE, SEEK_SET);
+  for (Facet &facet : m_facets) {
+    if (fread(&facet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Reads file into appropriately allocated vector m_facets
+auto Stl::read(FILE *fp) -> bool {
+  if (m_stats.type == Stl::Type::BINARY) {
+    return readBinary(fp);
+  }
+  if (m_stats.type == Stl::Type::ASCII) {
+    return readAscii(fp);
+  }
+  return false;
 }
 
 void Stl::computeSomeStats() {
@@ -300,9 +336,11 @@ Stl::Stl(std::string const &fileName) {
   if (fp == nullptr) {
     return;
   }
+
   allocate();
   m_initialized = read(fp);
   fclose(fp);
+
   if (m_initialized) {
     computeSomeStats();
   } else {

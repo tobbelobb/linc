@@ -156,10 +156,10 @@ auto main() -> int {
       compare(stl.m_facets[1].vertices[2], Vertex{0, 0, 1});
     }
     {
-      Stl const stl{getPath("test-models/broken/quad.ascii.stl")};
       // This model will have a hole since fourth vertex of first facet will be
       // ignored
       // Parser shouldn't care
+      Stl const stl{getPath("test-models/broken/quad.ascii.stl")};
     }
     {
       Stl const stl{
@@ -169,12 +169,12 @@ auto main() -> int {
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
     {
-      Stl const stl{getPath("test-models/broken/wrong-header.binary.stl")};
-      // There's something wrong in the header of this binary
+      // There's something wrong in the header of this binary stl
       // For example, it starts with "solid"
       // I don't know what more is wrong in the header, but the parser shouldn't
       // care anyways. It should find a perfect, xyz-centered cube with sides of
       // length 100
+      Stl const stl{getPath("test-models/broken/wrong-header.binary.stl")};
       compare(stl.m_stats.number_of_facets, 12U);
       compare(stl.m_stats.size, Vertex{100, 100, 100});
       compare(stl.m_stats.max, Vertex{50, 50, 50});
@@ -240,12 +240,12 @@ auto main() -> int {
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
     {
+      // These normals are not unit vectors as they should be but parser
+      // shouldn't care
       Stl const stl{
           getPath("test-models/broken/non-normalized-normals.ascii.stl")};
       compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
-      // These normals are not unit vectors as they should be but parser
-      // shouldn't care
       check(stl.m_facets[0].normal.isApprox(
           Normal{5.7735027F, 5.7735027F, 5.7735027F}, maxRelativeError));
       compare(stl.m_facets[1].normal, Normal{0, -10, 0});
@@ -266,10 +266,19 @@ auto main() -> int {
                                                  maxRelativeError));
     }
     {
-      Stl const stl{getPath(
-          "test-models/broken/text-after-endloop-and-endfacet.ascii.stl")};
       // Some ascii stl generators tend to produce text after "endloop" and
       // "endfacet". Just ignore it.
+      Stl const stl{getPath(
+          "test-models/broken/text-after-endloop-and-endfacet.ascii.stl")};
+      compare(stl.m_stats.number_of_facets, 4U);
+      check(stl.m_initialized);
+      compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
+    }
+    {
+      // Same tetrahedron file, but broken up with solid/endsolid statements.
+      // Just ignore them.
+      Stl const stl{
+          getPath("test-models/broken/many-solid-endsolid.ascii.stl")};
       compare(stl.m_stats.number_of_facets, 4U);
       check(stl.m_initialized);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
