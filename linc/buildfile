@@ -55,6 +55,18 @@ for t: cxx{**.test...}
   $d/exe{$n}: libue{linc}: bin.whole = false
 }
 
+## If you would want to rebuild stlinit.test every time an stl changes, you could do like this
+# Make exception from general rule above:
+# for t: cxx{**.test... -stlinit.test...}
+# Then make specific rule for the test that depends on stls
+# I don't know why the ... in stlinit.test... is needed. But it is.
+#./: exe{stlinit.test...}: cxx{stlinit.test.c++} libue{linc} ./test-models/exe{**.stl}
+#exe{stlinit.test}:
+#{
+#  test = true
+#  install = false
+#}
+
 # Include our own header files
 cxx.poptions =+ "-I$out_root" "-I$src_root"
 

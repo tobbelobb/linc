@@ -127,8 +127,8 @@ public:
 private:
   gsl::owner<FILE *> openCountFacets(std::string const &fileName);
   void allocate();
-  bool read(FILE *fp, int first_facet, bool first);
-  void saveFacetStats(const Facet &facet, bool &first);
+  bool read(FILE *fp);
+  void computeSomeStats();
 };
 
 static_assert(offsetof(Stl::Facet, normal) == 0,

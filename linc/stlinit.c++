@@ -160,11 +160,8 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
   return fp;
 }
 
-/* Reads the contents of the file pointed to by fp into the stl structure,
-   starting at facet first_facet.  The second argument says if it's our first
-   time running this for the stl and therefore we should reset our max and min
-   stats. */
-auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
+// Reads the contents of the file pointed to by fp into the stl structure
+auto Stl::read(FILE *fp) -> bool {
   if (m_stats.type == Stl::Type::BINARY) {
     fseek(fp, HEADER_SIZE, SEEK_SET);
   } else {
@@ -173,12 +170,10 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
 
   constexpr auto CHARS_PER_FLOAT{32};
   char normal_buf[3][CHARS_PER_FLOAT]; // NOLINT
-  for (size_t i = first_facet; i < m_stats.number_of_facets; ++i) {
-    Facet facet;
-
+  for (Facet &facet : m_facets) {
     if (m_stats.type == Stl::Type::BINARY) {
-      // Read a single facet from a binary .STL file. We assume little-endian
-      // architecture!
+      // Read a single facet from a binary .STL file.
+      // We assume little-endian architecture!
       if (fread(&facet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
         return false;
       }
@@ -191,13 +186,12 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
       // name might contain spaces so %*s doesn't
       // work and it also can be empty (just "solid")
       fscanf(fp, " solid%*[^\n]\n"); // NOLINT
-      // Leading space in the fscanf format skips all leading white spaces
-      // including numerous new lines and tabs.
+      fscanf(fp, " ");
       constexpr auto BUF_SIZE{2048};
       char buf[BUF_SIZE]; // NOLINT
       fgets((char *)buf, BUF_SIZE - 1, fp);
       int res_normal =
-          sscanf(buf, " facet normal %31s %31s %31s",           /* NOLINT */
+          sscanf(buf, "facet normal %31s %31s %31s",            /* NOLINT */
                  (char *)normal_buf[0],                         /* NOLINT */
                  (char *)normal_buf[1], (char *)normal_buf[2]); // NOLINT
       // The facet normal has been parsed as a single string as to workaround
@@ -212,29 +206,21 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
             "Found bogus normal. Will set normal to zero and continue.");
         facet.normal = Normal::Zero();
       }
-      int res_outer_loop = fscanf(fp, " outer loop");           // NOLINT
-      assert(res_outer_loop == 0);                              // NOLINT
-      int res_vertex1 = fscanf(fp, " vertex %f %f %f",          /* NOLINT */
-                               &facet.vertices[0].x(),          /* NOLINT */
-                               &facet.vertices[0].y(),          /* NOLINT */
-                               &facet.vertices[0].z());         // NOLINT
-      assert(res_vertex1 == 3);                                 // NOLINT
-      int res_vertex2 = fscanf(fp, " vertex %f %f %f",          /* NOLINT */
-                               &facet.vertices[1].x(),          /* NOLINT */
-                               &facet.vertices[1].y(),          /* NOLINT */
-                               &facet.vertices[1].z());         // NOLINT
-      assert(res_vertex2 == 3);                                 // NOLINT
-      // Trailing whitespace is there to eat all whitespaces and empty lines up
-      // to the next non-whitespace.
-      int res_vertex3 = fscanf(fp, " vertex %f %f %f ", /* NOLINT */
-                               &facet.vertices[2].x(),  /* NOLINT */
-                               &facet.vertices[2].y(),  /* NOLINT */
-                               &facet.vertices[2].z()); // NOLINT
-      if (res_vertex3 != 3) {
-        SPDLOG_ERROR("Facet {}'s third vertex not valid. Aborting file parse.",
-                     i);
-        clear();
+      if (fscanf(fp, " outer loop") == EOF) { /* NOLINT */
+        SPDLOG_ERROR("Unexpected end of file. Aborting file parse.");
         return false;
+      }
+
+      for (auto const vertex : {0, 1, 2}) {
+        auto matchedNumbers = fscanf(fp, " vertex %f %f %f ",      /* NOLINT */
+                                     &facet.vertices[vertex].x(),  /* NOLINT */
+                                     &facet.vertices[vertex].y(),  /* NOLINT */
+                                     &facet.vertices[vertex].z()); // NOLINT
+
+        if (matchedNumbers != 3) {
+          SPDLOG_ERROR("Ill formed vertex. Aborting file parse.");
+          return false;
+        }
       }
 
       auto endloopFound = [](char *buffer)
@@ -247,8 +233,6 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
                             buffer[CHARS_IN_ENDLOOP] == '\t');  /* NOLINT */
       };
 
-      // Some G-code generators tend to produce text after "endloop" and
-      // "endfacet". Just ignore it.
       fgets((char *)buf, BUF_SIZE - 1, fp);
       bool endloop_ok = endloopFound((char *)buf);
       if (not endloop_ok) {
@@ -286,15 +270,24 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
         return false;
       }
     }
-
-    // Write the facet into memory.
-    m_facets[i] = facet;
-    saveFacetStats(facet, first);
   }
+  return true;
+}
 
+void Stl::computeSomeStats() {
+  m_stats.min = m_facets[0].vertices[0];
+  m_stats.max = m_facets[0].vertices[0];
+  Vertex diff = (m_facets[0].vertices[1] - m_facets[0].vertices[0]).cwiseAbs();
+  m_stats.shortest_edge = std::max(diff.x(), std::max(diff.y(), diff.z()));
+  for (auto const &facet : m_facets) {
+    // Now find the max and min values.
+    for (const auto &i : facet.vertices) {
+      m_stats.min = m_stats.min.cwiseMin(i);
+      m_stats.max = m_stats.max.cwiseMax(i);
+    }
+  }
   m_stats.size = m_stats.max - m_stats.min;
   m_stats.bounding_diameter = m_stats.size.norm();
-  return true;
 }
 
 Stl::Stl(std::string const &fileName) {
@@ -303,13 +296,18 @@ Stl::Stl(std::string const &fileName) {
   spdlog::set_level(spdlog::level::trace);
   SPDLOG_TRACE("({})", fileName);
 
-  gsl::owner<FILE *> fp = this->openCountFacets(fileName);
+  gsl::owner<FILE *> fp = openCountFacets(fileName);
   if (fp == nullptr) {
     return;
   }
   allocate();
-  m_initialized = read(fp, 0, true);
+  m_initialized = read(fp);
   fclose(fp);
+  if (m_initialized) {
+    computeSomeStats();
+  } else {
+    clear();
+  }
 }
 
 void Stl::allocate() {
@@ -317,26 +315,6 @@ void Stl::allocate() {
   m_facets.assign(m_stats.number_of_facets, Facet());
   // Allocate memory for the neighbors list.
   m_neighbors.assign(m_stats.number_of_facets, Neighbors());
-}
-
-void Stl::saveFacetStats(Facet const &facet, bool &first) {
-  // While we are going through all of the facets, let's find the
-  // maximum and minimum values for x, y, and z
-
-  if (first) {
-    // Initialize the max and min values the first time through
-    m_stats.min = facet.vertices[0];
-    m_stats.max = facet.vertices[0];
-    Vertex diff = (facet.vertices[1] - facet.vertices[0]).cwiseAbs();
-    m_stats.shortest_edge = std::max(diff.x(), std::max(diff.y(), diff.z()));
-    first = false;
-  }
-
-  // Now find the max and min values.
-  for (const auto &i : facet.vertices) {
-    m_stats.min = m_stats.min.cwiseMin(i);
-    m_stats.max = m_stats.max.cwiseMax(i);
-  }
 }
 
 #include <Eigen/src/Core/util/ReenableStupidWarnings.h>
