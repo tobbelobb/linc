@@ -93,6 +93,7 @@ public:
 
   struct Stats {
     char header[LABEL_SIZE + 1] = {0};
+    uint32_t header_num_facets = 0;
     Type type = Stl::Type::BINARY;
     size_t number_of_facets = 0;
     Vertex max = Vertex::Zero();

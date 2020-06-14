@@ -81,18 +81,18 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
   }
   rewind(fp);
 
-  auto num_facets = 0L;
-
   // Get the header and the number of facets in the .STL file.
   // If the .STL file is binary, then do the following:
   if (m_stats.type == Stl::Type::BINARY) {
     // Test if the STL file has the right size.
     if (((file_size - HEADER_SIZE) % SIZEOF_STL_FACET != 0) ||
         (file_size < STL_MIN_FILE_SIZE)) {
+      SPDLOG_WARN("Wrong file size. Aborting binary stl facet count.");
       fclose(fp);
       return nullptr;
     }
-    num_facets = (file_size - HEADER_SIZE) / SIZEOF_STL_FACET;
+
+    m_stats.number_of_facets = (file_size - HEADER_SIZE) / SIZEOF_STL_FACET;
 
     // Read the header.
     if (fread(m_stats.header, LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) { // NOLINT
@@ -100,8 +100,12 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
     }
 
     // Read the int following the header.  This should contain # of facets.
-    uint32_t header_num_facets = 0;
-    fread(&header_num_facets, sizeof(uint32_t), 1, fp);
+    fread(&m_stats.header_num_facets, sizeof(uint32_t), 1, fp);
+    if (m_stats.header_num_facets != m_stats.number_of_facets) {
+      SPDLOG_WARN("Binary header says file contains {} facets, but file "
+                  "actually contains {} facets.",
+                  m_stats.header_num_facets, m_stats.number_of_facets);
+    }
   }
   // Otherwise, if the .STL file is ASCII, then do the following:
   else {
@@ -148,10 +152,8 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
     gsl::at(m_stats.header, i) = '\0'; // Lose the '\n'
     gsl::at(m_stats.header, LABEL_SIZE) = '\0';
 
-    num_facets = num_lines / ASCII_LINES_PER_FACET;
+    m_stats.number_of_facets = num_lines / ASCII_LINES_PER_FACET;
   }
-
-  m_stats.number_of_facets += num_facets;
 
   SPDLOG_INFO("Found {} facets", m_stats.number_of_facets);
 
@@ -191,11 +193,25 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
       fscanf(fp, " solid%*[^\n]\n"); // NOLINT
       // Leading space in the fscanf format skips all leading white spaces
       // including numerous new lines and tabs.
+      constexpr auto BUF_SIZE{2048};
+      char buf[BUF_SIZE]; // NOLINT
+      fgets((char *)buf, BUF_SIZE - 1, fp);
       int res_normal =
-          fscanf(fp, " facet normal %31s %31s %31s",            /* NOLINT */
+          sscanf(buf, " facet normal %31s %31s %31s",           /* NOLINT */
                  (char *)normal_buf[0],                         /* NOLINT */
                  (char *)normal_buf[1], (char *)normal_buf[2]); // NOLINT
-      assert(res_normal == 3);                                  // NOLINT
+      // The facet normal has been parsed as a single string as to workaround
+      // for not a numbers in the normal definition.
+      if (res_normal != 3 or
+          sscanf(normal_buf[0], "%f", &facet.normal.x()) != 1 or // NOLINT
+          sscanf(normal_buf[1], "%f", &facet.normal.y()) != 1 or // NOLINT
+          sscanf(normal_buf[2], "%f", &facet.normal.z()) != 1 or
+          std::isnan(facet.normal.x()) or std::isnan(facet.normal.y()) or
+          std::isnan(facet.normal.z())) { // NOLINT
+        SPDLOG_WARN(
+            "Found bogus normal. Will set normal to zero and continue.");
+        facet.normal = Normal::Zero();
+      }
       int res_outer_loop = fscanf(fp, " outer loop");           // NOLINT
       assert(res_outer_loop == 0);                              // NOLINT
       int res_vertex1 = fscanf(fp, " vertex %f %f %f",          /* NOLINT */
@@ -214,7 +230,12 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
                                &facet.vertices[2].x(),  /* NOLINT */
                                &facet.vertices[2].y(),  /* NOLINT */
                                &facet.vertices[2].z()); // NOLINT
-      assert(res_vertex3 == 3);                         // NOLINT
+      if (res_vertex3 != 3) {
+        SPDLOG_ERROR("Facet {}'s third vertex not valid. Aborting file parse.",
+                     i);
+        clear();
+        return false;
+      }
 
       auto endloopFound = [](char *buffer)
           -> bool { /* NOLINT */
@@ -228,8 +249,6 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
 
       // Some G-code generators tend to produce text after "endloop" and
       // "endfacet". Just ignore it.
-      constexpr auto BUF_SIZE{2048};
-      char buf[BUF_SIZE]; // NOLINT
       fgets((char *)buf, BUF_SIZE - 1, fp);
       bool endloop_ok = endloopFound((char *)buf);
       if (not endloop_ok) {
@@ -265,16 +284,6 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
       assert(endfacet_ok); // NOLINT
       if (!endloop_ok || !endfacet_ok) {
         return false;
-      }
-
-      // The facet normal has been parsed as a single string as to workaround
-      // for not a numbers in the normal definition.
-      if (sscanf(normal_buf[0], "%f", &facet.normal(0)) != 1 || // NOLINT
-          sscanf(normal_buf[1], "%f", &facet.normal(1)) != 1 || // NOLINT
-          sscanf(normal_buf[2], "%f", &facet.normal(2)) != 1) { // NOLINT
-        // Normal was mangled. Maybe denormals or "not a number" were stored?
-        // Just reset the normal and silently ignore it.
-        facet.normal = Normal::Zero();
       }
     }
 
@@ -319,7 +328,7 @@ void Stl::saveFacetStats(Facet const &facet, bool &first) {
     m_stats.min = facet.vertices[0];
     m_stats.max = facet.vertices[0];
     Vertex diff = (facet.vertices[1] - facet.vertices[0]).cwiseAbs();
-    m_stats.shortest_edge = std::max(diff(0), std::max(diff(1), diff(2)));
+    m_stats.shortest_edge = std::max(diff.x(), std::max(diff.y(), diff.z()));
     first = false;
   }
 
