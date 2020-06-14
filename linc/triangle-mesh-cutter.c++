@@ -3,6 +3,7 @@
 void TriangleMeshCutter::reorderVertices(float sliceZ, FacetMeta &facetMeta) {
   (void)sliceZ;
   (void)facetMeta;
+  (void)m_mesh;
   /*
   TriangleVertexIndices const &vertices =
       m_mesh.m_indexedTriangleSet.indices[facetMeta.idx];
@@ -131,11 +132,12 @@ void TriangleMeshCutter::reorderVertices(float sliceZ, FacetMeta &facetMeta) {
 }
 
 // Return true, if the facet has been sliced and line_out has been filled.
-TriangleMeshCutter::IntersectionLine
-TriangleMeshCutter::sliceFacet(SI::milli_metre_t<double> const &absoluteZ,
-                               FacetMeta &facetMeta) {
+auto TriangleMeshCutter::sliceFacet(SI::milli_metre_t<double> const &absoluteZ,
+                                    FacetMeta &facetMeta)
+    -> TriangleMeshCutter::IntersectionLine {
   (void)absoluteZ;
   (void)facetMeta;
+  (void)m_mesh;
   /*
 
   IntersectionPoint points[3];

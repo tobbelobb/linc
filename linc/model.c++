@@ -2,10 +2,11 @@
 
 #include <linc/model.h++>
 
-Model Model::cut(SI::milli_metre_t<double> absoluteZ) {
+auto Model::cut(SI::milli_metre_t<double> absoluteZ) -> Model {
   TriangleMeshCutter cutter{m_mesh};
 
-  std::vector<TriangleMeshCutter::IntersectionLine> upper_lines, lower_lines;
+  std::vector<TriangleMeshCutter::IntersectionLine> upper_lines;
+  std::vector<TriangleMeshCutter::IntersectionLine> lower_lines;
   for (size_t facetIdx = 0; facetIdx < m_mesh.m_stl.m_stats.number_of_facets;
        ++facetIdx) {
     Stl::Facet const &facet = m_mesh.m_stl.m_facets[facetIdx];

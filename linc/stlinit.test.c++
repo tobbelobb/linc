@@ -95,7 +95,7 @@ auto main() -> int {
     }
     {
       Stl const stl{getPath("test-models/four-vertices.ascii.stl")};
-      compare();
+      compare(stl.m_stats.number_of_facets, 4U);
     }
   } catch (...) {
     return 1;

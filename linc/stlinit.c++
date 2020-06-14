@@ -31,7 +31,7 @@
 #include <gsl/span_ext>
 
 // Set the default logger to file logger
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE /* NOLINT */
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
@@ -216,13 +216,14 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
                                &facet.vertices[2].z()); // NOLINT
       assert(res_vertex3 == 3);                         // NOLINT
 
-      auto endloopFound = [](char buffer[]) -> bool {
-        constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
-        return strncmp((char *)buffer, "endloop", CHARS_IN_ENDLOOP) == 0 and
-               (buffer[CHARS_IN_ENDLOOP] == '\r' or
-                buffer[CHARS_IN_ENDLOOP] == '\n' or
-                buffer[CHARS_IN_ENDLOOP] == ' ' or
-                buffer[CHARS_IN_ENDLOOP] == '\t');
+      auto endloopFound = [](char *buffer)
+          -> bool { /* NOLINT */
+                    constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
+                    return strncmp(buffer, "endloop", CHARS_IN_ENDLOOP) == 0 and
+                           (buffer[CHARS_IN_ENDLOOP] == '\r' or /* NOLINT */
+                            buffer[CHARS_IN_ENDLOOP] == '\n' or /* NOLINT */
+                            buffer[CHARS_IN_ENDLOOP] == ' ' or  /* NOLINT */
+                            buffer[CHARS_IN_ENDLOOP] == '\t');  /* NOLINT */
       };
 
       // Some G-code generators tend to produce text after "endloop" and
@@ -230,7 +231,7 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
       constexpr auto BUF_SIZE{2048};
       char buf[BUF_SIZE]; // NOLINT
       fgets((char *)buf, BUF_SIZE - 1, fp);
-      bool endloop_ok = endloopFound(buf);
+      bool endloop_ok = endloopFound((char *)buf);
       if (not endloop_ok) {
         // Try to parse a fourth throwaway vertex
         Vertex throwaway{0.0F, 0.0F, 0.0F};
@@ -241,9 +242,9 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
         if (res_vertex4 == 3) {
           SPDLOG_WARN(
               "Found 4 vertices in single facet. Throwing away fourth vertex.");
-          fscanf(fp, " ");
-          fgets((char *)buf, BUF_SIZE - 1, fp);
-          endloop_ok = endloopFound(buf);
+          fscanf(fp, " ");                      // NOLINT
+          fgets((char *)buf, BUF_SIZE - 1, fp); // NOLINT
+          endloop_ok = endloopFound((char *)buf);
           if (not endloop_ok) {
             SPDLOG_ERROR("Could not find endloop. Aborting file parse.");
             return false;
