@@ -215,21 +215,44 @@ auto Stl::read(FILE *fp, int first_facet, bool first) -> bool {
                                &facet.vertices[2].y(),  /* NOLINT */
                                &facet.vertices[2].z()); // NOLINT
       assert(res_vertex3 == 3);                         // NOLINT
+
+      auto endloopFound = [](char buffer[]) -> bool {
+        constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
+        return strncmp((char *)buffer, "endloop", CHARS_IN_ENDLOOP) == 0 and
+               (buffer[CHARS_IN_ENDLOOP] == '\r' or
+                buffer[CHARS_IN_ENDLOOP] == '\n' or
+                buffer[CHARS_IN_ENDLOOP] == ' ' or
+                buffer[CHARS_IN_ENDLOOP] == '\t');
+      };
+
       // Some G-code generators tend to produce text after "endloop" and
       // "endfacet". Just ignore it.
       constexpr auto BUF_SIZE{2048};
       char buf[BUF_SIZE]; // NOLINT
       fgets((char *)buf, BUF_SIZE - 1, fp);
-      constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
-      bool endloop_ok =
-          strncmp((char *)buf, "endloop", CHARS_IN_ENDLOOP) == 0 &&
-          (buf[CHARS_IN_ENDLOOP] == '\r' || buf[CHARS_IN_ENDLOOP] == '\n' ||
-           buf[CHARS_IN_ENDLOOP] == ' ' || buf[CHARS_IN_ENDLOOP] == '\t');
+      bool endloop_ok = endloopFound(buf);
       if (not endloop_ok) {
-        SPDLOG_ERROR("Found 4 vertices in single facet. Returning.");
-        return false;
+        // Try to parse a fourth throwaway vertex
+        Vertex throwaway{0.0F, 0.0F, 0.0F};
+        int res_vertex4 = sscanf(buf, "vertex %f %f %f ", /* NOLINT */
+                                 &throwaway.x(),          /* NOLINT */
+                                 &throwaway.y(),          /* NOLINT */
+                                 &throwaway.z());         // NOLINT
+        if (res_vertex4 == 3) {
+          SPDLOG_WARN(
+              "Found 4 vertices in single facet. Throwing away fourth vertex.");
+          fscanf(fp, " ");
+          fgets((char *)buf, BUF_SIZE - 1, fp);
+          endloop_ok = endloopFound(buf);
+          if (not endloop_ok) {
+            SPDLOG_ERROR("Could not find endloop. Aborting file parse.");
+            return false;
+          }
+        } else {
+          SPDLOG_ERROR("File is not proper stl. Aborting file parse.");
+          return false;
+        }
       }
-      assert(endloop_ok); // NOLINT
       // Skip the trailing whitespaces and empty lines.
       fscanf(fp, " "); // NOLINT
       fgets((char *)buf, BUF_SIZE - 1, fp);
