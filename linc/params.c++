@@ -106,7 +106,6 @@ static auto valid(PivotTokens const &tokens) -> bool {
 
 Pivots::Pivots(std::string const &fileName) {
   std::ifstream fileStream{fileName};
-  // whole file validation
 
   // line by line validation
   for (std::string line; std::getline(fileStream, line);) {

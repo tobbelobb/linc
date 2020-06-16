@@ -42,15 +42,15 @@
 #error "SEEK_SET not defined"
 #endif
 
-// TODO: un-NOLINT this file
 #include <Eigen/src/Core/util/DisableStupidWarnings.h>
-static auto logger = spdlog::basic_logger_mt("logger_name", "linc.log");
 
 template <size_t N>
 constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
     -> size_t {
   return N - 1;
 }
+
+static auto logger = spdlog::basic_logger_mt("logger_name", "linc.log");
 
 static auto openFile(std::string const &fileName)
     -> std::tuple<gsl::owner<FILE *>, Stl::Type> {
@@ -63,11 +63,10 @@ static auto openFile(std::string const &fileName)
   }
   // Check for binary or ASCII file.
   fseek(fp, HEADER_SIZE, SEEK_SET);
-  unsigned char chtest[ASCII_TABLE_SIZE]; // NOLINT
-  if (fread((unsigned char *)chtest, sizeof(chtest), 1, fp) == 0) {
+  std::array<unsigned char, ASCII_TABLE_SIZE> chtest{'\0'};
+  if (fread(chtest.data(), ASCII_TABLE_SIZE, 1, fp) == 0) {
     SPDLOG_DEBUG("File is shorter than {} bytes. Returning.",
                  HEADER_SIZE + sizeof(chtest));
-    fclose(fp);
     return {nullptr, Stl::Type::UNKNOWN};
   }
   Stl::Type stlType = Stl::Type::ASCII;
@@ -121,9 +120,9 @@ static auto countBinaryFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
   size_t const numberOfFacets = quotient;
 
   // Read the binary header
-  char headerBuf[LABEL_SIZE + 1] = {0};                            // NOLINT
-  if (fread(headerBuf, LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) {      // NOLINT
-    headerBuf[LABEL_SIZE] = '\0';                                  // NOLINT
+  std::array<char, LABEL_SIZE + 1> headerBuf{'\0'};
+  if (fread(headerBuf.data(), LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) {
+    headerBuf[LABEL_SIZE] = '\0';
   }
 
   // Read the int following the header.  This should contain # of facets.
@@ -141,18 +140,18 @@ static auto countBinaryFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
 
 static auto countAsciiFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
   constexpr auto LINEBUF_SIZE{100};
-  char linebuf[LINEBUF_SIZE]; // NOLINT
+  std::array<char, LINEBUF_SIZE> linebuf{'\0'};
   auto num_lines = 1U;
-  while (fgets((char *)linebuf, LINEBUF_SIZE, fp) != nullptr) {
+  while (fgets(linebuf.data(), linebuf.size(), fp) != nullptr) {
     // Don't count short lines.
     constexpr auto SHORT_LINE_LIMIT{4};
-    if (strlen((char *)linebuf) <= SHORT_LINE_LIMIT) {
+    if (strlen(linebuf.data()) <= SHORT_LINE_LIMIT) {
       continue;
     }
     // Skip solid/endsolid lines as broken STL file generators may put
     // several of them.
-    if (strncmp((char *)linebuf, "solid", length("solid")) == 0 ||
-        strncmp((char *)linebuf, "endsolid", length("endsolid")) == 0) {
+    if (strncmp(linebuf.data(), "solid", length("solid")) == 0 ||
+        strncmp(linebuf.data(), "endsolid", length("endsolid")) == 0) {
       continue;
     }
     ++num_lines;
@@ -188,26 +187,26 @@ static void skipSolidEndsolid(FILE *fp) {
 
 static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
   constexpr auto BUF_SIZE{2048};
-  char buf[BUF_SIZE]; // NOLINT
-  fgets((char *)buf, BUF_SIZE - 1, fp);
+  std::array<char, BUF_SIZE> buf{'\0'};
+  fgets(buf.data(), BUF_SIZE - 1, fp);
   constexpr auto CHARS_PER_FLOAT{32};
-  char normal_buf[3][CHARS_PER_FLOAT]; // NOLINT
+  std::array<std::array<char, CHARS_PER_FLOAT>, 3> normal_buf{{'\0'}};
   int res_normal =
-      sscanf(buf, "facet normal %31s %31s %31s",            /* NOLINT */
-             (char *)normal_buf[0],                         /* NOLINT */
-             (char *)normal_buf[1], (char *)normal_buf[2]); // NOLINT
+      sscanf(buf.data(), "facet normal %31s %31s %31s", /* NOLINT */
+             normal_buf[0].data(), normal_buf[1].data(), normal_buf[2].data());
   // The facet normal has been parsed as a single string as to workaround
   // for not a numbers in the normal definition.
-  return (res_normal == 3 and
-          sscanf(normal_buf[0], "%f", &facet.normal.x()) == 1 and // NOLINT
-          sscanf(normal_buf[1], "%f", &facet.normal.y()) == 1 and // NOLINT
-          sscanf(normal_buf[2], "%f", &facet.normal.z()) == 1 and // NOLINT
-          not(std::isnan(facet.normal.x()) or std::isnan(facet.normal.y()) or
-              std::isnan(facet.normal.z()))); // NOLINT
+  return (
+      res_normal == 3 and
+      sscanf(normal_buf[0].data(), "%f", &facet.normal.x()) == 1 and // NOLINT
+      sscanf(normal_buf[1].data(), "%f", &facet.normal.y()) == 1 and // NOLINT
+      sscanf(normal_buf[2].data(), "%f", &facet.normal.z()) == 1 and // NOLINT
+      not(std::isnan(facet.normal.x()) or std::isnan(facet.normal.y()) or
+          std::isnan(facet.normal.z()))); // NOLINT
 }
 
 static auto parseOuterLoop(FILE *fp) -> bool {
-  return (fscanf(fp, " outer loop") != EOF); /* NOLINT */
+  return fscanf(fp, " outer loop") != EOF; /* NOLINT */
 }
 
 static auto parseVertices(FILE *fp, Stl::Facet &facet) {
@@ -223,15 +222,6 @@ static auto parseVertices(FILE *fp, Stl::Facet &facet) {
   return true;
 }
 
-static auto endloopFound(char *buffer) -> bool { /* NOLINT */
-  constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
-  return strncmp(buffer, "endloop", CHARS_IN_ENDLOOP) == 0 and
-         (buffer[CHARS_IN_ENDLOOP] == '\r' or /* NOLINT */
-          buffer[CHARS_IN_ENDLOOP] == '\n' or /* NOLINT */
-          buffer[CHARS_IN_ENDLOOP] == ' ' or  /* NOLINT */
-          buffer[CHARS_IN_ENDLOOP] == '\t');  /* NOLINT */
-}
-
 static auto parseShadowVertex(char *buf) -> bool {
   Vertex throwaway{0.0F, 0.0F, 0.0F};
   return sscanf(buf, "vertex %f %f %f ", /* NOLINT */
@@ -241,12 +231,21 @@ static auto parseShadowVertex(char *buf) -> bool {
 }
 
 static auto parseEndloop(FILE *fp) -> bool {
-  constexpr auto BUF_SIZE{2048};
-  char buf[BUF_SIZE]; // NOLINT
-  fgets((char *)buf, BUF_SIZE - 1, fp);
-  if (not endloopFound((char *)buf)) {
+  constexpr auto BUF_SIZE{2048}; // large buffer to parse whole line
+  auto endloopFound = [](std::array<char, BUF_SIZE> buffer) {
+    constexpr auto CHARS_IN_ENDLOOP{length("endloop")};
+    return strncmp(buffer.data(), "endloop", CHARS_IN_ENDLOOP) == 0 and
+           (buffer[CHARS_IN_ENDLOOP] == '\r' or /* NOLINT */
+            buffer[CHARS_IN_ENDLOOP] == '\n' or /* NOLINT */
+            buffer[CHARS_IN_ENDLOOP] == ' ' or  /* NOLINT */
+            buffer[CHARS_IN_ENDLOOP] == '\t');  /* NOLINT */
+  };
+
+  std::array<char, BUF_SIZE> buf{'\0'};
+  fgets(buf.data(), buf.size(), fp);
+  if (not endloopFound(buf)) {
     // Try to parse a fourth throwaway vertex
-    if (parseShadowVertex((char *)buf)) {
+    if (parseShadowVertex(buf.data())) {
       SPDLOG_WARN(
           "Found 4 vertices in single facet. Throwing away fourth vertex.");
       skipWhitespace(fp);
@@ -264,13 +263,13 @@ static auto parseEndloop(FILE *fp) -> bool {
 
 static auto parseEndFacet(FILE *fp) -> bool {
   skipWhitespace(fp);
-  constexpr auto BUF_SIZE{2048};
-  char buf[BUF_SIZE]; // NOLINT
-  fgets((char *)buf, BUF_SIZE - 1, fp);
+
   constexpr auto CHARS_IN_ENDFACET{length("endfacet")};
-  return strncmp((char *)buf, "endfacet", CHARS_IN_ENDFACET) == 0 and
-         std::set<char>({'\r', '\n', ' ', '\t'})
-             .contains(buf[CHARS_IN_ENDFACET]);
+  constexpr auto BUF_SIZE{2048}; // large buffer to parse whole line
+  std::array<char, BUF_SIZE> buf{'\0'};
+  fgets(buf.data(), BUF_SIZE - 1, fp);
+  return strncmp(buf.data(), "endfacet", CHARS_IN_ENDFACET) == 0 and
+         std::isspace(buf[CHARS_IN_ENDFACET]) != 0;
 }
 
 // Read a single facet from an ASCII .STL file
@@ -289,15 +288,19 @@ static auto readAsciiFacet(FILE *fp, Stl::Facet &facet) -> bool {
     return false;
   }
   if (not parseEndloop(fp)) {
+    SPDLOG_ERROR("Did not find endloop. Aborting file parse.");
     return false;
   }
   return parseEndFacet(fp);
 }
 
 auto Stl::readAscii(FILE *fp) -> bool {
+  SPDLOG_TRACE("(fp)");
+  skipSolidEndsolid(fp);
   rewind(fp);
   for (Facet &facet : m_facets) {
     if (not readAsciiFacet(fp, facet)) {
+      SPDLOG_ERROR("Could not parse facet. Aborting file parse");
       return false;
     }
   }
@@ -316,12 +319,14 @@ auto Stl::readBinary(FILE *fp) -> bool {
 
 // Reads file into appropriately allocated vector m_facets
 auto Stl::read(FILE *fp) -> bool {
+  SPDLOG_TRACE("(fp)");
   if (m_type == Stl::Type::BINARY) {
     return readBinary(fp);
   }
   if (m_type == Stl::Type::ASCII) {
     return readAscii(fp);
   }
+  SPDLOG_WARN("Unknown stl type. Don't know how to read.");
   return false;
 }
 
@@ -353,12 +358,11 @@ Stl::Stl(std::string const &fileName) {
   SPDLOG_TRACE("({})", fileName);
 
   auto [fp, type] = openFile(fileName);
-  m_type = type;
-
   if (fp == nullptr) {
     return;
   }
 
+  m_type = type;
   auto [fpAfterCount, numberOfFacets] = countFacets(fp, m_type);
   m_stats.number_of_facets = numberOfFacets;
 
@@ -369,6 +373,7 @@ Stl::Stl(std::string const &fileName) {
   if (m_initialized) {
     computeSomeStats();
   } else {
+    SPDLOG_DEBUG("Stl not initialized. Clearing");
     clear();
   }
 }
