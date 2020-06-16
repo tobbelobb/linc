@@ -213,7 +213,7 @@ static auto parseOuterLoop(FILE *fp) -> bool {
 
 static auto parseVertices(FILE *fp, Stl::Facet &facet) {
   for (auto const vertex : {0UL, 1UL, 2UL}) {
-    auto matchedNumbers = fscanf(fp, " vertex %lf %lf %lf ",      /* NOLINT */
+    auto matchedNumbers = fscanf(fp, " vertex %lf %lf %lf ",   /* NOLINT */
                                  &facet.vertices[vertex].x(),  /* NOLINT */
                                  &facet.vertices[vertex].y(),  /* NOLINT */
                                  &facet.vertices[vertex].z()); /* NOLINT */
@@ -227,9 +227,9 @@ static auto parseVertices(FILE *fp, Stl::Facet &facet) {
 static auto parseShadowVertex(char *buf) -> bool {
   Vertex throwaway{0.0F, 0.0F, 0.0F};
   return sscanf(buf, "vertex %lf %lf %lf ", /* NOLINT */
-                &throwaway.x(),          /* NOLINT */
-                &throwaway.y(),          /* NOLINT */
-                &throwaway.z()) == 3;    /* NOLINT */
+                &throwaway.x(),             /* NOLINT */
+                &throwaway.y(),             /* NOLINT */
+                &throwaway.z()) == 3;       /* NOLINT */
 }
 
 static auto parseEndloop(FILE *fp) -> bool {

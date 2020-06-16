@@ -124,8 +124,8 @@ constexpr micro_metre_t<long double> operator""_um(long double value) {
   return micro_metre_t<long double>{value};
 }
 
-constexpr milli_metre_t<long double> operator""_mm(long double value) {
-  return milli_metre_t<long double>{value};
+constexpr milli_metre_t<double> operator""_mm(long double value) {
+  return milli_metre_t<double>{static_cast<double>(value)};
 }
 
 constexpr centi_metre_t<long double> operator""_cm(long double value) {

@@ -4,15 +4,7 @@
 
 #include <linc/stl.h++>
 
-static auto
-getPath(std::string const &newFile,
-        std::string const &thisFile = SourceLoc::current().file_name())
-    -> std::string {
-  return thisFile.substr(0, thisFile.find("stl.test.c++")) + newFile;
-}
-
 auto main() -> int {
-  // 32-bit float gives 8 decimals precision...
   auto constexpr maxRelativeError = 0.0000001F;
   try {
     {

@@ -19,15 +19,19 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstddef>
+#include <sstream>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <string>
 #include <vector>
 
 #include <Eigen/Geometry>
+#include <SI/length.h>
 #include <gsl/pointers>
+
+using Millimeter = SI::milli_metre_t<double>;
 
 // Size of the ascii table
 auto constexpr ASCII_TABLE_SIZE = 128U;
@@ -45,35 +49,47 @@ using TriangleVertexIndices = Eigen::Matrix<int, 3, 1, Eigen::DontAlign>;
 
 class Stl {
 public:
+  struct Stats {
+    Vertex max = Vertex::Zero();
+    Vertex min = Vertex::Zero();
+    Vertex size = Vertex::Zero();
+    double bounding_diameter = 0.0F;
+    double shortest_edge = 0.0F;
+    double volume = -1.0F;
+  };
+
+  struct Neighbors {
+    std::array<int, 3> neighbors = {-1, -1, -1};
+
+    int num_neighbors_missing() const {
+      return (neighbors[0] == -1) + (neighbors[1] == -1) + (neighbors[2] == -1);
+    }
+    int num_neighbors() const { return 3 - num_neighbors_missing(); }
+  };
+
+  enum class Type { BINARY, ASCII, INMEMORY, UNKNOWN };
+
   struct Facet {
     Normal normal;
     std::array<Vertex, 3> vertices;
 
     friend std::ostream &operator<<(std::ostream &os, Facet const facet) {
-      return os << "facet normal \n"
-                << facet.normal << "\nouter loop vertex \n"
-                << facet.vertices[0] << "\nvertex \n"
-                << facet.vertices[1] << "\nvertex \n"
-                << facet.vertices[2] << "\nendloop endfacet\n";
+      auto formatted = [](auto const &vec) -> std::string {
+        std::stringstream ss;
+        ss << vec;
+        std::string s{ss.str()};
+        std::replace(s.begin(), s.end(), '\n', ' ');
+        return s;
+      };
+
+      return os << "  facet normal " << formatted(facet.normal)
+                << "\n    outer loop\n      vertex "
+                << formatted(facet.vertices[0]) << "\n      vertex "
+                << formatted(facet.vertices[1]) << "\n      vertex "
+                << formatted(facet.vertices[2])
+                << "\n    endloop\n  endfacet\n";
     }
   };
-
-  struct Neighbors {
-    // Index of a neighbor facet.
-    int neighbor[3] = {-1, -1, -1};
-    // Index of an opposite vertex at the neighbor face.
-    int8_t which_vertex_not[3] = {-1, -1, -1};
-
-    void reset() { *this = {}; }
-
-    int num_neighbors_missing() const {
-      return (this->neighbor[0] == -1) + (this->neighbor[1] == -1) +
-             (this->neighbor[2] == -1);
-    }
-    int num_neighbors() const { return 3 - this->num_neighbors_missing(); }
-  };
-
-  enum class Type { BINARY, ASCII, INMEMORY, UNKNOWN };
 
   friend std::ostream &operator<<(std::ostream &os, Type const type) {
     switch (type) {
@@ -90,15 +106,6 @@ public:
     }
   }
 
-  struct Stats {
-    Vertex max = Vertex::Zero();
-    Vertex min = Vertex::Zero();
-    Vertex size = Vertex::Zero();
-    double bounding_diameter = 0.0F;
-    double shortest_edge = 0.0F;
-    double volume = -1.0F;
-  };
-
   Type m_type = Stl::Type::UNKNOWN;
   bool m_initialized = false;
   std::vector<Facet> m_facets;
@@ -107,6 +114,21 @@ public:
 
   Stl() = delete;
   explicit Stl(std::string const &fileName);
+  Stl cut(Millimeter) const;
+
+  void toAscii(std::ostream &os) const {
+    os << "solid linc-model\n";
+    for (Stl::Facet const &facet : m_facets) {
+      os << facet;
+    }
+    os << "endsolid linc-model";
+  }
+
+private:
+  size_t memsize() const {
+    return sizeof(*this) + sizeof(Facet) * m_facets.size() +
+           sizeof(Neighbors) * m_neighbors.size();
+  }
 
   void clear() {
     m_facets.clear();
@@ -116,12 +138,6 @@ public:
     m_type = Stl::Type::UNKNOWN;
   }
 
-  size_t memsize() const {
-    return sizeof(*this) + sizeof(Facet) * m_facets.size() +
-           sizeof(Neighbors) * m_neighbors.size();
-  }
-
-private:
   void allocate(size_t numberOfFacets);
   bool readFacets(FILE *fp);
   bool readBinaryFacets(FILE *fp);
@@ -144,13 +160,8 @@ struct indexed_triangle_set {
 
   std::vector<TriangleVertexIndices> indices;
   std::vector<Vertex> vertices;
-  // FIXME add normals once we get rid of the Stl from TriangleMesh
-  // completely. std::vector<Normal>
-  // normals
 };
 
-extern void stl_stats_out(Stl *stl, FILE *file, char *input_file);
-extern bool stl_print_neighbors(Stl *stl, char *file);
 extern bool stl_write_ascii(Stl *stl, const char *file, const char *label);
 extern bool stl_write_binary(Stl *stl, const char *file, const char *label);
 extern void stl_check_facets_exact(Stl *stl);
@@ -171,9 +182,6 @@ extern void stl_scale_versor(Stl *stl, const Vertex &versor);
 inline void stl_scale(Stl *stl, float factor) {
   stl_scale_versor(stl, Vertex(factor, factor, factor));
 }
-extern void stl_rotate_x(Stl *stl, float angle);
-extern void stl_rotate_y(Stl *stl, float angle);
-extern void stl_rotate_z(Stl *stl, float angle);
 extern void stl_mirror_xy(Stl *stl);
 extern void stl_mirror_yz(Stl *stl);
 extern void stl_mirror_xz(Stl *stl);
@@ -193,31 +201,7 @@ extern void its_transform(indexed_triangle_set &its, T *trafo3x4) {
   }
 }
 
-template <typename T>
-inline void its_transform(
-    indexed_triangle_set &its,
-    const Eigen::Transform<T, 3, Eigen::Affine, Eigen::DontAlign> &t) {
-  // const Eigen::Matrix<double, 3, 3, Eigen::DontAlign> r = t.matrix().template
-  // block<3, 3>(0, 0);
-  for (Vertex &v : its.vertices)
-    v = (t * v.template cast<T>()).template cast<float>().eval();
-}
-
-template <typename T>
-inline void its_transform(indexed_triangle_set &its,
-                          const Eigen::Matrix<T, 3, 3, Eigen::DontAlign> &m) {
-  for (Vertex &v : its.vertices)
-    v = (m * v.template cast<T>()).template cast<float>().eval();
-}
-
-extern void its_rotate_x(indexed_triangle_set &its, float angle);
-extern void its_rotate_y(indexed_triangle_set &its, float angle);
-extern void its_rotate_z(indexed_triangle_set &its, float angle);
-
 extern void stl_generate_shared_vertices(Stl *stl, indexed_triangle_set &its);
-extern bool its_write_obj(const indexed_triangle_set &its, const char *file);
-extern bool its_write_off(const indexed_triangle_set &its, const char *file);
-extern bool its_write_vrml(const indexed_triangle_set &its, const char *file);
 
 extern bool stl_write_dxf(Stl *stl, const char *file, char *label);
 inline void stl_calculate_normal(Normal &normal, Stl::Facet const &facet) {

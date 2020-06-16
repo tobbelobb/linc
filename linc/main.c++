@@ -23,7 +23,7 @@ auto main(int argc, char *argv[]) -> int {
   auto *const paramsFileName = gsl::at(args, 2);
 
   auto const layerHeight =
-      SI::milli_metre_t<double>((argc > 3) ? std::stod(gsl::at(args, 3)) : 1.0);
+      Millimeter((argc > 3) ? std::stod(gsl::at(args, 3)) : 1.0);
 
   TriangleMesh mesh{modelFileName};
   if (not mesh.isGood()) {
