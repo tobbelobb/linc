@@ -55,13 +55,13 @@ for t: cxx{**.test...}
   $d/exe{$n}: libue{linc}: bin.whole = false
 }
 
-## If you would want to rebuild stlinit.test every time an stl changes, you could do like this
+## If you would want to rebuild stl.test every time an stl changes, you could do like this
 # Make exception from general rule above:
-# for t: cxx{**.test... -stlinit.test...}
+# for t: cxx{**.test... -stl.test...}
 # Then make specific rule for the test that depends on stls
-# I don't know why the ... in stlinit.test... is needed. But it is.
-#./: exe{stlinit.test...}: cxx{stlinit.test.c++} libue{linc} ./test-models/exe{**.stl}
-#exe{stlinit.test}:
+# I don't know why the ... in stl.test... is needed. But it is.
+#./: exe{stl.test...}: cxx{stl.test.c++} libue{linc} ./test-models/exe{**.stl}
+#exe{stl.test}:
 #{
 #  test = true
 #  install = false

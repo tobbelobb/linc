@@ -8,7 +8,7 @@ static auto
 getPath(std::string const &newFile,
         std::string const &thisFile = SourceLoc::current().file_name())
     -> std::string {
-  return thisFile.substr(0, thisFile.find("stlinit.test.c++")) + newFile;
+  return thisFile.substr(0, thisFile.find("stl.test.c++")) + newFile;
 }
 
 auto main() -> int {
@@ -19,47 +19,52 @@ auto main() -> int {
       Stl const stl{getPath("test-models/broken/empty.stl")};
       compare(stl.m_stats.number_of_facets, 0U);
       compare(stl.m_stats.size, Vertex{0, 0, 0});
+      compare(stl.m_type, Stl::Type::UNKNOWN);
       check(not stl.m_initialized);
     }
     {
+      // Although this is might be a valid ascii stl file in some philosophical
+      // sense, I don't want to add logic to make
+      // Stl type ASCII and m_initialized true
+      // after trying to read it
       Stl const stl{getPath("test-models/broken/faceless.ascii.stl")};
       compare(stl.m_stats.number_of_facets, 0U);
       compare(stl.m_stats.size, Vertex{0, 0, 0});
-      // Although this is might be a valid ascii stl file in some philosophical
-      // sense, I don't want to add logic to make m_initialized true after
-      // trying to read it
+      compare(stl.m_type, Stl::Type::UNKNOWN);
       check(not stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/wrong-header-length.binary.stl")};
       compare(stl.m_stats.number_of_facets, 0U);
       compare(stl.m_stats.size, Vertex{0, 0, 0});
+      compare(stl.m_type, Stl::Type::UNKNOWN);
       check(not stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/broken/two-vertices.ascii.stl")};
       compare(stl.m_stats.number_of_facets, 0U);
       compare(stl.m_stats.size, Vertex{0, 0, 0});
+      compare(stl.m_type, Stl::Type::UNKNOWN); // not a proper ascii stl
       check(not stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/small-cube.ascii.stl")};
       compare(stl.m_stats.number_of_facets, 12U);
-      compare(stl.m_stats.type, Stl::Type::ASCII);
+      compare(stl.m_type, Stl::Type::ASCII);
       check(stl.m_stats.size.isApprox(Vertex{10, 10, 10}, maxRelativeError));
       check(stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/small-cube.binary.stl")};
       compare(stl.m_stats.number_of_facets, 12U);
-      compare(stl.m_stats.type, Stl::Type::BINARY);
+      compare(stl.m_type, Stl::Type::BINARY);
       check(stl.m_stats.size.isApprox(Vertex{10, 10, 10}, maxRelativeError));
       check(stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/broken/3DBenchy.binary.stl")};
       compare(stl.m_stats.number_of_facets, 225706U);
-      compare(stl.m_stats.type, Stl::Type::BINARY);
+      compare(stl.m_type, Stl::Type::BINARY);
       check(stl.m_stats.size.isApprox(Vertex{60, 31, 48}, 0.0001F));
       check(stl.m_stats.shortest_edge < 0.07401F and
             stl.m_stats.shortest_edge > 0.07399F);
@@ -75,7 +80,7 @@ auto main() -> int {
       compare(stl.m_facets[0].vertices[2], Vertex{0, 0, 10});
       // stats
       compare(stl.m_stats.number_of_facets, 1U);
-      compare(stl.m_stats.type, Stl::Type::ASCII);
+      compare(stl.m_type, Stl::Type::ASCII);
       compare(stl.m_stats.max, Vertex{0, 5, 10});
       compare(stl.m_stats.min, Vertex{0, -5, 0});
       compare(stl.m_stats.size, Vertex{0, 10, 10});
@@ -119,7 +124,6 @@ auto main() -> int {
           getPath("test-models/broken/incorrect-face-counter.binary.stl")};
       compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
-      compare(stl.m_stats.header_num_facets, 66U);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
     {

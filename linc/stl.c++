@@ -52,18 +52,15 @@ constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
   return N - 1;
 }
 
-auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
+static auto openFile(std::string const &fileName)
+    -> std::tuple<gsl::owner<FILE *>, Stl::Type> {
   SPDLOG_TRACE("({})", fileName);
   // Open the file in binary mode first.
   gsl::owner<FILE *> fp = fopen(fileName.c_str(), "rb");
   if (fp == nullptr) {
-    SPDLOG_DEBUG("Could not open file. Returning.");
-    return nullptr;
+    SPDLOG_ERROR("Could not open file. Returning.");
+    return {nullptr, Stl::Type::UNKNOWN};
   }
-  // Find size of file.
-  fseek(fp, 0, SEEK_END);
-  long file_size = ftell(fp);
-
   // Check for binary or ASCII file.
   fseek(fp, HEADER_SIZE, SEEK_SET);
   unsigned char chtest[ASCII_TABLE_SIZE]; // NOLINT
@@ -71,94 +68,112 @@ auto Stl::openCountFacets(std::string const &fileName) -> gsl::owner<FILE *> {
     SPDLOG_DEBUG("File is shorter than {} bytes. Returning.",
                  HEADER_SIZE + sizeof(chtest));
     fclose(fp);
-    return nullptr;
+    return {nullptr, Stl::Type::UNKNOWN};
   }
-  m_stats.type = Stl::Type::ASCII;
+  Stl::Type stlType = Stl::Type::ASCII;
+  // std::any_of?
   for (unsigned char s : chtest) {
     if (s > ASCII_TABLE_SIZE - 1) {
-      m_stats.type = Stl::Type::BINARY;
+      stlType = Stl::Type::BINARY;
+      rewind(fp);
       break;
     }
   }
-  rewind(fp);
-
-  // Get the header and the number of facets in the .STL file.
-  // If the .STL file is binary, then do the following:
-  if (m_stats.type == Stl::Type::BINARY) {
-    // Test if the STL file has the right size.
-    if (((file_size - HEADER_SIZE) % SIZEOF_STL_FACET != 0) ||
-        (file_size < STL_MIN_FILE_SIZE)) {
-      SPDLOG_WARN("Wrong file size. Aborting binary stl facet count.");
-      fclose(fp);
-      return nullptr;
-    }
-
-    m_stats.number_of_facets = (file_size - HEADER_SIZE) / SIZEOF_STL_FACET;
-
-    // Read the header.
-    if (fread(m_stats.header, LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) { // NOLINT
-      m_stats.header[LABEL_SIZE] = '\0';                             // NOLINT
-    }
-
-    // Read the int following the header.  This should contain # of facets.
-    fread(&m_stats.header_num_facets, sizeof(uint32_t), 1, fp);
-    if (m_stats.header_num_facets != m_stats.number_of_facets) {
-      SPDLOG_WARN("Binary header says file contains {} facets, but file "
-                  "actually contains {} facets.",
-                  m_stats.header_num_facets, m_stats.number_of_facets);
-    }
-  }
-  // Otherwise, if the .STL file is ASCII, then do the following:
-  else {
-    // Reopen the file in text mode (for getting correct newlines on Windows)
-    // fix to silence a warning about unused return value.
-    // obviously if it fails we have problems....
+  if (stlType == Stl::Type::ASCII) {
+    // Reopen the file in text mode for getting correct newlines on Windows
     fclose(fp);
     fp = fopen(fileName.c_str(), "r");
-
-    // do another null check to be safe
-    if (fp == nullptr) {
-      fclose(fp);
-      return nullptr;
-    }
-
-    // Find the number of facets.
-    constexpr auto LINEBUF_SIZE{100};
-    char linebuf[LINEBUF_SIZE]; // NOLINT
-    auto num_lines = 1U;
-    while (fgets((char *)linebuf, LINEBUF_SIZE, fp) != nullptr) {
-      // Don't count short lines.
-      constexpr auto SHORT_LINE_LIMIT{4};
-      if (strlen((char *)linebuf) <= SHORT_LINE_LIMIT) {
-        continue;
-      }
-      // Skip solid/endsolid lines as broken STL file generators may put
-      // several of them.
-      if (strncmp((char *)linebuf, "solid", strlen("solid")) == 0 ||
-          strncmp((char *)linebuf, "endsolid", strlen("endsolid")) == 0) {
-        continue;
-      }
-      ++num_lines;
-    }
-
-    rewind(fp);
-
-    // Get the header.
-    size_t i = 0;
-    for (; i < LABEL_SIZE &&
-           (gsl::at(m_stats.header, i) = (char)getc(fp)) != '\n';
-         ++i) {
-      ;
-    }
-    gsl::at(m_stats.header, i) = '\0'; // Lose the '\n'
-    gsl::at(m_stats.header, LABEL_SIZE) = '\0';
-
-    m_stats.number_of_facets = num_lines / ASCII_LINES_PER_FACET;
   }
 
-  SPDLOG_INFO("Found {} facets", m_stats.number_of_facets);
+  return {fp, stlType};
+}
 
-  return fp;
+struct FacetCountResult {
+  FILE *fp;
+  size_t numberOfFacets;
+};
+
+static auto getFileSize(FILE *fp) -> long {
+  fseek(fp, 0, SEEK_END);
+  long const file_size = ftell(fp);
+  rewind(fp);
+  return file_size;
+}
+
+auto divide(auto dividend, auto divisor) {
+  struct result {
+    long int quotient;
+    long int remainder;
+  };
+  return result{dividend / divisor, dividend % divisor};
+}
+
+static auto countBinaryFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
+  long const file_size = getFileSize(fp);
+
+  // Test if the STL file has the right size.
+  auto const [quotient, reminder] =
+      divide(file_size - HEADER_SIZE, SIZEOF_STL_FACET);
+  if ((reminder != 0) or (file_size < STL_MIN_FILE_SIZE)) {
+    SPDLOG_ERROR("Wrong file size. Aborting binary stl facet count.");
+    return {fp, 0};
+  }
+  size_t const numberOfFacets = quotient;
+
+  // Read the binary header
+  char headerBuf[LABEL_SIZE + 1] = {0};                            // NOLINT
+  if (fread(headerBuf, LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) {      // NOLINT
+    headerBuf[LABEL_SIZE] = '\0';                                  // NOLINT
+  }
+
+  // Read the int following the header.  This should contain # of facets.
+  size_t headerNumFacets = 0;
+  fread(&headerNumFacets, sizeof(uint32_t), 1, fp);
+  if (headerNumFacets != numberOfFacets) {
+    SPDLOG_WARN("Binary header says file contains {} facets, but file "
+                "actually contains {} facets.",
+                headerNumFacets, numberOfFacets);
+  }
+
+  SPDLOG_INFO("Found {} facets", numberOfFacets);
+  return {fp, numberOfFacets};
+}
+
+static auto countAsciiFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
+  constexpr auto LINEBUF_SIZE{100};
+  char linebuf[LINEBUF_SIZE]; // NOLINT
+  auto num_lines = 1U;
+  while (fgets((char *)linebuf, LINEBUF_SIZE, fp) != nullptr) {
+    // Don't count short lines.
+    constexpr auto SHORT_LINE_LIMIT{4};
+    if (strlen((char *)linebuf) <= SHORT_LINE_LIMIT) {
+      continue;
+    }
+    // Skip solid/endsolid lines as broken STL file generators may put
+    // several of them.
+    if (strncmp((char *)linebuf, "solid", length("solid")) == 0 ||
+        strncmp((char *)linebuf, "endsolid", length("endsolid")) == 0) {
+      continue;
+    }
+    ++num_lines;
+  }
+
+  rewind(fp);
+
+  auto const numberOfFacets = num_lines / ASCII_LINES_PER_FACET;
+  SPDLOG_INFO("Found {} facets", numberOfFacets);
+  return {fp, numberOfFacets};
+}
+
+static auto countFacets(FILE *fp, Stl::Type const stlType)
+    -> std::tuple<FILE *, size_t> {
+  if (stlType == Stl::Type::BINARY) {
+    return countBinaryFacets(fp);
+  }
+  if (stlType == Stl::Type::ASCII) {
+    return countAsciiFacets(fp);
+  }
+  return {fp, 0};
 }
 
 static inline void skipWhitespace(FILE *fp) {
@@ -301,10 +316,10 @@ auto Stl::readBinary(FILE *fp) -> bool {
 
 // Reads file into appropriately allocated vector m_facets
 auto Stl::read(FILE *fp) -> bool {
-  if (m_stats.type == Stl::Type::BINARY) {
+  if (m_type == Stl::Type::BINARY) {
     return readBinary(fp);
   }
-  if (m_stats.type == Stl::Type::ASCII) {
+  if (m_type == Stl::Type::ASCII) {
     return readAscii(fp);
   }
   return false;
@@ -326,19 +341,29 @@ void Stl::computeSomeStats() {
   m_stats.bounding_diameter = m_stats.size.norm();
 }
 
+void Stl::allocate() {
+  m_facets.assign(m_stats.number_of_facets, Facet());
+  m_neighbors.assign(m_stats.number_of_facets, Neighbors());
+}
+
 Stl::Stl(std::string const &fileName) {
   spdlog::set_default_logger(logger);
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
   SPDLOG_TRACE("({})", fileName);
 
-  gsl::owner<FILE *> fp = openCountFacets(fileName);
+  auto [fp, type] = openFile(fileName);
+  m_type = type;
+
   if (fp == nullptr) {
     return;
   }
 
+  auto [fpAfterCount, numberOfFacets] = countFacets(fp, m_type);
+  m_stats.number_of_facets = numberOfFacets;
+
   allocate();
-  m_initialized = read(fp);
+  m_initialized = read(fpAfterCount);
   fclose(fp);
 
   if (m_initialized) {
@@ -346,13 +371,6 @@ Stl::Stl(std::string const &fileName) {
   } else {
     clear();
   }
-}
-
-void Stl::allocate() {
-  //  Allocate memory for the entire .STL file.
-  m_facets.assign(m_stats.number_of_facets, Facet());
-  // Allocate memory for the neighbors list.
-  m_neighbors.assign(m_stats.number_of_facets, Neighbors());
 }
 
 #include <Eigen/src/Core/util/ReenableStupidWarnings.h>

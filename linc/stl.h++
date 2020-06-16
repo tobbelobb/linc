@@ -76,7 +76,7 @@ public:
     int num_neighbors() const { return 3 - this->num_neighbors_missing(); }
   };
 
-  enum class Type { BINARY, ASCII, INMEMORY };
+  enum class Type { BINARY, ASCII, UNKNOWN };
 
   friend std::ostream &operator<<(std::ostream &os, Type const type) {
     switch (type) {
@@ -84,17 +84,14 @@ public:
       return os << "BINARY";
     case (Type::ASCII):
       return os << "ASCII";
-    case (Type::INMEMORY):
-      return os << "INMEMORY";
+    case (Type::UNKNOWN):
+      return os << "UNKNOWN";
     default:
       return os << "NONE";
     }
   }
 
   struct Stats {
-    char header[LABEL_SIZE + 1] = {0};
-    uint32_t header_num_facets = 0;
-    Type type = Stl::Type::BINARY;
     size_t number_of_facets = 0;
     Vertex max = Vertex::Zero();
     Vertex min = Vertex::Zero();
@@ -104,6 +101,7 @@ public:
     float volume = -1.0F;
   };
 
+  Type m_type = Stl::Type::UNKNOWN;
   bool m_initialized = false;
   std::vector<Facet> m_facets;
   std::vector<Neighbors> m_neighbors;
@@ -117,6 +115,7 @@ public:
     m_neighbors.clear();
     m_stats = {};
     m_initialized = false;
+    m_type = Stl::Type::UNKNOWN;
   }
 
   size_t memsize() const {
@@ -125,7 +124,6 @@ public:
   }
 
 private:
-  gsl::owner<FILE *> openCountFacets(std::string const &fileName);
   void allocate();
   bool read(FILE *fp);
   bool readBinary(FILE *fp);
