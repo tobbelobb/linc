@@ -92,7 +92,6 @@ public:
   }
 
   struct Stats {
-    size_t number_of_facets = 0;
     Vertex max = Vertex::Zero();
     Vertex min = Vertex::Zero();
     Vertex size = Vertex::Zero();
@@ -124,10 +123,10 @@ public:
   }
 
 private:
-  void allocate();
-  bool read(FILE *fp);
-  bool readBinary(FILE *fp);
-  bool readAscii(FILE *fp);
+  void allocate(size_t numberOfFacets);
+  bool readFacets(FILE *fp);
+  bool readBinaryFacets(FILE *fp);
+  bool readAsciiFacets(FILE *fp);
   void computeSomeStats();
 };
 
@@ -190,38 +189,6 @@ extern void stl_mirror_yz(Stl *stl);
 extern void stl_mirror_xz(Stl *stl);
 
 extern void stl_get_size(Stl *stl);
-
-template <typename T>
-inline void stl_transform(
-    Stl *stl,
-    const Eigen::Transform<T, 3, Eigen::Affine, Eigen::DontAlign> &t) {
-  const Eigen::Matrix<T, 3, 3, Eigen::DontAlign> r =
-      t.matrix().template block<3, 3>(0, 0).inverse().transpose();
-  for (size_t i = 0; i < stl->m_stats.number_of_facets; ++i) {
-    Stl::Facet &f = stl->m_facets[i];
-    for (size_t j = 0; j < 3; ++j)
-      f.vertices[j] =
-          (t * f.vertices[j].template cast<T>()).template cast<float>().eval();
-    f.normal = (r * f.normal.template cast<T>()).template cast<float>().eval();
-  }
-
-  stl_get_size(stl);
-}
-
-template <typename T>
-inline void stl_transform(Stl *stl,
-                          const Eigen::Matrix<T, 3, 3, Eigen::DontAlign> &m) {
-  const Eigen::Matrix<T, 3, 3, Eigen::DontAlign> r = m.inverse().transpose();
-  for (size_t i = 0; i < stl->m_stats.number_of_facets; ++i) {
-    Stl::Facet &f = stl->m_facets[i];
-    for (size_t j = 0; j < 3; ++j)
-      f.vertices[j] =
-          (m * f.vertices[j].template cast<T>()).template cast<float>().eval();
-    f.normal = (r * f.normal.template cast<T>()).template cast<float>().eval();
-  }
-
-  stl_get_size(stl);
-}
 
 template <typename T>
 extern void its_transform(indexed_triangle_set &its, T *trafo3x4) {

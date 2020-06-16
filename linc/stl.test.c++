@@ -17,7 +17,7 @@ auto main() -> int {
   try {
     {
       Stl const stl{getPath("test-models/broken/empty.stl")};
-      compare(stl.m_stats.number_of_facets, 0U);
+      compare(stl.m_facets.size(), 0U);
       compare(stl.m_stats.size, Vertex{0, 0, 0});
       compare(stl.m_type, Stl::Type::UNKNOWN);
       check(not stl.m_initialized);
@@ -28,42 +28,42 @@ auto main() -> int {
       // Stl type ASCII and m_initialized true
       // after trying to read it
       Stl const stl{getPath("test-models/broken/faceless.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 0U);
+      compare(stl.m_facets.size(), 0U);
       compare(stl.m_stats.size, Vertex{0, 0, 0});
       compare(stl.m_type, Stl::Type::UNKNOWN);
       check(not stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/wrong-header-length.binary.stl")};
-      compare(stl.m_stats.number_of_facets, 0U);
+      compare(stl.m_facets.size(), 0U);
       compare(stl.m_stats.size, Vertex{0, 0, 0});
       compare(stl.m_type, Stl::Type::UNKNOWN);
       check(not stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/broken/two-vertices.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 0U);
+      compare(stl.m_facets.size(), 0U);
       compare(stl.m_stats.size, Vertex{0, 0, 0});
       compare(stl.m_type, Stl::Type::UNKNOWN); // not a proper ascii stl
       check(not stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/small-cube.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 12U);
+      compare(stl.m_facets.size(), 12U);
       compare(stl.m_type, Stl::Type::ASCII);
       check(stl.m_stats.size.isApprox(Vertex{10, 10, 10}, maxRelativeError));
       check(stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/small-cube.binary.stl")};
-      compare(stl.m_stats.number_of_facets, 12U);
+      compare(stl.m_facets.size(), 12U);
       compare(stl.m_type, Stl::Type::BINARY);
       check(stl.m_stats.size.isApprox(Vertex{10, 10, 10}, maxRelativeError));
       check(stl.m_initialized);
     }
     {
       Stl const stl{getPath("test-models/broken/3DBenchy.binary.stl")};
-      compare(stl.m_stats.number_of_facets, 225706U);
+      compare(stl.m_facets.size(), 225706U);
       compare(stl.m_type, Stl::Type::BINARY);
       check(stl.m_stats.size.isApprox(Vertex{60, 31, 48}, 0.0001F));
       check(stl.m_stats.shortest_edge < 0.07401F and
@@ -79,7 +79,7 @@ auto main() -> int {
       compare(stl.m_facets[0].vertices[1], Vertex{0, 5, 0});
       compare(stl.m_facets[0].vertices[2], Vertex{0, 0, 10});
       // stats
-      compare(stl.m_stats.number_of_facets, 1U);
+      compare(stl.m_facets.size(), 1U);
       compare(stl.m_type, Stl::Type::ASCII);
       compare(stl.m_stats.max, Vertex{0, 5, 10});
       compare(stl.m_stats.min, Vertex{0, -5, 0});
@@ -93,7 +93,6 @@ auto main() -> int {
     }
     {
       Stl const stl{getPath("test-models/broken/four-vertices.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       // Facet 0 has four vertices
       // We want the parser to just skip the fourth vertex
@@ -122,13 +121,11 @@ auto main() -> int {
     {
       Stl const stl{
           getPath("test-models/broken/incorrect-face-counter.binary.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
     {
       Stl const stl{getPath("test-models/broken/missing-endsolid.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
@@ -136,11 +133,10 @@ auto main() -> int {
       Stl const stl{getPath("test-models/broken/missing-facet.ascii.stl")};
       // When there's a missing face we have a hole in the model.
       // The parser should not mind such things
-      compare(stl.m_stats.number_of_facets, 3U);
+      compare(stl.m_facets.size(), 3U);
     }
     {
       Stl const stl{getPath("test-models/broken/missing-normal.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       // Facet 3 has no normal
       compare(stl.m_facets[3].normal, Normal{0, 0, 0});
@@ -151,7 +147,6 @@ auto main() -> int {
     {
       Stl const stl{
           getPath("test-models/broken/not-a-number-normal.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       // Facet 1 has NaN in its normal
       compare(stl.m_facets[1].normal, Normal{0, 0, 0});
@@ -168,7 +163,6 @@ auto main() -> int {
     {
       Stl const stl{
           getPath("test-models/broken/solid-name-mismatch.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
@@ -179,7 +173,7 @@ auto main() -> int {
       // care anyways. It should find a perfect, xyz-centered cube with sides of
       // length 100
       Stl const stl{getPath("test-models/broken/wrong-header.binary.stl")};
-      compare(stl.m_stats.number_of_facets, 12U);
+      compare(stl.m_facets.size(), 12U);
       compare(stl.m_stats.size, Vertex{100, 100, 100});
       compare(stl.m_stats.max, Vertex{50, 50, 50});
       compare(stl.m_stats.min, Vertex{-50, -50, -50});
@@ -190,7 +184,6 @@ auto main() -> int {
       // This stl has a normal that doesn't match its vertexes
       // The parser shouldn't care about this
       // It should just parse the numbers it finds
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       // Facet 3 has a wrong normal
       compare(stl.m_facets[3].normal, Normal{0, 0, -1});
@@ -200,7 +193,6 @@ auto main() -> int {
     }
     {
       Stl const stl{getPath("test-models/broken/zeroed-normals.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       // Facet 0
       compare(stl.m_facets[0].normal, Normal{0, 0, 0});
@@ -226,20 +218,20 @@ auto main() -> int {
     {
       Stl const stl{
           getPath("test-models/broken/nameless-solid-without-space.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
+      compare(stl.m_facets.size(), 4U);
       check(stl.m_initialized);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
     {
       Stl const stl{
           getPath("test-models/broken/nameless-solid-with-space.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
+      compare(stl.m_facets.size(), 4U);
       check(stl.m_initialized);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
     {
       Stl const stl{getPath("test-models/multi-word-name.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
+      compare(stl.m_facets.size(), 4U);
       check(stl.m_initialized);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
@@ -248,7 +240,6 @@ auto main() -> int {
       // shouldn't care
       Stl const stl{
           getPath("test-models/broken/non-normalized-normals.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
       compare(stl.m_facets.size(), 4U);
       check(stl.m_facets[0].normal.isApprox(
           Normal{5.7735027F, 5.7735027F, 5.7735027F}, maxRelativeError));
@@ -260,7 +251,7 @@ auto main() -> int {
       // The parser should be able to handle a 20 m wide (among x, y, or z)
       // model, and crazy scaled normals
       Stl const stl{getPath("test-models/large-numbers.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
+      compare(stl.m_facets.size(), 4U);
       check(stl.m_initialized);
       check(stl.m_facets[3].normal.isApprox(Vertex{0, 0, -9999999.9F},
                                             maxRelativeError));
@@ -274,7 +265,7 @@ auto main() -> int {
       // "endfacet". Just ignore it.
       Stl const stl{getPath(
           "test-models/broken/text-after-endloop-and-endfacet.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
+      compare(stl.m_facets.size(), 4U);
       check(stl.m_initialized);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }
@@ -283,7 +274,7 @@ auto main() -> int {
       // Just ignore them.
       Stl const stl{
           getPath("test-models/broken/many-solid-endsolid.ascii.stl")};
-      compare(stl.m_stats.number_of_facets, 4U);
+      compare(stl.m_facets.size(), 4U);
       check(stl.m_initialized);
       compare(stl.m_facets[3].vertices[2], Vertex{1, 0, 0});
     }

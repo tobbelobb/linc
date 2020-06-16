@@ -7,7 +7,7 @@ auto Model::cut(SI::milli_metre_t<double> absoluteZ) -> Model {
 
   std::vector<TriangleMeshCutter::IntersectionLine> upper_lines;
   std::vector<TriangleMeshCutter::IntersectionLine> lower_lines;
-  for (size_t facetIdx = 0; facetIdx < m_mesh.m_stl.m_stats.number_of_facets;
+  for (size_t facetIdx = 0; facetIdx < m_mesh.m_stl.m_facets.size();
        ++facetIdx) {
     Stl::Facet const &facet = m_mesh.m_stl.m_facets[facetIdx];
     // find facet extents

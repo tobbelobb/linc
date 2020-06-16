@@ -32,7 +32,7 @@
 #include <gsl/span_ext>
 
 // Set the default logger to file logger
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE /* NOLINT */
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG /* NOLINT */
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
@@ -42,12 +42,18 @@
 #error "SEEK_SET not defined"
 #endif
 
-#include <Eigen/src/Core/util/DisableStupidWarnings.h>
-
 template <size_t N>
 constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
     -> size_t {
   return N - 1;
+}
+
+auto divide(auto dividend, auto divisor) {
+  struct result {
+    size_t quotient;
+    size_t remainder;
+  };
+  return result{dividend / divisor, dividend % divisor};
 }
 
 static auto logger = spdlog::basic_logger_mt("logger_name", "linc.log");
@@ -87,35 +93,25 @@ static auto openFile(std::string const &fileName)
   return {fp, stlType};
 }
 
-struct FacetCountResult {
-  FILE *fp;
-  size_t numberOfFacets;
-};
-
-static auto getFileSize(FILE *fp) -> long {
+static auto getFileSize(FILE *fp) -> size_t {
+  SPDLOG_TRACE("(fp)");
+  // Want to get rid of FILE * and just use
+  // return std::filesystem::file_size(fileName);
   fseek(fp, 0, SEEK_END);
-  long const file_size = ftell(fp);
-  rewind(fp);
-  return file_size;
+  return static_cast<size_t>(ftell(fp));
 }
 
-auto divide(auto dividend, auto divisor) {
-  struct result {
-    long int quotient;
-    long int remainder;
-  };
-  return result{dividend / divisor, dividend % divisor};
-}
+static auto countBinaryFacets(FILE *fp) -> size_t {
+  SPDLOG_TRACE("(fp)");
 
-static auto countBinaryFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
-  long const file_size = getFileSize(fp);
+  size_t const file_size = getFileSize(fp);
 
   // Test if the STL file has the right size.
   auto const [quotient, reminder] =
       divide(file_size - HEADER_SIZE, SIZEOF_STL_FACET);
   if ((reminder != 0) or (file_size < STL_MIN_FILE_SIZE)) {
     SPDLOG_ERROR("Wrong file size. Aborting binary stl facet count.");
-    return {fp, 0};
+    return 0;
   }
   size_t const numberOfFacets = quotient;
 
@@ -135,10 +131,12 @@ static auto countBinaryFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
   }
 
   SPDLOG_INFO("Found {} facets", numberOfFacets);
-  return {fp, numberOfFacets};
+  return numberOfFacets;
 }
 
-static auto countAsciiFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
+static auto countAsciiFacets(FILE *fp) -> size_t {
+  SPDLOG_TRACE("(fp)");
+
   constexpr auto LINEBUF_SIZE{100};
   std::array<char, LINEBUF_SIZE> linebuf{'\0'};
   auto num_lines = 1U;
@@ -156,23 +154,21 @@ static auto countAsciiFacets(FILE *fp) -> std::tuple<FILE *, size_t> {
     }
     ++num_lines;
   }
-
-  rewind(fp);
-
   auto const numberOfFacets = num_lines / ASCII_LINES_PER_FACET;
   SPDLOG_INFO("Found {} facets", numberOfFacets);
-  return {fp, numberOfFacets};
+  return numberOfFacets;
 }
 
-static auto countFacets(FILE *fp, Stl::Type const stlType)
-    -> std::tuple<FILE *, size_t> {
+static auto countFacets(FILE *fp, Stl::Type const stlType) -> size_t {
+  SPDLOG_TRACE("(fp, {})", stlType);
+
   if (stlType == Stl::Type::BINARY) {
     return countBinaryFacets(fp);
   }
   if (stlType == Stl::Type::ASCII) {
     return countAsciiFacets(fp);
   }
-  return {fp, 0};
+  return 0;
 }
 
 static inline void skipWhitespace(FILE *fp) {
@@ -180,12 +176,16 @@ static inline void skipWhitespace(FILE *fp) {
 }
 
 static void skipSolidEndsolid(FILE *fp) {
+  SPDLOG_TRACE("(fp)", stlType);
+
   fscanf(fp, " endsolid%*[^\n]\n"); // NOLINT
   fscanf(fp, " solid%*[^\n]\n");    // NOLINT
   skipWhitespace(fp);
 }
 
 static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
+  SPDLOG_TRACE("(fp, facet)");
+
   constexpr auto BUF_SIZE{2048};
   std::array<char, BUF_SIZE> buf{'\0'};
   fgets(buf.data(), BUF_SIZE - 1, fp);
@@ -206,6 +206,8 @@ static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
 }
 
 static auto parseOuterLoop(FILE *fp) -> bool {
+  SPDLOG_TRACE("(fp)");
+
   return fscanf(fp, " outer loop") != EOF; /* NOLINT */
 }
 
@@ -227,7 +229,7 @@ static auto parseShadowVertex(char *buf) -> bool {
   return sscanf(buf, "vertex %f %f %f ", /* NOLINT */
                 &throwaway.x(),          /* NOLINT */
                 &throwaway.y(),          /* NOLINT */
-                &throwaway.z()) == 3;    // NOLINT
+                &throwaway.z()) == 3;    /* NOLINT */
 }
 
 static auto parseEndloop(FILE *fp) -> bool {
@@ -254,7 +256,7 @@ static auto parseEndloop(FILE *fp) -> bool {
         return false;
       }
     } else {
-      SPDLOG_ERROR("File is not proper stl. Aborting file parse.");
+      SPDLOG_ERROR("File is not a proper ascii stl. Aborting file parse.");
       return false;
     }
   }
@@ -294,8 +296,9 @@ static auto readAsciiFacet(FILE *fp, Stl::Facet &facet) -> bool {
   return parseEndFacet(fp);
 }
 
-auto Stl::readAscii(FILE *fp) -> bool {
+auto Stl::readAsciiFacets(FILE *fp) -> bool {
   SPDLOG_TRACE("(fp)");
+  fseek(fp, 0, SEEK_SET);
   skipSolidEndsolid(fp);
   rewind(fp);
   for (Facet &facet : m_facets) {
@@ -307,7 +310,7 @@ auto Stl::readAscii(FILE *fp) -> bool {
   return true;
 }
 
-auto Stl::readBinary(FILE *fp) -> bool {
+auto Stl::readBinaryFacets(FILE *fp) -> bool {
   fseek(fp, HEADER_SIZE, SEEK_SET);
   for (Facet &facet : m_facets) {
     if (fread(&facet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
@@ -318,19 +321,20 @@ auto Stl::readBinary(FILE *fp) -> bool {
 }
 
 // Reads file into appropriately allocated vector m_facets
-auto Stl::read(FILE *fp) -> bool {
+auto Stl::readFacets(FILE *fp) -> bool {
   SPDLOG_TRACE("(fp)");
   if (m_type == Stl::Type::BINARY) {
-    return readBinary(fp);
+    return readBinaryFacets(fp);
   }
   if (m_type == Stl::Type::ASCII) {
-    return readAscii(fp);
+    return readAsciiFacets(fp);
   }
-  SPDLOG_WARN("Unknown stl type. Don't know how to read.");
+  SPDLOG_WARN("Unknown stl type. Don't know how to read facets.");
   return false;
 }
 
 void Stl::computeSomeStats() {
+  SPDLOG_TRACE("()");
   m_stats.min = m_facets[0].vertices[0];
   m_stats.max = m_facets[0].vertices[0];
   Vertex diff = (m_facets[0].vertices[1] - m_facets[0].vertices[0]).cwiseAbs();
@@ -346,28 +350,26 @@ void Stl::computeSomeStats() {
   m_stats.bounding_diameter = m_stats.size.norm();
 }
 
-void Stl::allocate() {
-  m_facets.assign(m_stats.number_of_facets, Facet());
-  m_neighbors.assign(m_stats.number_of_facets, Neighbors());
+void Stl::allocate(size_t const numberOfFacets) {
+  SPDLOG_TRACE("(numberOfFacets={})", numberOfFacets);
+  m_facets.assign(numberOfFacets, Facet());
+  m_neighbors.assign(numberOfFacets, Neighbors());
 }
 
 Stl::Stl(std::string const &fileName) {
   spdlog::set_default_logger(logger);
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
-  SPDLOG_TRACE("({})", fileName);
+  SPDLOG_DEBUG("Stl constructor start: {}", fileName);
 
   auto [fp, type] = openFile(fileName);
   if (fp == nullptr) {
     return;
   }
-
   m_type = type;
-  auto [fpAfterCount, numberOfFacets] = countFacets(fp, m_type);
-  m_stats.number_of_facets = numberOfFacets;
 
-  allocate();
-  m_initialized = read(fpAfterCount);
+  allocate(countFacets(fp, m_type));
+  m_initialized = readFacets(fp);
   fclose(fp);
 
   if (m_initialized) {
@@ -376,6 +378,5 @@ Stl::Stl(std::string const &fileName) {
     SPDLOG_DEBUG("Stl not initialized. Clearing");
     clear();
   }
+  SPDLOG_DEBUG("Stl constructor done", fileName);
 }
-
-#include <Eigen/src/Core/util/ReenableStupidWarnings.h>
