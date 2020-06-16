@@ -189,8 +189,8 @@ static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
   constexpr auto BUF_SIZE{2048};
   std::array<char, BUF_SIZE> buf{'\0'};
   fgets(buf.data(), BUF_SIZE - 1, fp);
-  constexpr auto CHARS_PER_FLOAT{32};
-  std::array<std::array<char, CHARS_PER_FLOAT>, 3> normal_buf{{'\0'}};
+  constexpr auto CHARS_PER_NUMBER{32};
+  std::array<std::array<char, CHARS_PER_NUMBER>, 3> normal_buf{{'\0'}};
   int res_normal =
       sscanf(buf.data(), "facet normal %31s %31s %31s", /* NOLINT */
              normal_buf[0].data(), normal_buf[1].data(), normal_buf[2].data());
@@ -198,9 +198,9 @@ static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
   // for not a numbers in the normal definition.
   return (
       res_normal == 3 and
-      sscanf(normal_buf[0].data(), "%f", &facet.normal.x()) == 1 and // NOLINT
-      sscanf(normal_buf[1].data(), "%f", &facet.normal.y()) == 1 and // NOLINT
-      sscanf(normal_buf[2].data(), "%f", &facet.normal.z()) == 1 and // NOLINT
+      sscanf(normal_buf[0].data(), "%lf", &facet.normal.x()) == 1 and // NOLINT
+      sscanf(normal_buf[1].data(), "%lf", &facet.normal.y()) == 1 and // NOLINT
+      sscanf(normal_buf[2].data(), "%lf", &facet.normal.z()) == 1 and // NOLINT
       not(std::isnan(facet.normal.x()) or std::isnan(facet.normal.y()) or
           std::isnan(facet.normal.z()))); // NOLINT
 }
@@ -212,8 +212,8 @@ static auto parseOuterLoop(FILE *fp) -> bool {
 }
 
 static auto parseVertices(FILE *fp, Stl::Facet &facet) {
-  for (auto const vertex : {0, 1, 2}) {
-    auto matchedNumbers = fscanf(fp, " vertex %f %f %f ",      /* NOLINT */
+  for (auto const vertex : {0UL, 1UL, 2UL}) {
+    auto matchedNumbers = fscanf(fp, " vertex %lf %lf %lf ",      /* NOLINT */
                                  &facet.vertices[vertex].x(),  /* NOLINT */
                                  &facet.vertices[vertex].y(),  /* NOLINT */
                                  &facet.vertices[vertex].z()); /* NOLINT */
@@ -226,7 +226,7 @@ static auto parseVertices(FILE *fp, Stl::Facet &facet) {
 
 static auto parseShadowVertex(char *buf) -> bool {
   Vertex throwaway{0.0F, 0.0F, 0.0F};
-  return sscanf(buf, "vertex %f %f %f ", /* NOLINT */
+  return sscanf(buf, "vertex %lf %lf %lf ", /* NOLINT */
                 &throwaway.x(),          /* NOLINT */
                 &throwaway.y(),          /* NOLINT */
                 &throwaway.z()) == 3;    /* NOLINT */
@@ -311,11 +311,36 @@ auto Stl::readAsciiFacets(FILE *fp) -> bool {
 }
 
 auto Stl::readBinaryFacets(FILE *fp) -> bool {
+  using SmallVertex = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
+  using SmallNormal = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
+  struct SmallFacet {
+    SmallNormal normal;
+    std::array<SmallVertex, 3> vertices;
+    std::array<std::byte, 2> extra;
+  };
+  static_assert(sizeof(SmallVertex) == 12, /* NOLINT */
+                "size of Vertex incorrect");
+  static_assert(sizeof(SmallNormal) == 12, /* NOLINT */
+                "size of Normal incorrect");
+  static_assert(offsetof(SmallFacet, normal) == 0, /* NOLINT */
+                "SmallFacet.normal offset is not 0");
+  static_assert(offsetof(SmallFacet, vertices) == 12, /* NOLINT */
+                "SmallFacet.vertex offset is not 12");
+  static_assert(offsetof(SmallFacet, extra) == 48, /* NOLINT */
+                "SmallFacet.extra offset is not 48");
+  static_assert(sizeof(Stl::Facet) >= SIZEOF_STL_FACET,
+                "size of SmallFacet is too small");
+
   fseek(fp, HEADER_SIZE, SEEK_SET);
   for (Facet &facet : m_facets) {
-    if (fread(&facet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
+    SmallFacet smallFacet{};
+    if (fread(&smallFacet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
       return false;
     }
+    facet.normal = smallFacet.normal.cast<double>();
+    facet.vertices[0] = smallFacet.vertices[0].cast<double>();
+    facet.vertices[1] = smallFacet.vertices[1].cast<double>();
+    facet.vertices[2] = smallFacet.vertices[2].cast<double>();
   }
   return true;
 }

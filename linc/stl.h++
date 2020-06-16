@@ -39,18 +39,15 @@ auto constexpr STL_MIN_FILE_SIZE = 284L;
 auto constexpr ASCII_LINES_PER_FACET = 7U;
 auto constexpr SIZEOF_STL_FACET = 50U;
 
-using Vertex = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
-using Normal = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
+using Vertex = Eigen::Matrix<double, 3, 1, Eigen::DontAlign>;
+using Normal = Eigen::Matrix<double, 3, 1, Eigen::DontAlign>;
 using TriangleVertexIndices = Eigen::Matrix<int, 3, 1, Eigen::DontAlign>;
-static_assert(sizeof(Vertex) == 12, "size of Vertex incorrect");
-static_assert(sizeof(Normal) == 12, "size of Normal incorrect");
 
 class Stl {
 public:
   struct Facet {
     Normal normal;
-    Vertex vertices[3];
-    std::byte extra[2];
+    std::array<Vertex, 3> vertices;
 
     friend std::ostream &operator<<(std::ostream &os, Facet const facet) {
       return os << "facet normal \n"
@@ -76,7 +73,7 @@ public:
     int num_neighbors() const { return 3 - this->num_neighbors_missing(); }
   };
 
-  enum class Type { BINARY, ASCII, UNKNOWN };
+  enum class Type { BINARY, ASCII, INMEMORY, UNKNOWN };
 
   friend std::ostream &operator<<(std::ostream &os, Type const type) {
     switch (type) {
@@ -84,10 +81,12 @@ public:
       return os << "BINARY";
     case (Type::ASCII):
       return os << "ASCII";
+    case (Type::INMEMORY):
+      return os << "INMEMORY";
     case (Type::UNKNOWN):
       return os << "UNKNOWN";
     default:
-      return os << "NONE";
+      return os;
     }
   }
 
@@ -95,9 +94,9 @@ public:
     Vertex max = Vertex::Zero();
     Vertex min = Vertex::Zero();
     Vertex size = Vertex::Zero();
-    float bounding_diameter = 0.0F;
-    float shortest_edge = 0.0F;
-    float volume = -1.0F;
+    double bounding_diameter = 0.0F;
+    double shortest_edge = 0.0F;
+    double volume = -1.0F;
   };
 
   Type m_type = Stl::Type::UNKNOWN;
@@ -129,15 +128,6 @@ private:
   bool readAsciiFacets(FILE *fp);
   void computeSomeStats();
 };
-
-static_assert(offsetof(Stl::Facet, normal) == 0,
-              "stl_facet.normal offset is not 0");
-static_assert(offsetof(Stl::Facet, vertices) == 12,
-              "stl_facet.vertex offset is not 12");
-static_assert(offsetof(Stl::Facet, extra) == 48,
-              "stl_facet.extra offset is not 48");
-static_assert(sizeof(Stl::Facet) >= SIZEOF_STL_FACET,
-              "size of stl_facet is too small");
 
 struct indexed_triangle_set {
   indexed_triangle_set() {}
