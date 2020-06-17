@@ -1,6 +1,6 @@
 #include <linc/linc.h++>
 
-auto willCollide(TriangleMesh const &mesh, Pivots const &pivots,
+auto willCollide(Stl const &mesh, Pivots const &pivots,
                  SI::milli_metre_t<double> const &layerHeight) -> bool {
   (void)pivots;
   (void)mesh;

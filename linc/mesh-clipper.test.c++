@@ -1,10 +1,11 @@
 #include <iostream>
 
+#include <SI/length.h>
+
+#include <linc/mesh-clipper.h++>
+#include <linc/stl.h++>
 #include <linc/test-framework.h++>
 
-#include <linc/stl.h++>
-
-#include <SI/length.h>
 using namespace SI::literals;
 
 auto main() -> int {
@@ -12,7 +13,7 @@ auto main() -> int {
   try {
     {
       Stl const stl{getPath("test-models/small-cube.ascii.stl")};
-      Stl const shorter = stl.cut(5.0_mm);
+      Stl const shorter = cut(stl, 5.0_mm);
       // compare(stl.m_facets.size(), 12U);
       // compare(stl.m_type, Stl::Type::ASCII);
       // check(stl.m_stats.size.isApprox(Vertex{10, 10, 10}, maxRelativeError));

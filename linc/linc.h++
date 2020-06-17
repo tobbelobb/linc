@@ -2,7 +2,6 @@
 #include <SI/length.h>
 
 #include <linc/params.h++>
-#include <linc/triangle-mesh.h++>
+#include <linc/stl.h++>
 
-[[nodiscard]] bool willCollide(TriangleMesh const &, Pivots const &,
-                               SI::milli_metre_t<double> const &);
+[[nodiscard]] bool willCollide(Stl const &, Pivots const &, Millimeter const &);

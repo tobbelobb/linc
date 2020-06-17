@@ -2,7 +2,7 @@
 
 // Given a z height, return a copy of the model that is cut
 // at that height
-auto Stl::cut(Millimeter const zCut) const -> Stl {
+auto cut(Stl const &stl, Millimeter const zCut) -> Stl {
   (void)zCut;
   //
   //  size_t facetsToRemove = 0;
@@ -18,6 +18,6 @@ auto Stl::cut(Millimeter const zCut) const -> Stl {
   //    facet.edgeFromBelow(z);
   //  }
   //
-  return Stl{"test-models/small-cube.ascii.stl"};
+  return stl;
   // return Stl{facets, neighbors, stats, true, Type::INMEMORY};
 }

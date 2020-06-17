@@ -10,9 +10,8 @@ void testPrint(SourceLoc const loc) {
   std::cerr << loc.file_name() << '(' << loc.line() << ") ";
 }
 
-static auto
-getPath(std::string const &newFile,
-        std::string const &thisFile = SourceLoc::current().file_name())
+auto getPath(std::string const &newFile,
+             std::string const &thisFile = SourceLoc::current().file_name())
     -> std::string {
   return std::filesystem::path(thisFile).replace_filename(newFile);
 }

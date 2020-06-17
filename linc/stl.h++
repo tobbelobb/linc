@@ -49,6 +49,7 @@ using TriangleVertexIndices = Eigen::Matrix<int, 3, 1, Eigen::DontAlign>;
 
 class Stl {
 public:
+  // Types
   struct Stats {
     Vertex max = Vertex::Zero();
     Vertex min = Vertex::Zero();
@@ -91,21 +92,7 @@ public:
     }
   };
 
-  friend std::ostream &operator<<(std::ostream &os, Type const type) {
-    switch (type) {
-    case (Type::BINARY):
-      return os << "BINARY";
-    case (Type::ASCII):
-      return os << "ASCII";
-    case (Type::INMEMORY):
-      return os << "INMEMORY";
-    case (Type::UNKNOWN):
-      return os << "UNKNOWN";
-    default:
-      return os;
-    }
-  }
-
+  // public members
   Type m_type = Stl::Type::UNKNOWN;
   bool m_initialized = false;
   std::vector<Facet> m_facets;
@@ -122,6 +109,21 @@ public:
       os << facet;
     }
     os << "endsolid linc-model";
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, Type const type) {
+    switch (type) {
+    case (Type::BINARY):
+      return os << "BINARY";
+    case (Type::ASCII):
+      return os << "ASCII";
+    case (Type::INMEMORY):
+      return os << "INMEMORY";
+    case (Type::UNKNOWN):
+      return os << "UNKNOWN";
+    default:
+      return os;
+    }
   }
 
 private:

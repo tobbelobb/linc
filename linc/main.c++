@@ -6,7 +6,7 @@
 
 #include <linc/linc.h++>
 #include <linc/params.h++>
-#include <linc/triangle-mesh.h++>
+#include <linc/stl.h++>
 
 using namespace SI::literals;
 
@@ -25,8 +25,8 @@ auto main(int argc, char *argv[]) -> int {
   auto const layerHeight =
       Millimeter((argc > 3) ? std::stod(gsl::at(args, 3)) : 1.0);
 
-  TriangleMesh mesh{modelFileName};
-  if (not mesh.isGood()) {
+  Stl mesh{modelFileName};
+  if (not mesh.m_initialized) {
     std::cerr << "Failed to load " << modelFileName << '\n';
     return 1;
   }
