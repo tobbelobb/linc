@@ -29,7 +29,7 @@ static inline void lrTrimNonNumber(std::string &s) {
 }
 
 static inline auto toFloat(std::string const &s) -> float {
-  size_t charCount = 0;
+  std::size_t charCount = 0;
   float res = std::stof(s, &charCount);
   if (s.size() != charCount) {
     throw std::invalid_argument("Could not parse all characters");

@@ -42,16 +42,16 @@
 #error "SEEK_SET not defined"
 #endif
 
-template <size_t N>
+template <std::size_t N>
 constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
-    -> size_t {
+    -> std::size_t {
   return N - 1;
 }
 
 auto divide(auto dividend, auto divisor) {
   struct result {
-    size_t quotient;
-    size_t remainder;
+    std::size_t quotient;
+    std::size_t remainder;
   };
   return result{dividend / divisor, dividend % divisor};
 }
@@ -93,18 +93,18 @@ static auto openFile(std::string const &fileName)
   return {fp, stlType};
 }
 
-static auto getFileSize(FILE *fp) -> size_t {
+static auto getFileSize(FILE *fp) -> std::size_t {
   SPDLOG_TRACE("(fp)");
   // Want to get rid of FILE * and just use
   // return std::filesystem::file_size(fileName);
   fseek(fp, 0, SEEK_END);
-  return static_cast<size_t>(ftell(fp));
+  return static_cast<std::size_t>(ftell(fp));
 }
 
-static auto countBinaryFacets(FILE *fp) -> size_t {
+static auto countBinaryFacets(FILE *fp) -> std::size_t {
   SPDLOG_TRACE("(fp)");
 
-  size_t const file_size = getFileSize(fp);
+  std::size_t const file_size = getFileSize(fp);
 
   // Test if the STL file has the right size.
   auto const [quotient, reminder] =
@@ -113,7 +113,7 @@ static auto countBinaryFacets(FILE *fp) -> size_t {
     SPDLOG_ERROR("Wrong file size. Aborting binary stl facet count.");
     return 0;
   }
-  size_t const numberOfFacets = quotient;
+  std::size_t const numberOfFacets = quotient;
 
   // Read the binary header
   std::array<char, LABEL_SIZE + 1> headerBuf{'\0'};
@@ -122,7 +122,7 @@ static auto countBinaryFacets(FILE *fp) -> size_t {
   }
 
   // Read the int following the header.  This should contain # of facets.
-  size_t headerNumFacets = 0;
+  std::size_t headerNumFacets = 0;
   fread(&headerNumFacets, sizeof(uint32_t), 1, fp);
   if (headerNumFacets != numberOfFacets) {
     SPDLOG_WARN("Binary header says file contains {} facets, but file "
@@ -134,7 +134,7 @@ static auto countBinaryFacets(FILE *fp) -> size_t {
   return numberOfFacets;
 }
 
-static auto countAsciiFacets(FILE *fp) -> size_t {
+static auto countAsciiFacets(FILE *fp) -> std::size_t {
   SPDLOG_TRACE("(fp)");
 
   constexpr auto LINEBUF_SIZE{100};
@@ -159,7 +159,7 @@ static auto countAsciiFacets(FILE *fp) -> size_t {
   return numberOfFacets;
 }
 
-static auto countFacets(FILE *fp, Stl::Type const stlType) -> size_t {
+static auto countFacets(FILE *fp, Stl::Type const stlType) -> std::size_t {
   SPDLOG_TRACE("(fp, {})", stlType);
 
   if (stlType == Stl::Type::BINARY) {
@@ -375,10 +375,9 @@ void Stl::computeSomeStats() {
   m_stats.bounding_diameter = m_stats.size.norm();
 }
 
-void Stl::allocate(size_t const numberOfFacets) {
+void Stl::allocate(std::size_t const numberOfFacets) {
   SPDLOG_TRACE("(numberOfFacets={})", numberOfFacets);
   m_facets.assign(numberOfFacets, Facet());
-  m_neighbors.assign(numberOfFacets, Neighbors());
 }
 
 Stl::Stl(std::string const &fileName) {
