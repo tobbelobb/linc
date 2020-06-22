@@ -14,6 +14,8 @@ using Millimeter = SI::milli_metre_t<double>;
 using Vertex = Eigen::Matrix<double, 3, 1, Eigen::DontAlign>;
 using Normal = Eigen::Matrix<double, 3, 1, Eigen::DontAlign>;
 
+constexpr std::size_t INVALID_INDEX{std::numeric_limits<std::size_t>::max()};
+
 struct VertexCompare {
   bool operator()(Vertex const &lhs, Vertex const &rhs) const {
     constexpr auto eps = 1e-4;
@@ -45,8 +47,11 @@ inline auto operator<(Vertex const &lhs, Vertex const &rhs) -> bool {
   return v(lhs, rhs);
 }
 
-inline auto operator<<(std::ostream &os,
-                       std::set<Vertex, VertexCompare> const &vertices)
+inline auto vertexEquals(Vertex const &lhs, Vertex const &rhs) -> bool {
+  return not(lhs < rhs) and not(rhs < lhs);
+}
+
+inline auto operator<<(std::ostream &os, std::vector<Vertex> const &vertices)
     -> std::ostream & {
 
   std::string delim{""};

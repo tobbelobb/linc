@@ -90,56 +90,32 @@ auto main() -> int {
       }
     }
     {
-      Stl const stl{getPath("test-models/broken/standing-triangle.ascii.stl")};
-      Mesh const mesh(stl);
+      Mesh const mesh(Stl{getPath("test-models/tetrahedron.ascii.stl")});
 
       // Vertices
+      compare(mesh.m_vertices.size(), 4U);
+      compare(mesh.m_edges.size(), 6U);
+    }
+    {
+      Mesh const mesh(
+          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")});
+      //
+      // Vertices
       compare(mesh.m_vertices.size(), 3U);
-
-      std::set<Vertex, VertexCompare> const expectedVertices{
-          Vertex{0, -5, 0}, Vertex{0, 5, 0}, Vertex{0, 0, 10}};
+      std::vector<Vertex> expectedVertices{{0, -5, 0}, {0, 5, 0}, {0, 0, 10}};
       compare(mesh.m_vertices, expectedVertices);
 
-      std::set<Triangle, TriangleCompare> expectedTriangles{};
-      std::set<SuperEdge, EdgeCompare> expectedSuperEdges{};
-      expectedSuperEdges.insert(
-          SuperEdge{{expectedVertices.find(Vertex{0, -5, 0}),
-                     expectedVertices.find(Vertex{0, 5, 0})}});
-      expectedSuperEdges.insert(
-          SuperEdge{{expectedVertices.find(Vertex{0, 5, 0}),
-                     expectedVertices.find(Vertex{0, 0, 10})}});
-      expectedSuperEdges.insert(
-          SuperEdge{{expectedVertices.find(Vertex{0, 0, 10}),
-                     expectedVertices.find(Vertex{0, -5, 0})}});
+      // Edges
+      compare(mesh.m_edges.size(), 3U);
+      std::vector<Edge> expectedEdges{{expectedVertices, {0, 1}, {0}},
+                                      {expectedVertices, {1, 2}, {0}},
+                                      {expectedVertices, {2, 0}, {0}}};
+      compare(mesh.m_edges, expectedEdges);
 
-      compare(mesh.m_superEdges.size(), 3U);
-      compare(mesh.m_superEdges, expectedSuperEdges);
-
-      std::set<SuperEdge, EdgeCompare>::iterator it1{expectedSuperEdges.find(
-          SuperEdge{{expectedVertices.find(Vertex{0, -5, 0}),
-                     expectedVertices.find(Vertex{0, 5, 0})}})};
-      std::set<SuperEdge, EdgeCompare>::iterator it2{expectedSuperEdges.find(
-          SuperEdge{{expectedVertices.find(Vertex{0, 5, 0}),
-                     expectedVertices.find(Vertex{0, 0, 10})}})};
-      std::set<SuperEdge, EdgeCompare>::iterator it3{expectedSuperEdges.find(
-          SuperEdge{{expectedVertices.find(Vertex{0, 0, 10}),
-                     expectedVertices.find(Vertex{0, -5, 0})}})};
-      TriangleEdgeIterators trit{it1, it2, it3};
-
-      Triangle triangle{trit};
-      expectedTriangles.insert(triangle);
-
-      compare(mesh.m_triangles.size(), 1U);
+      // Triangles
+      std::vector<Triangle> expectedTriangles{
+          Triangle{expectedEdges, {0, 1, 2}}};
       compare(mesh.m_triangles, expectedTriangles);
-
-      for (const auto &superEdge : mesh.m_superEdges) {
-
-        std::cerr << "Looking into edge: " << superEdge;
-        // std::cerr << "\nIt has user: " << *superEdge.m_users[0];
-
-        // check(std::find(superEdge.m_users.begin(), superEdge.m_users.end(),
-        //                mesh.m_triangles.begin()) != superEdge.m_users.end());
-      }
     }
   } catch (...) {
     return 1;

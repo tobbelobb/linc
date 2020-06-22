@@ -6,43 +6,67 @@ Mesh::Mesh(Stl const &stl) {
   // Save vertices
   for (const auto &facet : stl.m_facets) {
     for (const auto &vertex : facet.vertices) {
-      m_vertices.insert(vertex);
+      if (std::find_if(m_vertices.begin(), m_vertices.end(),
+                       [&vertex](Vertex const &v) {
+                         return vertexEquals(vertex, v);
+                       }) == m_vertices.end()) {
+        m_vertices.push_back(vertex);
+      }
     }
   }
 
   // Save edges' vertices
+  std::vector<std::vector<Edge>> allEdgeSuggestions{};
   for (const auto &facet : stl.m_facets) {
-    m_superEdges.insert({{m_vertices.find(facet.vertices[0]),
-                          m_vertices.find(facet.vertices[1])}});
-    m_superEdges.insert({{m_vertices.find(facet.vertices[1]),
-                          m_vertices.find(facet.vertices[2])}});
-    m_superEdges.insert({{m_vertices.find(facet.vertices[2]),
-                          m_vertices.find(facet.vertices[0])}});
+    std::array<size_t, 3> vertexIndices = {INVALID_INDEX, INVALID_INDEX,
+                                           INVALID_INDEX};
+    for (size_t i{0}; i < m_vertices.size(); ++i) {
+      for (size_t j{0}; j < 3; ++j) {
+        if (vertexEquals(m_vertices[i], facet.vertices[j])) {
+          vertexIndices[j] = i;
+        }
+      }
+    }
+    std::vector<Edge> const edgeSuggestions = {
+        {m_vertices, {vertexIndices[0], vertexIndices[1]}},
+        {m_vertices, {vertexIndices[1], vertexIndices[2]}},
+        {m_vertices, {vertexIndices[2], vertexIndices[0]}}};
+    for (auto const &edge : edgeSuggestions) {
+      if (std::find(m_edges.begin(), m_edges.end(), edge) == m_edges.end()) {
+        m_edges.push_back(edge);
+      }
+    }
+    allEdgeSuggestions.push_back(edgeSuggestions);
   }
 
   // Save triangles' edges
-  for (const auto &facet : stl.m_facets) {
-    std::set<SuperEdge, EdgeCompare>::iterator superEdge1{
-        m_superEdges.find(SuperEdge{{m_vertices.find(facet.vertices[0]),
-                                     m_vertices.find(facet.vertices[1])}})};
-    std::set<SuperEdge, EdgeCompare>::iterator superEdge2{
-        m_superEdges.find(SuperEdge{{m_vertices.find(facet.vertices[1]),
-                                     m_vertices.find(facet.vertices[2])}})};
-    std::set<SuperEdge, EdgeCompare>::iterator superEdge3{
-        m_superEdges.find(SuperEdge{{m_vertices.find(facet.vertices[2]),
-                                     m_vertices.find(facet.vertices[0])}})};
-    m_triangles.insert(
-        {{std::make_unique(*superEdge1), std::make_unique(*superEdge2),
-          std::make_unique(*superEdge3)}});
+  for (size_t i{0}; i < stl.m_facets.size(); ++i) {
+    std::vector<Edge> const edgeSuggestions = allEdgeSuggestions[i];
+    TriangleEdgeIndices edgeIndices{INVALID_INDEX, INVALID_INDEX,
+                                    INVALID_INDEX};
+    for (size_t q{0}; q < 3; ++q) {
+      for (size_t j{0}; j < m_edges.size(); ++j) {
+        if (edgeSuggestions[q] == m_edges[j]) {
+          edgeIndices[q] = j;
+        }
+      }
+    }
+    m_triangles.push_back({m_edges, edgeIndices});
   }
 
-  // Save super edges' triangles
-  auto triangleIterator = m_triangles.begin();
-  while (triangleIterator != m_triangles.end()) {
-    Triangle const &triangle = *triangleIterator;
-    for (auto &edgePtr : triangle.m_edgePtrs) {
-      (*edgePtr).m_users.insert(triangle);
-    }
-    ++triangleIterator;
+  for (size_t i{0}; i < m_triangles.size(); ++i) {
+    m_edges[m_triangles[i].m_edgeIndices[0]].m_users.push_back(i);
+    m_edges[m_triangles[i].m_edgeIndices[1]].m_users.push_back(i);
+    m_edges[m_triangles[i].m_edgeIndices[2]].m_users.push_back(i);
   }
+
+  //  // Save super edges' triangles
+  //  auto triangleIterator = m_triangles.begin();
+  //  while (triangleIterator != m_triangles.end()) {
+  //    Triangle const &triangle = *triangleIterator;
+  //    for (auto &edgePtr : triangle.m_edgePtrs) {
+  //      (*edgePtr).m_users.insert(triangle);
+  //    }
+  //    ++triangleIterator;
+  //  }
 }
