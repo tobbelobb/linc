@@ -2,6 +2,6 @@
 #include <SI/length.h>
 
 #include <linc/params.h++>
-#include <linc/stl.h++>
+#include <linc/mesh.h++>
 
-[[nodiscard]] bool willCollide(Stl const &, Pivots const &, Millimeter const &);
+[[nodiscard]] bool willCollide(Mesh const &, Pivots const &, Millimeter const &);

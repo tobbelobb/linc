@@ -2,8 +2,6 @@
 
 #include <linc/mesh.h++>
 
-using namespace mesh;
-
 Mesh::Mesh(Stl const &stl) {
   // Save vertices
   for (const auto &facet : stl.m_facets) {

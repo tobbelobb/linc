@@ -13,7 +13,7 @@ using namespace SI::literals;
 auto main(int argc, char *argv[]) -> int {
 
   // Parse the arguments...
-  if (not(std::set<int>{{3, 4}}.contains(argc))) {
+  if (not(argc == 3 or argc == 4)) {
     std::cerr << "Usage:\n"
               << *argv << " <3d-model> <params> [layer-height (mm)]\n";
     return 1;
@@ -25,11 +25,12 @@ auto main(int argc, char *argv[]) -> int {
   auto const layerHeight =
       Millimeter((argc > 3) ? std::stod(gsl::at(args, 3)) : 1.0);
 
-  Stl mesh{modelFileName};
-  if (not mesh.m_initialized) {
+  Stl const stl{modelFileName};
+  if (not stl.m_initialized) {
     std::cerr << "Failed to load " << modelFileName << '\n';
     return 1;
   }
+  Mesh const mesh{stl};
 
   if (not validateParamsFile(paramsFileName)) {
     std::cerr << "Validation of " << paramsFileName << " failed\n";

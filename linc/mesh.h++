@@ -7,7 +7,6 @@
 #include <linc/mesh-types.h++>
 #include <linc/stl.h++>
 
-namespace mesh {
 // Describing an edge by indexing into a sequence of vertices.
 // An edge must have exactly two endpoints.
 using EdgeByVertexIterators = std::array<std::set<Vertex>::iterator, 2>;
@@ -95,4 +94,3 @@ public:
 
   Mesh(Stl const &stl);
 };
-} // namespace mesh

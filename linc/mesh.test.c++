@@ -4,8 +4,6 @@
 
 #include <linc/mesh.h++>
 
-using namespace mesh;
-
 auto main() -> int {
   try {
     {
