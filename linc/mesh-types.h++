@@ -49,8 +49,12 @@ inline auto operator<<(std::ostream &os,
                        std::set<Vertex, VertexCompare> const &vertices)
     -> std::ostream & {
 
+  std::string delim{""};
+  os << '{';
   for (auto const &vertex : vertices) {
-    os << vertex.x() << ' ' << vertex.y() << ' ' << vertex.z() << '\n';
+    os << delim << vertex.x() << ' ' << vertex.y() << ' ' << vertex.z();
+    delim = ", ";
   }
+  os << '}';
   return os;
 }
