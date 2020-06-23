@@ -59,14 +59,4 @@ Mesh::Mesh(Stl const &stl) {
     m_edges[m_triangles[i].m_edgeIndices[1]].m_users.push_back(i);
     m_edges[m_triangles[i].m_edgeIndices[2]].m_users.push_back(i);
   }
-
-  //  // Save super edges' triangles
-  //  auto triangleIterator = m_triangles.begin();
-  //  while (triangleIterator != m_triangles.end()) {
-  //    Triangle const &triangle = *triangleIterator;
-  //    for (auto &edgePtr : triangle.m_edgePtrs) {
-  //      (*edgePtr).m_users.insert(triangle);
-  //    }
-  //    ++triangleIterator;
-  //  }
 }

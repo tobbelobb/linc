@@ -95,6 +95,7 @@ auto main() -> int {
       // Vertices
       compare(mesh.m_vertices.size(), 4U);
       compare(mesh.m_edges.size(), 6U);
+      compare(mesh.m_triangles.size(), 4U);
     }
     {
       Mesh const mesh(
@@ -113,8 +114,7 @@ auto main() -> int {
       compare(mesh.m_edges, expectedEdges);
 
       // Triangles
-      std::vector<Triangle> expectedTriangles{
-          Triangle{expectedEdges, {0, 1, 2}}};
+      std::vector<Triangle> expectedTriangles{{expectedEdges, {0, 1, 2}}};
       compare(mesh.m_triangles, expectedTriangles);
     }
   } catch (...) {
