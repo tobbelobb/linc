@@ -3,7 +3,7 @@
 #include <linc/mesh.h++>
 
 Mesh::Mesh(Stl const &stl) {
-  // Save vertices
+  // Build vertices
   for (const auto &facet : stl.m_facets) {
     for (const auto &vertex : facet.vertices) {
       if (std::find_if(m_vertices.begin(), m_vertices.end(),
@@ -15,13 +15,13 @@ Mesh::Mesh(Stl const &stl) {
     }
   }
 
-  // Save edges' vertices
+  // Build edges
   std::vector<std::vector<Edge>> allEdgeSuggestions{};
   for (const auto &facet : stl.m_facets) {
     std::array<size_t, 3> vertexIndices = {INVALID_INDEX, INVALID_INDEX,
                                            INVALID_INDEX};
-    for (size_t i{0}; i < m_vertices.size(); ++i) {
-      for (size_t j{0}; j < 3; ++j) {
+    for (size_t j{0}; j < 3; ++j) {
+      for (size_t i{0}; i < m_vertices.size(); ++i) {
         if (vertexEquals(m_vertices[i], facet.vertices[j])) {
           vertexIndices[j] = i;
         }
@@ -31,15 +31,15 @@ Mesh::Mesh(Stl const &stl) {
         {m_vertices, {vertexIndices[0], vertexIndices[1]}},
         {m_vertices, {vertexIndices[1], vertexIndices[2]}},
         {m_vertices, {vertexIndices[2], vertexIndices[0]}}};
+    allEdgeSuggestions.push_back(edgeSuggestions);
     for (auto const &edge : edgeSuggestions) {
       if (std::find(m_edges.begin(), m_edges.end(), edge) == m_edges.end()) {
         m_edges.push_back(edge);
       }
     }
-    allEdgeSuggestions.push_back(edgeSuggestions);
   }
 
-  // Save triangles' edges
+  // Build triangles
   for (size_t i{0}; i < stl.m_facets.size(); ++i) {
     std::vector<Edge> const edgeSuggestions = allEdgeSuggestions[i];
     TriangleEdgeIndices edgeIndices{INVALID_INDEX, INVALID_INDEX,

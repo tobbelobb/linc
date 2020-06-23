@@ -49,18 +49,17 @@ struct Edge {
 
 struct EdgeCompare {
   bool operator()(Edge const &lhs, Edge const &rhs) const {
-    Vertex const &lhsVertex0 = lhs.vertex0();
-    Vertex const &lhsVertex1 = lhs.vertex1();
-    Vertex const &rhsVertex0 = rhs.vertex0();
-    Vertex const &rhsVertex1 = rhs.vertex1();
+    // Cannot use std::min and std::max here
+    // Because Eigen plays very badly with STL algorithms
+    // Why do we use Eigen again?
     Vertex const &lhsVertexLow =
-        (lhsVertex0 < lhsVertex1) ? lhsVertex0 : lhsVertex1;
+        lhs.vertex0() < lhs.vertex1() ? lhs.vertex0() : lhs.vertex1();
     Vertex const &rhsVertexLow =
-        (rhsVertex0 < rhsVertex1) ? rhsVertex0 : rhsVertex1;
+        rhs.vertex0() < rhs.vertex1() ? rhs.vertex0() : rhs.vertex1();
     Vertex const &lhsVertexHigh =
-        (lhsVertex0 < lhsVertex1) ? lhsVertex1 : lhsVertex0;
+        lhs.vertex1() < lhs.vertex0() ? lhs.vertex0() : lhs.vertex1();
     Vertex const &rhsVertexHigh =
-        (rhsVertex0 < rhsVertex1) ? rhsVertex1 : rhsVertex0;
+        rhs.vertex1() < rhs.vertex0() ? rhs.vertex0() : rhs.vertex1();
 
     if (lhsVertexLow < rhsVertexLow) {
       return true;
@@ -85,6 +84,10 @@ inline auto operator<(Edge const &lhs, Edge const &rhs) -> bool {
 
 inline auto operator==(Edge const &lhs, Edge const &rhs) -> bool {
   return not(lhs < rhs) and not(rhs < lhs) and lhs.m_users == rhs.m_users;
+}
+
+inline auto operator!=(Edge const &lhs, Edge const &rhs) -> bool {
+  return not(lhs == rhs);
 }
 
 inline auto operator<<(std::ostream &os, std::vector<Edge> const &edges)
@@ -124,23 +127,19 @@ struct Triangle {
 
 struct TriangleCompare {
   bool operator()(Triangle const &lhs, Triangle const &rhs) const {
-    if (lhs.edge0() < rhs.edge0()) {
-      return true;
-    }
-    if (rhs.edge0() < lhs.edge0()) {
-      return false;
-    }
-    if (lhs.edge1() < rhs.edge1()) {
-      return true;
-    }
-    if (rhs.edge1() < lhs.edge1()) {
-      return false;
-    }
-    if (lhs.edge2() < rhs.edge2()) {
-      return true;
-    }
-    if (rhs.edge2() < lhs.edge2()) {
-      return false;
+    std::set<Edge> lhsEdges{lhs.edge0(), lhs.edge1(), lhs.edge2()};
+    std::set<Edge> rhsEdges{rhs.edge0(), rhs.edge1(), rhs.edge2()};
+    auto lhsIt = lhsEdges.begin();
+    auto rhsIt = rhsEdges.begin();
+    while (lhsIt != lhsEdges.end() and rhsIt != rhsEdges.end()) {
+      if (*lhsIt < *rhsIt) {
+        return true;
+      }
+      if (*rhsIt < *lhsIt) {
+        return false;
+      }
+      ++lhsIt;
+      ++rhsIt;
     }
     return false;
   }
@@ -155,15 +154,19 @@ inline auto operator==(Triangle const &lhs, Triangle const &rhs) -> bool {
   return not(lhs < rhs) and not(rhs < lhs);
 }
 
+inline auto operator!=(Triangle const &lhs, Triangle const &rhs) -> bool {
+  return not(lhs == rhs);
+}
+
 inline auto operator<<(std::ostream &os, std::vector<Triangle> triangles)
     -> std::ostream & {
   std::string delim{""};
-  os << '{';
+  os << "\n{";
   for (auto const &triangle : triangles) {
     os << delim << triangle;
-    delim = ", ";
+    delim = ",\n ";
   }
-  os << '}';
+  os << "}\n";
   return os;
 }
 
