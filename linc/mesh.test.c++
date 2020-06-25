@@ -120,12 +120,12 @@ auto main() -> int {
                                       {exampleVertices, {1, 2}},
                                       {exampleVertices, {2, 0}}};
       Triangle triangle{exampleEdges, {0, 1, 2}};
-      check(triangle == triangle);
+      Triangle const &itself = triangle;
+      check(triangle == itself);
 
       Triangle triangle2{exampleEdges2, {1, 0, 2}};
       // Equality should not depend on order of edges
       check(triangle == triangle2);
-      check(triangle2 == triangle2);
 
       constexpr double eps{1e-4};
       constexpr double eps2{1e-4 + 1e-16};

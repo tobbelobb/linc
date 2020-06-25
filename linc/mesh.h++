@@ -49,18 +49,10 @@ struct Edge {
 
 struct EdgeCompare {
   bool operator()(Edge const &lhs, Edge const &rhs) const {
-    // Cannot use std::min and std::max here
-    // Because Eigen plays very badly with STL algorithms
-    // Why do we use Eigen again?
-    Vertex const &lhsVertexLow =
-        lhs.vertex0() < lhs.vertex1() ? lhs.vertex0() : lhs.vertex1();
-    Vertex const &rhsVertexLow =
-        rhs.vertex0() < rhs.vertex1() ? rhs.vertex0() : rhs.vertex1();
-    Vertex const &lhsVertexHigh =
-        lhs.vertex1() < lhs.vertex0() ? lhs.vertex0() : lhs.vertex1();
-    Vertex const &rhsVertexHigh =
-        rhs.vertex1() < rhs.vertex0() ? rhs.vertex0() : rhs.vertex1();
-
+    auto const &[lhsVertexLow, lhsVertexHigh] =
+        std::minmax(lhs.vertex0(), lhs.vertex1());
+    auto const &[rhsVertexLow, rhsVertexHigh] =
+        std::minmax(rhs.vertex0(), rhs.vertex1());
     if (lhsVertexLow < rhsVertexLow) {
       return true;
     }
@@ -73,6 +65,7 @@ struct EdgeCompare {
     if (rhsVertexHigh < lhsVertexHigh) {
       return false;
     }
+
     return false;
   }
 };

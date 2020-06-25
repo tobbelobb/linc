@@ -42,12 +42,13 @@ struct VertexCompare {
   }
 };
 
+namespace Eigen {
 inline auto operator<(Vertex const &lhs, Vertex const &rhs) -> bool {
   VertexCompare v{};
   return v(lhs, rhs);
 }
 
-inline auto vertexEquals(Vertex const &lhs, Vertex const &rhs) -> bool {
+inline auto operator==(Vertex const &lhs, Vertex const &rhs) -> bool {
   return not(lhs < rhs) and not(rhs < lhs);
 }
 
@@ -63,3 +64,4 @@ inline auto operator<<(std::ostream &os, std::vector<Vertex> const &vertices)
   os << '}';
   return os;
 }
+} // namespace Eigen
