@@ -1,8 +1,8 @@
-#include <linc/stl.h++>
+#include <linc/mesh.h++>
 
 // Given a z height, return a copy of the model that is cut
 // at that height
-auto cut(Stl const &stl, Millimeter const zCut) -> Stl {
+auto cut(Mesh const &mesh, Millimeter const zCut) -> Mesh {
   (void)zCut;
   //
   //  size_t facetsToRemove = 0;
@@ -18,6 +18,6 @@ auto cut(Stl const &stl, Millimeter const zCut) -> Stl {
   //    facet.edgeFromBelow(z);
   //  }
   //
-  return stl;
+  return mesh;
   // return Stl{facets, neighbors, stats, true, Type::INMEMORY};
 }
