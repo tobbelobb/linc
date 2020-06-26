@@ -32,7 +32,6 @@ public:
     }
 
     Vertex &vertex0() const { return m_vertices[m_vertexIndices[0]]; }
-
     Vertex &vertex1() const { return m_vertices[m_vertexIndices[1]]; }
 
     friend std::ostream &operator<<(std::ostream &os, Edge const &edge) {
@@ -50,16 +49,14 @@ public:
     }
   };
 
-  using TriangleEdgeIndices = std::array<size_t, 3>;
-
   struct Triangle {
     std::vector<Edge> &m_edges;
-    TriangleEdgeIndices m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
-                                      INVALID_INDEX};
-    Normal normal = Normal::Zero();
+    std::array<size_t, 3> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
+                                        INVALID_INDEX};
+    Normal m_normal = Normal::Zero();
 
     Triangle() = delete;
-    Triangle(std::vector<Edge> &edges, TriangleEdgeIndices edgeIndices)
+    Triangle(std::vector<Edge> &edges, std::array<size_t, 3> edgeIndices)
         : m_edges(edges), m_edgeIndices(edgeIndices) {}
 
     Edge &edge0() const { return m_edges[m_edgeIndices[0]]; }

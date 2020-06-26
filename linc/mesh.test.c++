@@ -102,16 +102,16 @@ auto main() -> int {
               Mesh::Edge{exampleVertices2, {0, 1}});
       // Limit of inequality should be between eps and eps2
       constexpr double eps{1e-4};
-      constexpr double eps2{1e-4 + 1e-16};
+      constexpr double eps2{eps + 1e-16};
       std::vector<Vertex> exampleVerticesEps{{eps, eps, eps}, {eps, 1, eps}};
       std::vector<Vertex> exampleVerticesEps2{{eps2, eps2, eps2},
                                               {eps2, 1, eps2}};
-      check(Mesh::Edge{exampleVertices, {0, 1}} ==
-            Mesh::Edge{exampleVerticesEps, {0, 1}});
+      compare(Mesh::Edge{exampleVertices, {0, 1}},
+              Mesh::Edge{exampleVerticesEps, {0, 1}});
       check(Mesh::Edge{exampleVertices, {0, 1}} !=
             Mesh::Edge{exampleVerticesEps2, {0, 1}});
-      check(Mesh::Edge{exampleVerticesEps, {0, 1}} ==
-            Mesh::Edge{exampleVerticesEps2, {0, 1}});
+      compare(Mesh::Edge{exampleVerticesEps, {0, 1}},
+              Mesh::Edge{exampleVerticesEps2, {0, 1}});
     }
     // Test operator==(Mesh::Triangle const&, Mesh::Triangle const&)
     {

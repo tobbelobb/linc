@@ -44,8 +44,8 @@ Mesh::Mesh(Stl const &stl) {
   // Build triangles
   for (auto const &[i, facet] : enumerate(stl.m_facets)) {
     std::vector<Edge> const edgeSuggestions = allEdgeSuggestions[i];
-    TriangleEdgeIndices edgeIndices{INVALID_INDEX, INVALID_INDEX,
-                                    INVALID_INDEX};
+    std::array<size_t, 3> edgeIndices{INVALID_INDEX, INVALID_INDEX,
+                                      INVALID_INDEX};
     for (auto const &[q, edgeSuggestion] : enumerate(allEdgeSuggestions[i])) {
       for (auto const &[j, edge] : enumerate(m_edges)) {
         if (edgeSuggestion == edge) {
