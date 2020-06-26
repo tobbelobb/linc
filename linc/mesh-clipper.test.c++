@@ -4,6 +4,7 @@
 
 #include <linc/mesh-clipper.h++>
 #include <linc/test-framework.h++>
+#include <linc/util.h++>
 
 using namespace SI::literals;
 
@@ -23,31 +24,128 @@ auto main() -> int {
 
       // Only the vertex should affect equality
       MeshClipper::Point const withDistance{Vertex{0, 0, 0}, 1.0};
-      check(point == withDistance);
+      compare(point, withDistance);
       MeshClipper::Point const zeroDistance{Vertex{0, 0, 0}, 0.0};
       compare(point, zeroDistance);
       MeshClipper::Point const zeroDistanceOccurs{Vertex{0, 0, 0}, 0.0, 1};
-      check(point == zeroDistanceOccurs);
+      compare(point, zeroDistanceOccurs);
       MeshClipper::Point const zeroDistanceZeroOccurs{Vertex{0, 0, 0}, 0.0, 0};
       compare(point, zeroDistanceZeroOccurs);
       MeshClipper::Point const zeroDistanceZeroOccursInvisible{Vertex{0, 0, 0},
                                                                0.0, 0, false};
-      check(point == zeroDistanceZeroOccursInvisible);
+      compare(point, zeroDistanceZeroOccursInvisible);
       MeshClipper::Point const zeroDistanceZeroOccursVisible{Vertex{0, 0, 0},
                                                              0.0, 0, true};
       compare(point, zeroDistanceZeroOccursVisible);
     }
     {
-      //std::vector<MeshClipper::Point> examplePoints{
-      //    MeshClipper::Point{{0, 0, 0}}, MeshClipper::Point{{1, 0, 0}}};
-      //MeshClipper::Edge const forwards{examplePoints, {0, 1}};
-      //MeshClipper::Edge const backwards{examplePoints, {1, 0}};
-      //compare(forwards, backwards);
-      //check(not(forwards != backwards));
+      // test operator< and operator== for MeshClipper::Edge
+      std::vector<MeshClipper::Point> examplePoints{
+          MeshClipper::Point{{0, 0, 0}}, MeshClipper::Point{{1, 0, 0}}};
+      MeshClipper::Edge const forwards{examplePoints, {0, 1}};
+      MeshClipper::Edge const backwards{examplePoints, {1, 0}};
+      compare(forwards, backwards);
+      check(not(forwards != backwards));
+
+      // Only vertices should affect equality
+      compare(forwards, MeshClipper::Edge{examplePoints, {0, 1}, {1, 2}, true});
+      compare(forwards,
+              MeshClipper::Edge{examplePoints, {0, 1}, {1, 2}, false});
+
+      // Basing the edge off of another points list should not affect equality
+      std::vector<MeshClipper::Point> examplePoints2{
+          MeshClipper::Point{{1, 0, 0}}, MeshClipper::Point{{0, 0, 0}}};
+      MeshClipper::Edge const forwards2{examplePoints2, {0, 1}};
+      compare(forwards, forwards2);
+
+      // Limit of inequality should be between eps and eps2
+      constexpr double eps{1e-4};
+      constexpr double eps2{eps + 1e-16};
+      std::vector<MeshClipper::Point> examplePointsEps2{
+          MeshClipper::Point{{1 + eps2, 0, 0}}, MeshClipper::Point{{0, 0, 0}}};
+      MeshClipper::Edge biggerEdge{examplePointsEps2, {0, 1}};
+      check(forwards != biggerEdge);
+      check(forwards < biggerEdge);
+    }
+    {
+      // Test operator== for MeshClipper::Triangle
+      std::vector<MeshClipper::Point> examplePoints{
+          {0, 0, 0}, {0, 1, 0}, {1, 0, 0}};
+      std::vector<MeshClipper::Point> examplePoints2{
+          {0, 0, 0}, {0, 1, 0}, {1, 0, 0}};
+      std::vector<MeshClipper::Edge> exampleEdges{{examplePoints, {0, 1}},
+                                                  {examplePoints, {1, 2}},
+                                                  {examplePoints, {2, 0}}};
+      std::vector<MeshClipper::Edge> exampleEdges2{{examplePoints2, {0, 1}},
+                                                   {examplePoints2, {1, 2}},
+                                                   {examplePoints2, {2, 0}}};
+
+      MeshClipper::Triangle triangle{exampleEdges, {0, 1, 2}};
+      MeshClipper::Triangle const &itself = triangle;
+      compare(triangle, itself);
+
+      // Equality should not depend on order of edges
+      MeshClipper::Triangle triangle2{exampleEdges2, {1, 0, 2}};
+      compare(triangle, triangle2);
+
+      constexpr double eps{1e-4};
+      constexpr double eps2{1e-4 + 1e-16};
+      std::vector<MeshClipper::Point> examplePointsEps{
+          {eps, eps, eps}, {eps, 1, eps}, {1, eps, eps}};
+      std::vector<MeshClipper::Point> examplePointsEps2{
+          {eps2, eps2, eps2}, {eps2, 1, eps2}, {1, eps2, eps2}};
+      std::vector<MeshClipper::Edge> exampleEdgesEps{
+          {examplePointsEps, {0, 1}},
+          {examplePointsEps, {1, 2}},
+          {examplePointsEps, {2, 0}}};
+      std::vector<MeshClipper::Edge> exampleEdgesEps2{
+          {examplePointsEps2, {0, 1}},
+          {examplePointsEps2, {1, 2}},
+          {examplePointsEps2, {2, 0}}};
+      MeshClipper::Triangle triangleEps{exampleEdgesEps, {0, 1, 2}};
+      MeshClipper::Triangle triangleEps2{exampleEdgesEps2, {0, 1, 2}};
+      compare(triangle, triangleEps);
+      check(triangle != triangleEps2);
+      compare(triangleEps, triangleEps2);
     }
     {
       MeshClipper const meshClipper{
           Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
+
+      compare(meshClipper.m_points.size(), 8U);
+      std::vector<MeshClipper::Point> expectedPoints{
+          {-5, 5, 10}, {5, -5, 10}, {5, 5, 10}, {-5, -5, 10},
+          {-5, -5, 0}, {5, 5, 0},   {5, -5, 0}, {-5, 5, 0}};
+      compare(meshClipper.m_points, expectedPoints);
+
+      compare(meshClipper.m_edges.size(), 18U);
+      std::vector<MeshClipper::Edge> expectedEdges{
+          {expectedPoints, {0, 1}, {0, 1}},
+          {expectedPoints, {1, 2}, {0, 6}},
+          {expectedPoints, {2, 0}, {0, 8}},
+          {expectedPoints, {0, 3}, {1, 11}},
+          {expectedPoints, {3, 1}, {1, 4}},
+          {expectedPoints, {4, 5}, {2, 3}},
+          {expectedPoints, {5, 6}, {2, 7}},
+          {expectedPoints, {6, 4}, {2, 5}},
+          {expectedPoints, {4, 7}, {3, 10}},
+          {expectedPoints, {7, 5}, {3, 9}},
+          {expectedPoints, {4, 1}, {4, 5}},
+          {expectedPoints, {3, 4}, {4, 11}},
+          {expectedPoints, {6, 1}, {5, 7}},
+          {expectedPoints, {1, 5}, {6, 7}},
+          {expectedPoints, {5, 2}, {6, 8}},
+          {expectedPoints, {5, 0}, {8, 9}},
+          {expectedPoints, {7, 0}, {9, 10}},
+          {expectedPoints, {4, 0}, {10, 11}}};
+      compare(meshClipper.m_edges, expectedEdges);
+      for (auto const &[i, edge] : enumerate(expectedEdges)) {
+        if (not edge.fullEquals(meshClipper.m_edges[i])) {
+          std::cerr << "index: " << i << " expected: " << edge << " got "
+                    << meshClipper.m_edges[i];
+        }
+        check(edge.fullEquals(meshClipper.m_edges[i]));
+      }
     }
   } catch (...) {
     return 1;

@@ -37,8 +37,7 @@ public:
     friend std::ostream &operator<<(std::ostream &os, Edge const &edge) {
       Vertex const &v0 = edge.vertex0();
       Vertex const &v1 = edge.vertex1();
-      os << v0.x() << ' ' << v0.y() << ' ' << v0.z() << "---" << v1.x() << ' '
-         << v1.y() << ' ' << v1.z() << " users: (";
+      os << v0 << "---" << v1 << " users: (";
       std::string delim{""};
       for (auto const &user : edge.m_users) {
         os << delim << user;
@@ -83,6 +82,7 @@ struct EdgeCompare {
         std::minmax(lhs.vertex0(), lhs.vertex1());
     auto const &[rhsVertexLow, rhsVertexHigh] =
         std::minmax(rhs.vertex0(), rhs.vertex1());
+
     if (lhsVertexLow < rhsVertexLow) {
       return true;
     }
@@ -95,7 +95,6 @@ struct EdgeCompare {
     if (rhsVertexHigh < lhsVertexHigh) {
       return false;
     }
-
     return false;
   }
 };
@@ -106,7 +105,7 @@ inline auto operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
 }
 
 inline auto operator==(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
-  return not(lhs < rhs) and not(rhs < lhs) and lhs.m_users == rhs.m_users;
+  return not(lhs < rhs) and not(rhs < lhs);
 }
 
 inline auto operator!=(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {

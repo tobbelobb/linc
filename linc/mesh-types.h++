@@ -52,13 +52,18 @@ inline auto operator==(Vertex const &lhs, Vertex const &rhs) -> bool {
   return not(lhs < rhs) and not(rhs < lhs);
 }
 
+inline auto operator<<(std::ostream &os, Vertex const &vertex)
+    -> std::ostream & {
+  return os << vertex.x() << ' ' << vertex.y() << ' ' << vertex.z();
+}
+
 inline auto operator<<(std::ostream &os, std::vector<Vertex> const &vertices)
     -> std::ostream & {
 
   std::string delim{""};
   os << '{';
   for (auto const &vertex : vertices) {
-    os << delim << vertex.x() << ' ' << vertex.y() << ' ' << vertex.z();
+    os << delim << vertex;
     delim = ", ";
   }
   os << '}';

@@ -89,8 +89,8 @@ auto main() -> int {
         check(not insertionTookPlace);
       }
     }
-    // Test operator==(Mesh::Edge const&, Mesh::Edge const&) implementation
     {
+      // Test operator== for Mesh::Edge
       std::vector<Vertex> exampleVertices{{0, 0, 0}, {0, 1, 0}};
       std::vector<Vertex> exampleVertices2{{0, 0, 0}, {0, 1, 0}};
       // Edges have no direction
@@ -113,8 +113,8 @@ auto main() -> int {
       compare(Mesh::Edge{exampleVerticesEps, {0, 1}},
               Mesh::Edge{exampleVerticesEps2, {0, 1}});
     }
-    // Test operator==(Mesh::Triangle const&, Mesh::Triangle const&)
     {
+      // Test operator== for Mesh::Triangle
       std::vector<Vertex> exampleVertices{{0, 0, 0}, {0, 1, 0}, {1, 0, 0}};
       std::vector<Vertex> exampleVertices2{{0, 0, 0}, {0, 1, 0}, {1, 0, 0}};
       std::vector<Mesh::Edge> exampleEdges{{exampleVertices, {0, 1}},
