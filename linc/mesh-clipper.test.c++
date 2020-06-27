@@ -142,7 +142,7 @@ auto main() -> int {
       for (auto const &[i, edge] : enumerate(expectedEdges)) {
         if (not edge.fullEquals(meshClipper.m_edges[i])) {
           std::cerr << "index: " << i << " expected: " << edge << " got "
-                    << meshClipper.m_edges[i];
+                    << meshClipper.m_edges[i] << '\n';
         }
         check(edge.fullEquals(meshClipper.m_edges[i]));
       }

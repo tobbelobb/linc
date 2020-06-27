@@ -109,19 +109,15 @@ public:
     bool operator!=(Edge const &other) const { return not(*this == other); }
 
     friend std::ostream &operator<<(std::ostream &os, Edge const &edge) {
+      Point const &p0 = edge.point0();
+      Point const &p1 = edge.point1();
+      os << '{' << p0 << "---" << p1 << " users: (";
       std::string delim{""};
-      os << '(';
-      for (auto const &point : edge.m_points) {
-        os << delim << point;
-        delim = ", ";
-      }
-      os << ") ";
-      delim = "";
       for (auto const &user : edge.m_users) {
         os << delim << user;
         delim = ", ";
       }
-      return os << ") " << (edge.m_visible ? " Visible" : " Invisible");
+      return os << ") " << (edge.m_visible ? "Visible" : "Invisible") << '}';
     }
   };
 
