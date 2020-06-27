@@ -103,8 +103,9 @@ auto main() -> int {
           {examplePointsEps2, {1, 2}},
           {examplePointsEps2, {2, 0}}};
       MeshClipper::Triangle triangleEps{exampleEdgesEps, {0, 1, 2}};
-      MeshClipper::Triangle triangleEps2{exampleEdgesEps2, {0, 1, 2}};
       compare(triangle, triangleEps);
+
+      MeshClipper::Triangle triangleEps2{exampleEdgesEps2, {0, 1, 2}};
       check(triangle != triangleEps2);
       compare(triangleEps, triangleEps2);
     }
@@ -112,39 +113,73 @@ auto main() -> int {
       MeshClipper const meshClipper{
           Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
 
+      // Points
       compare(meshClipper.m_points.size(), 8U);
       std::vector<MeshClipper::Point> expectedPoints{
-          {-5, 5, 10}, {5, -5, 10}, {5, 5, 10}, {-5, -5, 10},
-          {-5, -5, 0}, {5, 5, 0},   {5, -5, 0}, {-5, 5, 0}};
+          {{-5, 5, 10}, 0.0_mm, 0, true}, {{5, -5, 10}, 0.0_mm, 0, true},
+          {{5, 5, 10}, 0.0_mm, 0, true},  {{-5, -5, 10}, 0.0_mm, 0, true},
+          {{-5, -5, 0}, 0.0_mm, 0, true}, {{5, 5, 0}, 0.0_mm, 0, true},
+          {{5, -5, 0}, 0.0_mm, 0, true},  {{-5, 5, 0}, 0.0_mm, 0, true}};
       compare(meshClipper.m_points, expectedPoints);
 
+      // Edges
       compare(meshClipper.m_edges.size(), 18U);
       std::vector<MeshClipper::Edge> expectedEdges{
-          {expectedPoints, {0, 1}, {0, 1}},
-          {expectedPoints, {1, 2}, {0, 6}},
-          {expectedPoints, {2, 0}, {0, 8}},
-          {expectedPoints, {0, 3}, {1, 11}},
-          {expectedPoints, {3, 1}, {1, 4}},
-          {expectedPoints, {4, 5}, {2, 3}},
-          {expectedPoints, {5, 6}, {2, 7}},
-          {expectedPoints, {6, 4}, {2, 5}},
-          {expectedPoints, {4, 7}, {3, 10}},
-          {expectedPoints, {7, 5}, {3, 9}},
-          {expectedPoints, {4, 1}, {4, 5}},
-          {expectedPoints, {3, 4}, {4, 11}},
-          {expectedPoints, {6, 1}, {5, 7}},
-          {expectedPoints, {1, 5}, {6, 7}},
-          {expectedPoints, {5, 2}, {6, 8}},
-          {expectedPoints, {5, 0}, {8, 9}},
-          {expectedPoints, {7, 0}, {9, 10}},
-          {expectedPoints, {4, 0}, {10, 11}}};
-      compare(meshClipper.m_edges, expectedEdges);
-      for (auto const &[i, edge] : enumerate(expectedEdges)) {
-        if (not edge.fullEquals(meshClipper.m_edges[i])) {
-          std::cerr << "index: " << i << " expected: " << edge << " got "
-                    << meshClipper.m_edges[i] << '\n';
+          {expectedPoints, {0, 1}, {0, 1}, true},
+          {expectedPoints, {1, 2}, {0, 6}, true},
+          {expectedPoints, {2, 0}, {0, 8}, true},
+          {expectedPoints, {0, 3}, {1, 11}, true},
+          {expectedPoints, {3, 1}, {1, 4}, true},
+          {expectedPoints, {4, 5}, {2, 3}, true},
+          {expectedPoints, {5, 6}, {2, 7}, true},
+          {expectedPoints, {6, 4}, {2, 5}, true},
+          {expectedPoints, {4, 7}, {3, 10}, true},
+          {expectedPoints, {7, 5}, {3, 9}, true},
+          {expectedPoints, {4, 1}, {4, 5}, true},
+          {expectedPoints, {3, 4}, {4, 11}, true},
+          {expectedPoints, {6, 1}, {5, 7}, true},
+          {expectedPoints, {1, 5}, {6, 7}, true},
+          {expectedPoints, {5, 2}, {6, 8}, true},
+          {expectedPoints, {5, 0}, {8, 9}, true},
+          {expectedPoints, {7, 0}, {9, 10}, true},
+          {expectedPoints, {4, 0}, {10, 11}, true}};
+      compare(expectedEdges.size(), meshClipper.m_edges.size());
+      for (auto const &[i, expectedEdge] : enumerate(expectedEdges)) {
+        MeshClipper::Edge const &gotEdge = meshClipper.m_edges[i];
+        bool const fullyEqual = gotEdge.fullEquals(expectedEdge);
+        if (not fullyEqual) {
+          std::cerr << "index: " << i << " expected: " << expectedEdge
+                    << " got " << gotEdge << '\n';
         }
-        check(edge.fullEquals(meshClipper.m_edges[i]));
+        compare(expectedEdge, gotEdge);
+        check(fullyEqual);
+      }
+
+      // Triangles
+      compare(meshClipper.m_triangles.size(), 12U);
+      std::vector<MeshClipper::Triangle> const expectedTriangles{
+          {expectedEdges, {0, 1, 2}, Normal::Zero(), true},
+          {expectedEdges, {0, 3, 4}, Normal::Zero(), true},
+          {expectedEdges, {5, 6, 7}, Normal::Zero(), true},
+          {expectedEdges, {5, 8, 9}, Normal::Zero(), true},
+          {expectedEdges, {4, 10, 11}, Normal::Zero(), true},
+          {expectedEdges, {7, 10, 12}, Normal::Zero(), true},
+          {expectedEdges, {1, 13, 14}, Normal::Zero(), true},
+          {expectedEdges, {6, 12, 13}, Normal::Zero(), true},
+          {expectedEdges, {2, 14, 15}, Normal::Zero(), true},
+          {expectedEdges, {9, 15, 16}, Normal::Zero(), true},
+          {expectedEdges, {8, 16, 17}, Normal::Zero(), true},
+          {expectedEdges, {3, 11, 17}, Normal::Zero(), true}};
+      compare(expectedTriangles.size(), meshClipper.m_triangles.size());
+      for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
+        MeshClipper::Triangle const &gotTriangle = meshClipper.m_triangles[i];
+        bool const fullyEqual = gotTriangle.fullEquals(expectedTriangle);
+        if (not fullyEqual) {
+          std::cerr << "index: " << i << " expected: " << expectedTriangle
+                    << " got " << gotTriangle << '\n';
+        }
+        compare(gotTriangle, expectedTriangle);
+        check(fullyEqual);
       }
     }
   } catch (...) {

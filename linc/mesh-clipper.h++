@@ -178,6 +178,11 @@ public:
       }
       return os << '}';
     }
+
+    bool fullEquals(Triangle const &other) const {
+      return *this == other and m_normal == other.m_normal and
+             m_visible == other.m_visible;
+    }
   };
 
   std::vector<Point> m_points{};
