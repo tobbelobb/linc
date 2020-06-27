@@ -75,7 +75,7 @@ TEST_CASE("GIVEN a value WHEN constructed with literal _mm THEN result is a "
   constexpr auto one_f = 1.0_mm;
   STATIC_REQUIRE(
       std::is_same<decltype(one_f),
-                   const SI::length_t<long double, std::milli>>::value);
+                   const SI::length_t<double, std::milli>>::value);
 }
 
 TEST_CASE("GIVEN a value WHEN constructed with literal _cm  THEN result is a "

@@ -24,11 +24,19 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
   }
 }
 
+void MeshClipper::setDistances(Millimeter const zCut) {
+  for (auto &point : m_points) {
+    point.m_distance = point.z() - zCut.raw_value();
+  }
+}
+
 // Given a z height, return a copy of the model that is cut
 // at that height
 auto cut(Mesh const &mesh, Millimeter const zCut) -> Mesh {
   (void)zCut;
-  //
+  MeshClipper meshClipper{mesh};
+  meshClipper.setDistances(zCut);
+
   //  size_t facetsToRemove = 0;
   //  for (auto const &facet : m_facets) {
   //    std::vector<double

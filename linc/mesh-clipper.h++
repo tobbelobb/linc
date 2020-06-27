@@ -190,6 +190,8 @@ public:
   std::vector<Triangle> m_triangles{};
 
   MeshClipper(Mesh const &mesh);
+
+  void setDistances(Millimeter zCut);
 };
 
 inline auto operator<<(std::ostream &os,
