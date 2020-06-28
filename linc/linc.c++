@@ -9,80 +9,50 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   //   // Create the partial print
   //   partialPrint.clip(h);
   //   // Extract convex hull of the top points
-  //   // This involves removing some points, that are enclosed by the other
+  //   // This involves removing points that are enclosed by other points
   //   points std::vector<Vertex> topPoints = hull(partialPrint.getTopPoints());
-  //   // Build the cones
-  //   std::array<Mesh, pivots.size()> cones{};
+  //   size_t const numTopPoints = topPoints.size();
+  //
+  //   // Could be achieved with std::sort and a function that finds an inner point,
+  //   // And does < on angle from inner point to outer point (use (1,0) as reference 0 angle)
+  //   orderCounterClockWise(topPoints);
+  //
+  //   // Build the cones and check for collision, one by one
   //   for (auto const& [i, anchorPivot] : enumerate(pivots.anchors)) {
-  //     // Add all points to each cone
-  //     cones[i].m_vertices = {anchorPivot};
+  //     // POINTS
+  //     Mesh cone{.m_vertices = {anchorPivot}};
   //     for (auto const& topPoint : topPoints) {
-  //       cones[i].m_vertices.emplace_back(topPoint + pivots.effector[i]);
+  //       cone.m_vertices.emplace_back(topPoint + pivots.effectors[i]);
   //     }
-  //     // Add edges from pivot to all (offset) top points
-  //     // function addStarTopology() somehow?
-  //     for (size_t topPointIdx{1}; topPointIdx < cones[i].m_vertices.size();
-  //     ++topPointIdx) {
-  //       cones[i].m_edges.emplace_back({0, pointIdx});
+  //     size_t const numPoints = cone.m_vertices.size();
+  //
+  //     // EDGES
+  //     // Add star topology down to anchorPivot
+  //     for (size_t pointIdx{1}; pointIdx < numPoints; ++pointIdx) {
+  //       cone.m_edges.emplace_back({0, pointIdx});
   //     }
   //     // Add ring of edges through all top points
-  //     // function makeClosedCurve() somehow?
-  //     for (size_t topPointIdx{1}; topPointIdx < cones[i].m_vertices.size();
-  //     ++topPointIdx) {
-  //       cones[i].m_edges.emplace_back({pointIdx, (pointIdx + 1) %
-  //       cones.[i].m_vertices.size()});
+  //     for (size_t pointIdx{1}; pointIdx < numPoints - 1; ++pointIdx) {
+  //       cone.m_edges.emplace_back({pointIdx, pointIdx + 1});
   //     }
-  //     // Add edges across top layer, assuming convex top
-  //     // function triangulateFlatClosedConvexCurve() somehow
-  //     if (cones[i].m_vertices.size() > 4) {
-  //       for (size_t topPointIdx{3}; topPointIdx < cones[i].m_vertices.size()
-  //       - 1; ++topPointIdx) {
-  //         cones[i].m_edges.emplace_back({1, topPointIdx});
-  //       }
-  //     }
-  //     // Add triangles between pivot and (offset) top points
-  //     // There are cones[i].m_vertices.size() - 1 top points (and thus
-  //     star-topology edges)
+  //     cone.m_edges.emplace_back({numPoints - 1, 0});
+  //
+  //     // TRIANGLES
+  //     // There are numTopPoints top points (and thus star-topology edges)
   //     // Right after star-topology edges comes as many ring edges
-  //     for (size_t starEdgeIdx{0}; starEdgeIdx < cones[i].m_vertices.size() -
-  //     1, ++starEdgeIdx) {
-  //       cones[i].m_triangles.emplace_back({starEdgeIdx, starEdgeIdx + 1,
-  //       starEdgeIdx + (cones[i].m_vertices.size() - 1)});
+  //     for (size_t starEdgeIdx{0}; starEdgeIdx < numTopPoints, ++starEdgeIdx) {
+  //       size_t const ringEdgeIdx = starEdgeIdx + numTopPoints;
+  //       cone.m_triangles.emplace_back({starEdgeIdx, (starEdgeIdx + 1) % numTopPoints, ringEdgeIdx});
   //     }
   //
-  //     // Add first triangle to cap off top
-  //     if (cones[i].m_vertices.size() > 3) {
-  //       cones[i].m_triangles.emplace_back({cones[i].m_vertices.size() - 1,
-  //                                          cones[i].m_vertices.size(),
-  //                                          2*(cones[i].m_vertices.size() -
-  //                                          1)});
-  //     }
-  //
-  //     // Add last triangle to cap off top
-  //     if (cones[i].m_vertices.size() > 4) {
-  //       cones[i].m_triangles.emplace_back({2*(cones[i].m_vertices.size() - 1)
-  //       - 1,
-  //                                          2*(cones[i].m_vertices.size() - 1)
-  //                                          - 2, cones[i].m_edges.size() -
-  //                                          1});
-  //     }
-  //
-  //     // Middle triangles to cap off top
-  //     if (cones[i].m_vertices.size() > 5) {
-  //       for (size_t j{0}; j < cones[i].m_vertices.size() - 5; ++j) {
-  //         size_t const ringEdgeIdx = j + cones[i].m_vertices.size() + 1;
-  //         size_t const capOffIdx = 2*(cones[i].m_vertices.size() - 1) + j;
-  //         cones[i].m_triangles.emplace_back({capOffIdx, ringEdgeIdx,
-  //         capOffIdx+1});
-  //       }
-  //     }
-  //   }
-  //   // Now cones and partialPrint are built
-  //   for (auto const& cone : cones) {
-  //     for (const auto& point : partialPrint.m_points) {
-  //       if (isInside(point, cone)) {
-  //         // return Collision;
-  //         return true;
+  //     // Check for collision
+  //     // An intersection between a print triangle and a cone triangle
+  //     // means the two meshes intersect, and we regard that as a line collision
+  //     for (auto const& partialPrintTriangle : partialPrint.m_triangles) {
+  //       for (auto const& coneTriangle : cone.m_triangles) {
+  //         if (intersect(partialPrintTriangle, coneTriangle)) {
+  //           return true;
+  //         }
   //       }
   //     }
   //   }
