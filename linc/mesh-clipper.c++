@@ -26,7 +26,7 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
 
 void MeshClipper::setDistances(Millimeter const zCut) {
   for (auto &point : m_points) {
-    point.m_distance = point.z() - zCut.raw_value();
+    point.m_distance = point.z() - zCut;
   }
 }
 

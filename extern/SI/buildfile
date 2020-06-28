@@ -1,9 +1,0 @@
-hxx{*}: extension = h
-
-lib{SI}: {hxx ixx txx}{SI-1.7.3/include/**}
-
-# Export options
-lib{SI}:
-{
-  cxx.export.poptions = "-I$src_root/extern/SI/SI-1.7.3/include"
-}

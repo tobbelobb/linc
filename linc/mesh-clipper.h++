@@ -1,11 +1,8 @@
 #pragma once
 #include <vector>
 
-#include <SI/length.h>
-
 #include <linc/mesh.h++>
-
-using namespace SI::literals;
+#include <linc/units.h++>
 
 using EdgePointIndices = std::array<size_t, 2>;
 

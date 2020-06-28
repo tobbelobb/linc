@@ -1,14 +1,12 @@
 #include <iostream>
 #include <set>
 
-#include <SI/length.h>
 #include <gsl/span_ext>
+#include <linc/units.h++>
 
 #include <linc/linc.h++>
 #include <linc/params.h++>
 #include <linc/stl.h++>
-
-using namespace SI::literals;
 
 auto main(int argc, char *argv[]) -> int {
 

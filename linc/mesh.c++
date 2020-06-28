@@ -49,7 +49,7 @@ Mesh::Mesh(Stl const &stl) {
     for (auto const &[q, edgeSuggestion] : enumerate(allEdgeSuggestions[i])) {
       for (auto const &[j, edge] : enumerate(m_edges)) {
         if (edgeSuggestion == edge) {
-          edgeIndices[q] = j;
+          edgeIndices.at(q) = j;
           break;
         }
       }

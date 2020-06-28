@@ -1,0 +1,2 @@
+Refactor to make use of Eigen matrix operations?
+Add a zip function in <linc/util.h++> that makes raw-loops prettier?

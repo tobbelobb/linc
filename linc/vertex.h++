@@ -7,11 +7,10 @@
 #include <vector>
 
 #include <Eigen/Geometry>
-#include <SI/length.h>
 
-using Millimeter = SI::milli_metre_t<double>;
+#include <linc/units.h++>
 
-using Vertex = Eigen::Matrix<double, 3, 1, Eigen::DontAlign>;
+using Vertex = Eigen::Matrix<Millimeter, 3, 1, Eigen::DontAlign>;
 using Normal = Vertex;
 
 struct VertexCompare {

@@ -3,7 +3,6 @@ include ../extern/eigen/
 include ../extern/cppcore/
 include ../extern/spdlog/
 include ../extern/doctest/
-include ../extern/SI/
 
 libs =
 libs += ../extern/eigen/lib{eigen}
@@ -15,7 +14,6 @@ libs += ../extern/cppcore/lib{cppcore}
 libs += ../extern/spdlog/lib{spdlog}
 
 libs += ../extern/doctest/lib{doctest}
-libs += ../extern/SI/lib{SI}
 
 # ./ means "when building this dir, also build following target"
 # executable linc depends on utility library linc, main.cxx.

@@ -1,12 +1,9 @@
 #include <iostream>
 
-#include <SI/length.h>
-
 #include <linc/mesh-clipper.h++>
 #include <linc/test-framework.h++>
+#include <linc/units.h++>
 #include <linc/util.h++>
-
-using namespace SI::literals;
 
 auto main() -> int {
   try {

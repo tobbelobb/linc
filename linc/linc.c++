@@ -3,7 +3,7 @@
 #include <linc/util.h++>
 
 auto willCollide(Mesh const &mesh, Pivots const &pivots,
-                 SI::milli_metre_t<double> const &layerHeight) -> bool {
+                 Millimeter const layerHeight) -> bool {
   // MeshClipper partialPrint{mesh};
   // for (Millimeter h{mesh.maxHeight()}; h > layerHeight; h -= layerHeight) {
   //   // Create the partial print
@@ -13,9 +13,10 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   //   points std::vector<Vertex> topPoints = hull(partialPrint.getTopPoints());
   //   size_t const numTopPoints = topPoints.size();
   //
-  //   // Could be achieved with std::sort and a function that finds an inner point,
-  //   // And does < on angle from inner point to outer point (use (1,0) as reference 0 angle)
-  //   orderCounterClockWise(topPoints);
+  //   // Could be achieved with std::sort and a function that finds an inner
+  //   point,
+  //   // And does < on angle from inner point to outer point (use (1,0) as
+  //   reference 0 angle) orderCounterClockWise(topPoints);
   //
   //   // Build the cones and check for collision, one by one
   //   for (auto const& [i, anchorPivot] : enumerate(pivots.anchors)) {
@@ -40,15 +41,18 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   //     // TRIANGLES
   //     // There are numTopPoints top points (and thus star-topology edges)
   //     // Right after star-topology edges comes as many ring edges
-  //     for (size_t starEdgeIdx{0}; starEdgeIdx < numTopPoints, ++starEdgeIdx) {
+  //     for (size_t starEdgeIdx{0}; starEdgeIdx < numTopPoints, ++starEdgeIdx)
+  //     {
   //       size_t const ringEdgeIdx = starEdgeIdx + numTopPoints;
-  //       cone.m_triangles.emplace_back({starEdgeIdx, (starEdgeIdx + 1) % numTopPoints, ringEdgeIdx});
+  //       cone.m_triangles.emplace_back({starEdgeIdx, (starEdgeIdx + 1) %
+  //       numTopPoints, ringEdgeIdx});
   //     }
   //
   //     // Check for collision
   //     // An intersection between a print triangle and a cone triangle
-  //     // means the two meshes intersect, and we regard that as a line collision
-  //     for (auto const& partialPrintTriangle : partialPrint.m_triangles) {
+  //     // means the two meshes intersect, and we regard that as a line
+  //     collision for (auto const& partialPrintTriangle :
+  //     partialPrint.m_triangles) {
   //       for (auto const& coneTriangle : cone.m_triangles) {
   //         if (intersect(partialPrintTriangle, coneTriangle)) {
   //           return true;
