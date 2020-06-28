@@ -118,5 +118,4 @@ to fully control how this project is built and managed.
 The cppcore Gsl library is MIT licensed, and can be found here: https://github.com/microsoft/GSL
 The Eigen library is MPL2.0 licensed and can be found here: https://gitlab.com/libeigen/eigen
 The Spdlog library is MIT licensed, and can be found here: https://github.com/gabime/spdlog
-The Doctest library is MIT licensed and can be found here: https://github.com/onqtam/doctest
 
