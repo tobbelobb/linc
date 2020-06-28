@@ -32,7 +32,7 @@ void MeshClipper::setDistances(Millimeter const zCut) {
 
 // Given a z height, return a copy of the model that is cut
 // at that height
-auto cut(Mesh const &mesh, Millimeter const zCut) -> Mesh {
+auto clip(Mesh const &mesh, Millimeter const zCut) -> Mesh {
   (void)zCut;
   MeshClipper meshClipper{mesh};
   meshClipper.setDistances(zCut);

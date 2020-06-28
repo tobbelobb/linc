@@ -28,9 +28,9 @@ static inline void lrTrimNonNumber(std::string &s) {
   s.erase(std::find_if(s.rbegin(), s.rend(), isNumber).base(), s.end());
 }
 
-static inline auto toFloat(std::string const &s) -> float {
+static inline auto toDouble(std::string const &s) -> double {
   std::size_t charCount = 0;
-  float res = std::stof(s, &charCount);
+  double res = std::stod(s, &charCount);
   if (s.size() != charCount) {
     throw std::invalid_argument("Could not parse all characters");
   }
@@ -93,10 +93,10 @@ static auto valid(PivotTokens const &tokens) -> bool {
   }
   for (auto const &token : {tokens.x, tokens.y, tokens.z}) {
     try {
-      float const tmp = toFloat(token);
+      double const tmp = toDouble(token);
       (void)tmp;
     } catch (std::exception const &e) {
-      std::cerr << "Could not convert to float: " << token << '\n';
+      std::cerr << "Could not convert to number: " << token << '\n';
       std::cerr << e.what() << '\n';
       return false;
     }
@@ -120,14 +120,14 @@ Pivots::Pivots(std::string const &fileName) {
 void Pivots::save(PivotTokens const &tokens) {
   auto const col = pivotNameToColumn(tokens.name);
   if (tokens.isEffector()) {
-    effector(0, col) = toFloat(tokens.x);
-    effector(1, col) = toFloat(tokens.y);
-    effector(2, col) = toFloat(tokens.z);
+    effector(0, col) = toDouble(tokens.x);
+    effector(1, col) = toDouble(tokens.y);
+    effector(2, col) = toDouble(tokens.z);
   }
   if (tokens.isAnchor()) {
-    anchors(0, col) = toFloat(tokens.x);
-    anchors(1, col) = toFloat(tokens.y);
-    anchors(2, col) = toFloat(tokens.z);
+    anchors(0, col) = toDouble(tokens.x);
+    anchors(1, col) = toDouble(tokens.y);
+    anchors(2, col) = toDouble(tokens.z);
   }
 }
 

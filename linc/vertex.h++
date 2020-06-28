@@ -12,9 +12,7 @@
 using Millimeter = SI::milli_metre_t<double>;
 
 using Vertex = Eigen::Matrix<double, 3, 1, Eigen::DontAlign>;
-using Normal = Eigen::Matrix<double, 3, 1, Eigen::DontAlign>;
-
-constexpr std::size_t INVALID_INDEX{std::numeric_limits<std::size_t>::max()};
+using Normal = Vertex;
 
 struct VertexCompare {
   bool operator()(Vertex const &lhs, Vertex const &rhs) const {

@@ -5,9 +5,10 @@
 #include <set>
 #include <vector>
 
-#include <linc/mesh-types.h++>
 #include <linc/stl.h++>
+#include <linc/vertex.h++>
 
+constexpr std::size_t INVALID_INDEX{std::numeric_limits<std::size_t>::max()};
 // Describing an edge by indexing into a sequence of vertices.
 // An edge must have exactly two endpoints.
 using EdgeVertexIndices = std::array<size_t, 2>;

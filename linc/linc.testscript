@@ -187,7 +187,7 @@ anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -1670.30,   611.63, -31.23
 EOI
 $* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
-Could not convert to float: 130.0 999
+Could not convert to number: 130.0 999
 Could not parse all characters
 Invalid line:
 effector-pivot-A1: 220.0, -140.0, 130.0 999
@@ -212,8 +212,8 @@ anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -,   611.63, -31.23
 EOI
 $* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
-Could not convert to float: -
-stof
+Could not convert to number: -
+stod
 Invalid line:
 anchor-pivot-C2: -,   611.63, -31.23
 Validation of test.params failed

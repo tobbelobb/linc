@@ -29,7 +29,7 @@
 
 #include <gsl/pointers>
 
-#include <linc/mesh-types.h++>
+#include <linc/vertex.h++>
 
 // Size of the ascii table
 auto constexpr ASCII_TABLE_SIZE = 128U;

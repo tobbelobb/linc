@@ -182,6 +182,10 @@ auto main() -> int {
         check(fullyEqual);
       }
     }
+    {
+      // Stl const tetrahedronStl{"test-models/tetrahedron.ascii.stl"};
+      // MeshClipper meshClipper{};
+    }
   } catch (...) {
     return 1;
   }

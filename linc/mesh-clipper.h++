@@ -222,4 +222,4 @@ inline auto operator<<(std::ostream &os,
   return os;
 }
 
-Mesh cut(Mesh const &mesh, Millimeter const zCut);
+Mesh clip(Mesh const &mesh, Millimeter const zCut);

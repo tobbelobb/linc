@@ -2,6 +2,8 @@
 
 #include <Eigen/Dense>
 
+#include <linc/vertex.h++>
+
 /* Each line of params file will be split into
  * tokens by tokenize().
  * PivotTokens can be consumed
@@ -34,8 +36,8 @@ inline std::ostream &operator<<(std::ostream &os, PivotTokens const &tokens) {
 class Pivots {
 public:
   static auto constexpr cols = 6;
-  Eigen::Matrix<float, 3, cols> effector = Eigen::MatrixXf::Zero(3, cols);
-  Eigen::Matrix<float, 3, cols> anchors = Eigen::MatrixXf::Zero(3, cols);
+  Eigen::Matrix<double, 3, cols> effector = Eigen::MatrixXd::Zero(3, cols);
+  Eigen::Matrix<double, 3, cols> anchors = Eigen::MatrixXd::Zero(3, cols);
   enum ColumnIndex {
     A1 = 0,
     A2 = 1,
