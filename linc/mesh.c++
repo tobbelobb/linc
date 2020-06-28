@@ -1,65 +1,91 @@
-#include <set>
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG /* NOLINT */
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
 
 #include <linc/mesh.h++>
 #include <linc/util.h++>
+static auto logger = spdlog::get("file_logger");
 
 Mesh::Mesh(Stl const &stl) {
+  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
+  spdlog::set_level(spdlog::level::trace);
   // Build vertices
+  SPDLOG_LOGGER_DEBUG(logger, "there are {} facets", stl.m_facets.size());
+
+  m_vertices.reserve(stl.m_facets.size() * 3);
   for (const auto &facet : stl.m_facets) {
     for (const auto &vertex : facet.vertices) {
-      if (std::find(m_vertices.begin(), m_vertices.end(), vertex) ==
-          m_vertices.end()) {
-        m_vertices.push_back(vertex);
-      }
+      m_vertices.push_back(vertex);
     }
   }
+  std::sort(m_vertices.begin(), m_vertices.end());
+  auto const endOfUniqueVertices =
+      std::unique(m_vertices.begin(), m_vertices.end());
+  m_vertices.erase(endOfUniqueVertices, m_vertices.end());
 
-  // Build edges
+  SPDLOG_LOGGER_DEBUG(logger, "found {} vertices", m_vertices.size());
+
+  // EDGES
   std::vector<std::vector<Edge>> allEdgeSuggestions{};
+  allEdgeSuggestions.reserve(stl.m_facets.size());
   for (const auto &facet : stl.m_facets) {
     // Find the three vertices that make up this facet
     std::array<size_t, 3> vertexIndices = {INVALID_INDEX, INVALID_INDEX,
                                            INVALID_INDEX};
     for (auto const &[j, facetVertex] : enumerate(facet.vertices)) {
-      for (auto const &[i, vertex] : enumerate(m_vertices)) {
-        if (vertex == facetVertex) {
-          vertexIndices.at(j) = i;
-          break;
-        }
+      auto const distance = std::distance(
+          m_vertices.begin(),
+          std::lower_bound(m_vertices.begin(), m_vertices.end(), facetVertex));
+      if (distance >= 0) {
+        vertexIndices.at(j) = std::size_t(distance);
       }
     }
     std::vector<Edge> const edgeSuggestions = {
         {m_vertices, {vertexIndices.at(0), vertexIndices.at(1)}},
         {m_vertices, {vertexIndices.at(1), vertexIndices.at(2)}},
         {m_vertices, {vertexIndices.at(2), vertexIndices.at(0)}}};
-    allEdgeSuggestions.push_back(edgeSuggestions);
+    allEdgeSuggestions.emplace_back(edgeSuggestions);
     for (auto const &edge : edgeSuggestions) {
-      // If the edge is not found already, store it
-      if (std::find(m_edges.begin(), m_edges.end(), edge) == m_edges.end()) {
-        m_edges.push_back(edge);
-      }
+      m_edges.emplace_back(edge);
     }
   }
+  std::sort(m_edges.begin(), m_edges.end());
+  auto const endOfUniqueEdges = std::unique(m_edges.begin(), m_edges.end());
+  m_edges.erase(endOfUniqueEdges, m_edges.end());
 
-  // Build triangles
+  SPDLOG_LOGGER_DEBUG(logger, "found {} edges", m_edges.size());
+
+  // TRIANGLES
+  m_triangles.reserve(stl.m_facets.size());
   for (auto const &[i, facet] : enumerate(stl.m_facets)) {
-    std::vector<Edge> const edgeSuggestions = allEdgeSuggestions[i];
     std::array<size_t, 3> edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                       INVALID_INDEX};
     for (auto const &[q, edgeSuggestion] : enumerate(allEdgeSuggestions[i])) {
-      for (auto const &[j, edge] : enumerate(m_edges)) {
-        if (edgeSuggestion == edge) {
-          edgeIndices.at(q) = j;
-          break;
-        }
+      auto const distance = std::distance(
+          m_edges.begin(),
+          std::lower_bound(m_edges.begin(), m_edges.end(), edgeSuggestion));
+      if (distance >= 0) {
+        edgeIndices.at(q) = std::size_t(distance);
       }
     }
-    m_triangles.emplace_back(Triangle{m_edges, edgeIndices});
+    if (edgeIndices.at(0) != edgeIndices.at(1) and
+        edgeIndices.at(0) != edgeIndices.at(2) and
+        edgeIndices.at(1) != edgeIndices.at(2)) {
+      m_triangles.emplace_back(Triangle{m_edges, edgeIndices});
+    }
   }
+  std::sort(m_triangles.begin(), m_triangles.end());
+  auto const endOfUniqueTriangles =
+      std::unique(m_triangles.begin(), m_triangles.end());
+  m_triangles.erase(endOfUniqueTriangles, m_triangles.end());
+
+  SPDLOG_LOGGER_DEBUG(logger, "found {} triangles", m_triangles.size());
 
   for (auto const &[i, triangle] : enumerate(m_triangles)) {
     m_edges[triangle.m_edgeIndices[0]].m_users.push_back(i);
     m_edges[triangle.m_edgeIndices[1]].m_users.push_back(i);
     m_edges[triangle.m_edgeIndices[2]].m_users.push_back(i);
   }
+
+  SPDLOG_LOGGER_DEBUG(logger, "finished loading Mesh from Stl");
 }

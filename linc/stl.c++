@@ -56,23 +56,23 @@ auto divide(auto dividend, auto divisor) {
   return result{dividend / divisor, dividend % divisor};
 }
 
-static auto logger = spdlog::basic_logger_mt("logger_name", "linc.log");
+static auto logger = spdlog::basic_logger_mt("file_logger", "linc.log");
 
 static auto openFile(std::string const &fileName)
     -> std::tuple<gsl::owner<FILE *>, Stl::Type> {
-  SPDLOG_TRACE("({})", fileName);
+  SPDLOG_LOGGER_TRACE(logger, "({})", fileName);
   // Open the file in binary mode first.
   gsl::owner<FILE *> fp = fopen(fileName.c_str(), "rb");
   if (fp == nullptr) {
-    SPDLOG_ERROR("Could not open file. Returning.");
+    SPDLOG_LOGGER_ERROR(logger, "Could not open file. Returning.");
     return {nullptr, Stl::Type::UNKNOWN};
   }
   // Check for binary or ASCII file.
   fseek(fp, HEADER_SIZE, SEEK_SET);
   std::array<unsigned char, ASCII_TABLE_SIZE> chtest{'\0'};
   if (fread(chtest.data(), ASCII_TABLE_SIZE, 1, fp) == 0) {
-    SPDLOG_DEBUG("File is shorter than {} bytes. Returning.",
-                 HEADER_SIZE + sizeof(chtest));
+    SPDLOG_LOGGER_DEBUG(logger, "File is shorter than {} bytes. Returning.",
+                        HEADER_SIZE + sizeof(chtest));
     return {nullptr, Stl::Type::UNKNOWN};
   }
   Stl::Type stlType = Stl::Type::ASCII;
@@ -94,7 +94,7 @@ static auto openFile(std::string const &fileName)
 }
 
 static auto getFileSize(FILE *fp) -> std::size_t {
-  SPDLOG_TRACE("(fp)");
+  SPDLOG_LOGGER_TRACE(logger, "(fp)");
   // Want to get rid of FILE * and just use
   // return std::filesystem::file_size(fileName);
   fseek(fp, 0, SEEK_END);
@@ -102,7 +102,7 @@ static auto getFileSize(FILE *fp) -> std::size_t {
 }
 
 static auto countBinaryFacets(FILE *fp) -> std::size_t {
-  SPDLOG_TRACE("(fp)");
+  SPDLOG_LOGGER_TRACE(logger, "(fp)");
 
   std::size_t const file_size = getFileSize(fp);
 
@@ -110,7 +110,8 @@ static auto countBinaryFacets(FILE *fp) -> std::size_t {
   auto const [quotient, reminder] =
       divide(file_size - HEADER_SIZE, SIZEOF_STL_FACET);
   if ((reminder != 0) or (file_size < STL_MIN_FILE_SIZE)) {
-    SPDLOG_ERROR("Wrong file size. Aborting binary stl facet count.");
+    SPDLOG_LOGGER_ERROR(logger,
+                        "Wrong file size. Aborting binary stl facet count.");
     return 0;
   }
   std::size_t const numberOfFacets = quotient;
@@ -125,17 +126,18 @@ static auto countBinaryFacets(FILE *fp) -> std::size_t {
   std::size_t headerNumFacets = 0;
   fread(&headerNumFacets, sizeof(uint32_t), 1, fp);
   if (headerNumFacets != numberOfFacets) {
-    SPDLOG_WARN("Binary header says file contains {} facets, but file "
-                "actually contains {} facets.",
-                headerNumFacets, numberOfFacets);
+    SPDLOG_LOGGER_WARN(logger,
+                       "Binary header says file contains {} facets, but file "
+                       "actually contains {} facets.",
+                       headerNumFacets, numberOfFacets);
   }
 
-  SPDLOG_INFO("Found {} facets", numberOfFacets);
+  SPDLOG_LOGGER_INFO(logger, "Found {} facets", numberOfFacets);
   return numberOfFacets;
 }
 
 static auto countAsciiFacets(FILE *fp) -> std::size_t {
-  SPDLOG_TRACE("(fp)");
+  SPDLOG_LOGGER_TRACE(logger, "(fp)");
 
   constexpr auto LINEBUF_SIZE{100};
   std::array<char, LINEBUF_SIZE> linebuf{'\0'};
@@ -155,12 +157,12 @@ static auto countAsciiFacets(FILE *fp) -> std::size_t {
     ++num_lines;
   }
   auto const numberOfFacets = num_lines / ASCII_LINES_PER_FACET;
-  SPDLOG_INFO("Found {} facets", numberOfFacets);
+  SPDLOG_LOGGER_INFO(logger, "Found {} facets", numberOfFacets);
   return numberOfFacets;
 }
 
 static auto countFacets(FILE *fp, Stl::Type const stlType) -> std::size_t {
-  SPDLOG_TRACE("(fp, {})", stlType);
+  SPDLOG_LOGGER_TRACE(logger, "(fp, {})", stlType);
 
   if (stlType == Stl::Type::BINARY) {
     return countBinaryFacets(fp);
@@ -176,7 +178,7 @@ static inline void skipWhitespace(FILE *fp) {
 }
 
 static void skipSolidEndsolid(FILE *fp) {
-  SPDLOG_TRACE("(fp)", stlType);
+  SPDLOG_LOGGER_TRACE(logger, "(fp)", stlType);
 
   fscanf(fp, " endsolid%*[^\n]\n"); // NOLINT
   fscanf(fp, " solid%*[^\n]\n");    // NOLINT
@@ -184,7 +186,7 @@ static void skipSolidEndsolid(FILE *fp) {
 }
 
 static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
-  SPDLOG_TRACE("(fp, facet)");
+  SPDLOG_LOGGER_TRACE(logger, "(fp, facet)");
 
   constexpr auto BUF_SIZE{2048};
   std::array<char, BUF_SIZE> buf{'\0'};
@@ -206,7 +208,7 @@ static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
 }
 
 static auto parseOuterLoop(FILE *fp) -> bool {
-  SPDLOG_TRACE("(fp)");
+  SPDLOG_LOGGER_TRACE(logger, "(fp)");
 
   return fscanf(fp, " outer loop") != EOF; /* NOLINT */
 }
@@ -248,15 +250,18 @@ static auto parseEndloop(FILE *fp) -> bool {
   if (not endloopFound(buf)) {
     // Try to parse a fourth throwaway vertex
     if (parseShadowVertex(buf.data())) {
-      SPDLOG_WARN(
+      SPDLOG_LOGGER_WARN(
+          logger,
           "Found 4 vertices in single facet. Throwing away fourth vertex.");
       skipWhitespace(fp);
       if (not parseEndloop(fp)) {
-        SPDLOG_ERROR("Could not find endloop. Aborting file parse.");
+        SPDLOG_LOGGER_ERROR(logger,
+                            "Could not find endloop. Aborting file parse.");
         return false;
       }
     } else {
-      SPDLOG_ERROR("File is not a proper ascii stl. Aborting file parse.");
+      SPDLOG_LOGGER_ERROR(
+          logger, "File is not a proper ascii stl. Aborting file parse.");
       return false;
     }
   }
@@ -278,32 +283,33 @@ static auto parseEndFacet(FILE *fp) -> bool {
 static auto readAsciiFacet(FILE *fp, Stl::Facet &facet) -> bool {
   skipSolidEndsolid(fp);
   if (not parseNormal(fp, facet)) {
-    SPDLOG_WARN("Found bogus normal. Will set normal to zero and continue.");
+    SPDLOG_LOGGER_WARN(
+        logger, "Found bogus normal. Will set normal to zero and continue.");
     facet.normal = Normal::Zero();
   }
   if (not parseOuterLoop(fp)) {
-    SPDLOG_ERROR("Unexpected end of file. Aborting file parse.");
+    SPDLOG_LOGGER_ERROR(logger, "Unexpected end of file. Aborting file parse.");
     return false;
   }
   if (not parseVertices(fp, facet)) {
-    SPDLOG_ERROR("Ill formed vertex. Aborting file parse.");
+    SPDLOG_LOGGER_ERROR(logger, "Ill formed vertex. Aborting file parse.");
     return false;
   }
   if (not parseEndloop(fp)) {
-    SPDLOG_ERROR("Did not find endloop. Aborting file parse.");
+    SPDLOG_LOGGER_ERROR(logger, "Did not find endloop. Aborting file parse.");
     return false;
   }
   return parseEndFacet(fp);
 }
 
 auto Stl::readAsciiFacets(FILE *fp) -> bool {
-  SPDLOG_TRACE("(fp)");
+  SPDLOG_LOGGER_TRACE(logger, "(fp)");
   fseek(fp, 0, SEEK_SET);
   skipSolidEndsolid(fp);
   rewind(fp);
   for (Facet &facet : m_facets) {
     if (not readAsciiFacet(fp, facet)) {
-      SPDLOG_ERROR("Could not parse facet. Aborting file parse");
+      SPDLOG_LOGGER_ERROR(logger, "Could not parse facet. Aborting file parse");
       return false;
     }
   }
@@ -347,19 +353,20 @@ auto Stl::readBinaryFacets(FILE *fp) -> bool {
 
 // Reads file into appropriately allocated vector m_facets
 auto Stl::readFacets(FILE *fp) -> bool {
-  SPDLOG_TRACE("(fp)");
+  SPDLOG_LOGGER_TRACE(logger, "(fp)");
   if (m_type == Stl::Type::BINARY) {
     return readBinaryFacets(fp);
   }
   if (m_type == Stl::Type::ASCII) {
     return readAsciiFacets(fp);
   }
-  SPDLOG_WARN("Unknown stl type. Don't know how to read facets.");
+  SPDLOG_LOGGER_WARN(logger,
+                     "Unknown stl type. Don't know how to read facets.");
   return false;
 }
 
 void Stl::computeSomeStats() {
-  SPDLOG_TRACE("()");
+  SPDLOG_LOGGER_TRACE(logger, "()");
   m_stats.min = m_facets[0].vertices[0];
   m_stats.max = m_facets[0].vertices[0];
   Vertex diff = (m_facets[0].vertices[1] - m_facets[0].vertices[0]).cwiseAbs();
@@ -376,15 +383,14 @@ void Stl::computeSomeStats() {
 }
 
 void Stl::allocate(std::size_t const numberOfFacets) {
-  SPDLOG_TRACE("(numberOfFacets={})", numberOfFacets);
+  SPDLOG_LOGGER_TRACE(logger, "(numberOfFacets={})", numberOfFacets);
   m_facets.assign(numberOfFacets, Facet());
 }
 
 Stl::Stl(std::string const &fileName) {
-  spdlog::set_default_logger(logger);
+  SPDLOG_LOGGER_DEBUG(logger, "Stl constructor start: {}", fileName);
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
-  SPDLOG_DEBUG("Stl constructor start: {}", fileName);
 
   auto [fp, type] = openFile(fileName);
   if (fp == nullptr) {
@@ -399,8 +405,8 @@ Stl::Stl(std::string const &fileName) {
   if (m_initialized) {
     computeSomeStats();
   } else {
-    SPDLOG_DEBUG("Stl not initialized. Clearing");
+    SPDLOG_LOGGER_DEBUG(logger, "Stl not initialized. Clearing");
     clear();
   }
-  SPDLOG_DEBUG("Stl constructor done", fileName);
+  SPDLOG_LOGGER_DEBUG(logger, "Stl constructor done", fileName);
 }

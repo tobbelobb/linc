@@ -189,6 +189,7 @@ public:
   MeshClipper(Mesh const &mesh);
 
   void setDistances(Millimeter zCut);
+  double maxHeight() const;
 };
 
 inline auto operator<<(std::ostream &os,

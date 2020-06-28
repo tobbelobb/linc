@@ -15,7 +15,8 @@ using Normal = Vertex;
 
 struct VertexCompare {
   bool operator()(Vertex const &lhs, Vertex const &rhs) const {
-    constexpr auto eps = 1e-4;
+    // We really don't care about sub-millimeter precision in this application
+    constexpr auto eps = 1e-1;
     if (lhs.x() + eps < rhs.x()) {
       return true;
     }

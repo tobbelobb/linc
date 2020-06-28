@@ -2,11 +2,11 @@
 #include <set>
 
 #include <gsl/span_ext>
-#include <linc/units.h++>
 
 #include <linc/linc.h++>
 #include <linc/params.h++>
 #include <linc/stl.h++>
+#include <linc/units.h++>
 
 auto main(int argc, char *argv[]) -> int {
 
@@ -16,6 +16,8 @@ auto main(int argc, char *argv[]) -> int {
               << *argv << " <3d-model> <params> [layer-height (mm)]\n";
     return 1;
   }
+  // Init the logger
+
   gsl::span<char *> const args(argv, static_cast<unsigned int>(argc));
   auto *const modelFileName = gsl::at(args, 1);
   auto *const paramsFileName = gsl::at(args, 2);

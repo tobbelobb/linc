@@ -180,6 +180,22 @@ auto main() -> int {
       }
     }
     {
+      // Test maxHeight
+      MeshClipper const meshClipper(
+          Mesh{Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}});
+      compare(meshClipper.maxHeight(), 10.0);
+    }
+    {
+      MeshClipper const meshClipper(
+          Mesh{Stl{getPath("test-models/benchy-low-poly.binary.stl")}});
+      double const maxHeight = meshClipper.maxHeight();
+      check(maxHeight > 48.0 - 0.01);
+      check(48.0 + 0.01 > maxHeight);
+    }
+    {
+        // MeshClipper const meshClipper{mesh};
+        //(void)meshClipper;
+    } {
       // Stl const tetrahedronStl{"test-models/tetrahedron.ascii.stl"};
       // MeshClipper meshClipper{};
     }

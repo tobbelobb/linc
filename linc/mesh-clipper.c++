@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <linc/mesh-clipper.h++>
 #include <linc/util.h++>
 
@@ -28,6 +30,14 @@ void MeshClipper::setDistances(Millimeter const zCut) {
   for (auto &point : m_points) {
     point.m_distance = point.z() - zCut;
   }
+}
+
+auto MeshClipper::maxHeight() const -> double {
+  return (*std::max_element(m_points.begin(), m_points.end(),
+                            [](Point const &point0, Point const &point1) {
+                              return point0.z() < point1.z();
+                            }))
+      .z();
 }
 
 // Given a z height, return a copy of the model that is cut

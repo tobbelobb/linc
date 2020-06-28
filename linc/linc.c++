@@ -5,7 +5,8 @@
 auto willCollide(Mesh const &mesh, Pivots const &pivots,
                  Millimeter const layerHeight) -> bool {
   // MeshClipper partialPrint{mesh};
-  // for (Millimeter h{mesh.maxHeight()}; h > layerHeight; h -= layerHeight) {
+  // for (Millimeter h{partialPrint.maxHeight()}; h > layerHeight; h -=
+  // layerHeight) {
   //   // Create the partial print
   //   partialPrint.clip(h);
   //   // Extract convex hull of the top points

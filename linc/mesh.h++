@@ -31,6 +31,14 @@ public:
          EdgeUsers const &users)
         : m_vertices(vertices), m_vertexIndices(vertexIndices), m_users(users) {
     }
+    Edge(Edge const &) = default;
+
+    Edge &operator=(Edge const &other) {
+      m_vertices = other.m_vertices;
+      m_vertexIndices = other.m_vertexIndices;
+      m_users = other.m_users;
+      return *this;
+    }
 
     Vertex &vertex0() const { return m_vertices[m_vertexIndices[0]]; }
     Vertex &vertex1() const { return m_vertices[m_vertexIndices[1]]; }
@@ -59,6 +67,15 @@ public:
     Triangle(std::vector<Edge> &edges, std::array<size_t, 3> edgeIndices)
         : m_edges(edges), m_edgeIndices(edgeIndices) {}
 
+    Triangle(Triangle const &) = default;
+
+    Triangle &operator=(Triangle const &other) {
+      m_edges = other.m_edges;
+      m_edgeIndices = other.m_edgeIndices;
+      m_normal = other.m_normal;
+      return *this;
+    }
+
     Edge &edge0() const { return m_edges[m_edgeIndices[0]]; }
     Edge &edge1() const { return m_edges[m_edgeIndices[1]]; }
     Edge &edge2() const { return m_edges[m_edgeIndices[2]]; }
@@ -77,32 +94,25 @@ public:
   Mesh(Stl const &stl);
 };
 
-struct EdgeCompare {
-  bool operator()(Mesh::Edge const &lhs, Mesh::Edge const &rhs) const {
-    auto const &[lhsVertexLow, lhsVertexHigh] =
-        std::minmax(lhs.vertex0(), lhs.vertex1());
-    auto const &[rhsVertexLow, rhsVertexHigh] =
-        std::minmax(rhs.vertex0(), rhs.vertex1());
+inline auto operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
+  auto const &[lhsVertexLow, lhsVertexHigh] =
+      std::minmax(lhs.vertex0(), lhs.vertex1());
+  auto const &[rhsVertexLow, rhsVertexHigh] =
+      std::minmax(rhs.vertex0(), rhs.vertex1());
 
-    if (lhsVertexLow < rhsVertexLow) {
-      return true;
-    }
-    if (rhsVertexLow < lhsVertexLow) {
-      return false;
-    }
-    if (lhsVertexHigh < rhsVertexHigh) {
-      return true;
-    }
-    if (rhsVertexHigh < lhsVertexHigh) {
-      return false;
-    }
+  if (lhsVertexLow < rhsVertexLow) {
+    return true;
+  }
+  if (rhsVertexLow < lhsVertexLow) {
     return false;
   }
-};
-
-inline auto operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
-  EdgeCompare comparator{};
-  return comparator(lhs, rhs);
+  if (lhsVertexHigh < rhsVertexHigh) {
+    return true;
+  }
+  if (rhsVertexHigh < lhsVertexHigh) {
+    return false;
+  }
+  return false;
 }
 
 inline auto operator==(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
@@ -125,35 +135,60 @@ inline auto operator<<(std::ostream &os, std::vector<Mesh::Edge> const &edges)
   return os;
 }
 
-struct TriangleCompare {
-  bool operator()(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs) const {
-    std::set<Mesh::Edge> lhsEdges{lhs.edge0(), lhs.edge1(), lhs.edge2()};
-    std::set<Mesh::Edge> rhsEdges{rhs.edge0(), rhs.edge1(), rhs.edge2()};
-    auto lhsIt = lhsEdges.begin();
-    auto rhsIt = rhsEdges.begin();
-    while (lhsIt != lhsEdges.end() and rhsIt != rhsEdges.end()) {
-      if (*lhsIt < *rhsIt) {
-        return true;
-      }
-      if (*rhsIt < *lhsIt) {
-        return false;
-      }
-      ++lhsIt;
-      ++rhsIt;
-    }
-    return false;
-  }
-};
-
 inline auto operator<(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs)
     -> bool {
-  TriangleCompare t{};
-  return t(lhs, rhs);
+  std::set<Mesh::Edge> lhsEdges{lhs.edge0(), lhs.edge1(), lhs.edge2()};
+  std::set<Mesh::Edge> rhsEdges{rhs.edge0(), rhs.edge1(), rhs.edge2()};
+  auto lhsIt = lhsEdges.begin();
+  auto rhsIt = rhsEdges.begin();
+  while (lhsIt != lhsEdges.end() and rhsIt != rhsEdges.end()) {
+    if (*lhsIt < *rhsIt) {
+      return true;
+    }
+    if (*rhsIt < *lhsIt) {
+      return false;
+    }
+    ++lhsIt;
+    ++rhsIt;
+  }
+  return false;
 }
 
+// If triangles have two edges in common, then they are equal
 inline auto operator==(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs)
     -> bool {
-  return not(lhs < rhs) and not(rhs < lhs);
+  size_t count{0};
+  if (lhs.edge0() == rhs.edge0()) {
+    ++count;
+  } else if (lhs.edge0() == rhs.edge1()) {
+    ++count;
+  } else if (lhs.edge0() == rhs.edge2()) {
+    ++count;
+  }
+  if (lhs.edge1() == rhs.edge0()) {
+    ++count;
+  } else if (lhs.edge1() == rhs.edge1()) {
+    ++count;
+  } else if (lhs.edge1() == rhs.edge2()) {
+    ++count;
+  }
+  if (count == 0) {
+    return false;
+  }
+  if (count == 2) {
+    return true;
+  }
+  if (lhs.edge2() == rhs.edge0()) {
+    ++count;
+  } else if (lhs.edge2() == rhs.edge1()) {
+    ++count;
+  } else if (lhs.edge2() == rhs.edge2()) {
+    ++count;
+  }
+  if (count == 2) {
+    return true;
+  }
+  return false;
 }
 
 inline auto operator!=(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs)
