@@ -20,7 +20,7 @@ void compare(auto const &value1, auto const &value2,
              SourceLoc const loc = SourceLoc::current()) {
   if (not(value1 == value2)) {
     testPrint(loc);
-    std::cerr << value1 << " is not equal to " << value2 << '\n';
+    std::cerr << value1 << " is not == to " << value2 << '\n';
     throw "Not equal";
   }
 }

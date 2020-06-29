@@ -116,7 +116,20 @@ inline auto operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
 }
 
 inline auto operator==(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
-  return not(lhs < rhs) and not(rhs < lhs);
+  auto const &[lhsVertexLow, lhsVertexHigh] =
+      std::minmax(lhs.vertex0(), lhs.vertex1());
+  auto const &[rhsVertexLow, rhsVertexHigh] =
+      std::minmax(rhs.vertex0(), rhs.vertex1());
+
+  Vertex const diffLow = lhsVertexLow - rhsVertexLow;
+  if (diffLow.lpNorm<Eigen::Infinity>() > VertexConstants::eps) {
+    return false;
+  }
+  Vertex const diffHigh = lhsVertexHigh - rhsVertexHigh;
+  if (diffHigh.lpNorm<Eigen::Infinity>() > VertexConstants::eps) {
+    return false;
+  }
+  return true;
 }
 
 inline auto operator!=(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
@@ -126,12 +139,12 @@ inline auto operator!=(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
 inline auto operator<<(std::ostream &os, std::vector<Mesh::Edge> const &edges)
     -> std::ostream & {
   std::string delim{""};
-  os << '{';
+  os << "\n{";
   for (auto const &edge : edges) {
     os << delim << edge;
-    delim = ", ";
+    delim = ",\n ";
   }
-  os << '}';
+  os << "}\n";
   return os;
 }
 
@@ -154,39 +167,43 @@ inline auto operator<(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs)
   return false;
 }
 
-// If triangles have two edges in common, then they are equal
+// Edges might not be sorted...
+// We can determine equality with 6 comparisons
+// instead of the 3 we would need if we had a sorted
+// sequence of edges
+// We use only 3 comparisons if the edges are sorted though.
 inline auto operator==(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs)
     -> bool {
-  size_t count{0};
   if (lhs.edge0() == rhs.edge0()) {
-    ++count;
+    if (lhs.edge1() == rhs.edge1()) {
+      if (lhs.edge2() == rhs.edge2()) {
+        return true;
+      }
+    } else if (lhs.edge1() == rhs.edge2()) {
+      if (lhs.edge2() == rhs.edge1()) {
+        return true;
+      }
+    }
   } else if (lhs.edge0() == rhs.edge1()) {
-    ++count;
+    if (lhs.edge1() == rhs.edge0()) {
+      if (lhs.edge2() == rhs.edge2()) {
+        return true;
+      }
+    } else if (lhs.edge1() == rhs.edge2()) {
+      if (lhs.edge2() == rhs.edge0()) {
+        return true;
+      }
+    }
   } else if (lhs.edge0() == rhs.edge2()) {
-    ++count;
-  }
-  if (lhs.edge1() == rhs.edge0()) {
-    ++count;
-  } else if (lhs.edge1() == rhs.edge1()) {
-    ++count;
-  } else if (lhs.edge1() == rhs.edge2()) {
-    ++count;
-  }
-  if (count == 0) {
-    return false;
-  }
-  if (count == 2) {
-    return true;
-  }
-  if (lhs.edge2() == rhs.edge0()) {
-    ++count;
-  } else if (lhs.edge2() == rhs.edge1()) {
-    ++count;
-  } else if (lhs.edge2() == rhs.edge2()) {
-    ++count;
-  }
-  if (count == 2) {
-    return true;
+    if (lhs.edge1() == rhs.edge0()) {
+      if (lhs.edge2() == rhs.edge1()) {
+        return true;
+      }
+    } else if (lhs.edge1() == rhs.edge1()) {
+      if (lhs.edge2() == rhs.edge0()) {
+        return true;
+      }
+    }
   }
   return false;
 }

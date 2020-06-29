@@ -13,37 +13,33 @@
 using Vertex = Eigen::Matrix<Millimeter, 3, 1, Eigen::DontAlign>;
 using Normal = Vertex;
 
-struct VertexCompare {
-  bool operator()(Vertex const &lhs, Vertex const &rhs) const {
-    // We really don't care about sub-millimeter precision in this application
-    constexpr auto eps = 1e-1;
-    if (lhs.x() + eps < rhs.x()) {
-      return true;
-    }
-    if (rhs.x() + eps < lhs.x()) {
-      return false;
-    }
-    if (lhs.y() + eps < rhs.y()) {
-      return true;
-    }
-    if (rhs.y() + eps < lhs.y()) {
-      return false;
-    }
-    if (lhs.z() + eps < rhs.z()) {
-      return true;
-    }
-    if (rhs.z() + eps < lhs.z()) {
-      return false;
-    }
-    // Vertices lhs and rhs are equal within eps precision
-    return false;
-  }
-};
+namespace VertexConstants {
+constexpr auto eps = 1e-4;
+}
 
 namespace Eigen {
 inline auto operator<(Vertex const &lhs, Vertex const &rhs) -> bool {
-  VertexCompare v{};
-  return v(lhs, rhs);
+  // We really don't care about sub-millimeter precision in this application
+  if (lhs.x() + VertexConstants::eps < rhs.x()) {
+    return true;
+  }
+  if (rhs.x() + VertexConstants::eps < lhs.x()) {
+    return false;
+  }
+  if (lhs.y() + VertexConstants::eps < rhs.y()) {
+    return true;
+  }
+  if (rhs.y() + VertexConstants::eps < lhs.y()) {
+    return false;
+  }
+  if (lhs.z() + VertexConstants::eps < rhs.z()) {
+    return true;
+  }
+  if (rhs.z() + VertexConstants::eps < lhs.z()) {
+    return false;
+  }
+  // Vertices lhs and rhs are equal within eps precision
+  return false;
 }
 
 inline auto operator==(Vertex const &lhs, Vertex const &rhs) -> bool {

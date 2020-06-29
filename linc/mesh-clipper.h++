@@ -108,7 +108,8 @@ public:
     friend std::ostream &operator<<(std::ostream &os, Edge const &edge) {
       Point const &p0 = edge.point0();
       Point const &p1 = edge.point1();
-      os << '{' << p0 << "---" << p1 << " users: (";
+      os << '{' << p0 << " (" << edge.m_pointIndices[0] << ")--- " << p1 << " ("
+         << edge.m_pointIndices[1] << ") users: (";
       std::string delim{""};
       for (auto const &user : edge.m_users) {
         os << delim << user;
@@ -168,10 +169,10 @@ public:
 
     friend std::ostream &operator<<(std::ostream &os,
                                     Triangle const &triangle) {
-      os << '{' << triangle.edge0() << ", " << triangle.edge1() << ", "
+      os << '{' << triangle.edge0() << ",\n " << triangle.edge1() << ",\n "
          << triangle.edge2();
       if (triangle.m_edgeIndices[3] != INVALID_INDEX) {
-        os << ", " << triangle.edge3();
+        os << ",\n " << triangle.edge3();
       }
       return os << '}';
     }

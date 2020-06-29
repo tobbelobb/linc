@@ -23,47 +23,66 @@ Mesh::Mesh(Stl const &stl) {
       std::unique(m_vertices.begin(), m_vertices.end());
   m_vertices.erase(endOfUniqueVertices, m_vertices.end());
 
-  SPDLOG_LOGGER_DEBUG(logger, "found {} vertices", m_vertices.size());
+  SPDLOG_LOGGER_DEBUG(logger, "found {} unique vertices", m_vertices.size());
 
   // EDGES
-  std::vector<std::vector<Edge>> allEdgeSuggestions{};
-  allEdgeSuggestions.reserve(stl.m_facets.size());
+  std::vector<std::array<Edge, 3>> consideredEdgeTriplets{};
+  consideredEdgeTriplets.reserve(stl.m_facets.size());
+  m_edges.reserve(stl.m_facets.size() * 3);
   for (const auto &facet : stl.m_facets) {
-    // Find the three vertices that make up this facet
-    std::array<size_t, 3> vertexIndices = {INVALID_INDEX, INVALID_INDEX,
-                                           INVALID_INDEX};
+    // Populate the vertex index triplet that matches the facet's vertices
+    std::array<size_t, 3> vertexIndexTriplet = {INVALID_INDEX, INVALID_INDEX,
+                                                INVALID_INDEX};
     for (auto const &[j, facetVertex] : enumerate(facet.vertices)) {
       auto const distance = std::distance(
           m_vertices.begin(),
           std::lower_bound(m_vertices.begin(), m_vertices.end(), facetVertex));
-      if (distance >= 0) {
-        vertexIndices.at(j) = std::size_t(distance);
-      }
+      vertexIndexTriplet.at(j) = std::size_t(distance);
     }
-    std::vector<Edge> const edgeSuggestions = {
-        {m_vertices, {vertexIndices.at(0), vertexIndices.at(1)}},
-        {m_vertices, {vertexIndices.at(1), vertexIndices.at(2)}},
-        {m_vertices, {vertexIndices.at(2), vertexIndices.at(0)}}};
-    allEdgeSuggestions.emplace_back(edgeSuggestions);
-    for (auto const &edge : edgeSuggestions) {
-      m_edges.emplace_back(edge);
+
+    // Never mind edges from  this facet if two vertices are the same
+    if (vertexIndexTriplet.at(0) != vertexIndexTriplet.at(1) and
+        vertexIndexTriplet.at(0) != vertexIndexTriplet.at(2) and
+        vertexIndexTriplet.at(1) != vertexIndexTriplet.at(2)) {
+      std::array<Edge, 3> edgeTriplet = {
+          Edge{m_vertices,
+               {vertexIndexTriplet.at(0), vertexIndexTriplet.at(1)}},
+          Edge{m_vertices,
+               {vertexIndexTriplet.at(1), vertexIndexTriplet.at(2)}},
+          Edge{m_vertices,
+               {vertexIndexTriplet.at(2), vertexIndexTriplet.at(0)}}};
+      std::sort(edgeTriplet.begin(), edgeTriplet.end());
+
+      consideredEdgeTriplets.emplace_back(edgeTriplet);
+      for (auto const &edgeSuggestion : edgeTriplet) {
+        m_edges.emplace_back(edgeSuggestion);
+      }
     }
   }
   std::sort(m_edges.begin(), m_edges.end());
   auto const endOfUniqueEdges = std::unique(m_edges.begin(), m_edges.end());
   m_edges.erase(endOfUniqueEdges, m_edges.end());
 
-  SPDLOG_LOGGER_DEBUG(logger, "found {} edges", m_edges.size());
+  std::sort(consideredEdgeTriplets.begin(), consideredEdgeTriplets.end());
+  auto const endOfUniqueEdgeTriplets =
+      std::unique(consideredEdgeTriplets.begin(), consideredEdgeTriplets.end());
+  consideredEdgeTriplets.erase(endOfUniqueEdgeTriplets,
+                               consideredEdgeTriplets.end());
+
+  SPDLOG_LOGGER_DEBUG(logger, "found {} unique edges", m_edges.size());
+  SPDLOG_LOGGER_DEBUG(logger, "found {} unique edge triplets",
+                      consideredEdgeTriplets.size());
 
   // TRIANGLES
-  m_triangles.reserve(stl.m_facets.size());
-  for (auto const &[i, facet] : enumerate(stl.m_facets)) {
+  m_triangles.reserve(consideredEdgeTriplets.size());
+  for (auto const &[i, edgeTriplet] : enumerate(consideredEdgeTriplets)) {
     std::array<size_t, 3> edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                       INVALID_INDEX};
-    for (auto const &[q, edgeSuggestion] : enumerate(allEdgeSuggestions[i])) {
+    for (auto const &[q, edgeSuggestion] : enumerate(edgeTriplet)) {
       auto const distance = std::distance(
           m_edges.begin(),
           std::lower_bound(m_edges.begin(), m_edges.end(), edgeSuggestion));
+      (void)distance;
       if (distance >= 0) {
         edgeIndices.at(q) = std::size_t(distance);
       }
@@ -74,10 +93,6 @@ Mesh::Mesh(Stl const &stl) {
       m_triangles.emplace_back(Triangle{m_edges, edgeIndices});
     }
   }
-  std::sort(m_triangles.begin(), m_triangles.end());
-  auto const endOfUniqueTriangles =
-      std::unique(m_triangles.begin(), m_triangles.end());
-  m_triangles.erase(endOfUniqueTriangles, m_triangles.end());
 
   SPDLOG_LOGGER_DEBUG(logger, "found {} triangles", m_triangles.size());
 
