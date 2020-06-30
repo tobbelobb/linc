@@ -50,6 +50,9 @@ void MeshClipper::setPointsVisibility() {
 }
 
 auto MeshClipper::maxHeight() const -> double {
+  if (m_points.empty()) {
+    return 0.0;
+  }
   return (*std::max_element(m_points.begin(), m_points.end(),
                             [](Point const &point0, Point const &point1) {
                               return point0.z() < point1.z();
@@ -57,12 +60,33 @@ auto MeshClipper::maxHeight() const -> double {
       .z();
 }
 
-void MeshClipper::clip(Millimeter const zCut) {
+auto MeshClipper::minHeight() const -> double {
+  if (m_points.empty()) {
+    return 0.0;
+  }
+  return (*std::min_element(m_points.begin(), m_points.end(),
+                            [](Point const &point0, Point const &point1) {
+                              return point0.z() < point1.z();
+                            }))
+      .z();
+}
+
+// Return how much was clipped
+auto MeshClipper::clip(Millimeter const zCut) -> double {
   setDistances(zCut);
   setPointsVisibility();
+  double const oldMaxHeight = maxHeight();
   if (std::all_of(m_points.begin(), m_points.end(),
                   [](auto const &point) { return point.m_visible; })) {
     SPDLOG_LOGGER_WARN(logger, "Tried to cut away 0 points. Returning early.");
-    return;
+    return 0.0;
   }
+  if (std::all_of(m_points.begin(), m_points.end(),
+                  [](auto const &point) { return not point.m_visible; })) {
+    SPDLOG_LOGGER_WARN(logger,
+                       "Cuts away all points. Clearing and returning early.");
+    clear();
+    return oldMaxHeight;
+  }
+  return oldMaxHeight - zCut;
 }

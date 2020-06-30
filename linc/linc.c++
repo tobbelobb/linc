@@ -7,10 +7,19 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   (void)pivots;
 
   MeshClipper partialPrint{mesh};
-  for (Millimeter h{partialPrint.maxHeight()}; h > layerHeight;
-       h -= layerHeight) {
-    // Create the partial print
 
+  double const minHeight = partialPrint.minHeight();
+
+  assert(minHeight > -VertexConstants::eps);  // NOLINT
+  assert(minHeight < VertexConstants::eps);   // NOLINT
+  assert(layerHeight > VertexConstants::eps); // NOLINT
+
+  double const topHeight = partialPrint.maxHeight();
+
+  // clang-format might complain that h-=layerHeight will accumulate an error.
+  // We don't care here, since an extra iteration doesn't matter for us
+  for (Millimeter h{topHeight}; h > 2 * layerHeight; /* NOLINT */
+       h -= layerHeight) {                           /* NOLINT */
     partialPrint.clip(h);
 
     //   // Extract convex hull of the top points

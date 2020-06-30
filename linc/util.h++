@@ -1,6 +1,7 @@
 #pragma once
 
 #include <tuple>
+#include <vector>
 
 // use for(auto const& [index, thing] : enumerate(things))
 // if you ever need the index of the thing

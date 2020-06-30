@@ -263,6 +263,33 @@ auto main() -> int {
       check(maxHeight > 48.0 - eps);
       check(48.0 + eps > maxHeight);
     }
+    {
+      MeshClipper meshClipper{
+          Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
+      compare(meshClipper.m_points.size(), 8U);
+      compare(meshClipper.m_edges.size(), 18U);
+      compare(meshClipper.m_triangles.size(), 12U);
+      double constexpr eps = 1e-6;
+      double const maxHeight = meshClipper.maxHeight();
+      check(maxHeight > 10.0 - eps);
+      check(10.0 + eps > maxHeight);
+
+      compare(meshClipper.clip(10.0), 0.0);
+
+      double const clipped = meshClipper.clip(-eps);
+      check(clipped < 10.0 + eps);
+      check(clipped > 10.0 - eps);
+      double heightLeft = meshClipper.maxHeight();
+      check(heightLeft < 0.0 + eps);
+      check(heightLeft > 0.0 - eps);
+
+      // double const clipped = meshClipper.clip(5.0);
+      // check(clipped < 5.0 + eps);
+      // check(clipped > 5.0 - eps);
+      // double heightLeft = meshClipper.maxHeight();
+      // check(heightLeft < 5.0 + eps);
+      // check(heightLeft > 5.0 - eps);
+    }
   } catch (...) {
     return 1;
   }

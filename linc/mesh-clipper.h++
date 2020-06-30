@@ -187,12 +187,19 @@ public:
   std::vector<Edge> m_edges{};
   std::vector<Triangle> m_triangles{};
 
+  void clear() {
+    m_points.clear();
+    m_edges.clear();
+    m_triangles.clear();
+  }
+
   MeshClipper(Mesh const &mesh);
 
   double maxHeight() const;
+  double minHeight() const;
   void setDistances(Millimeter zCut);
   void setPointsVisibility();
-  void clip(Millimeter zCut);
+  double clip(Millimeter zCut);
 };
 
 inline auto operator<<(std::ostream &os,

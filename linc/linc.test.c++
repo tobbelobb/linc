@@ -1,7 +1,17 @@
+#include <iostream>
 
+#include <linc/linc.h++>
+#include <linc/test-framework.h++>
+#include <linc/units.h++>
 
 auto main() -> int {
-  if (not((1 + 1) == 2)) {
+  try {
+    {
+      Mesh const mesh{Stl{getPath("test-models/tetrahedron.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 1.0_mm));
+    }
+  } catch (...) {
     return 1;
   }
 

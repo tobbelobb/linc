@@ -24,6 +24,7 @@ auto main(int argc, char *argv[]) -> int {
 
   auto const layerHeight =
       Millimeter((argc > 3) ? std::stod(gsl::at(args, 3)) : 1.0);
+  // Check that layerHeight is a positive number larger than some eps
 
   Stl const stl{modelFileName};
   if (not stl.m_initialized) {
@@ -31,6 +32,7 @@ auto main(int argc, char *argv[]) -> int {
     return 1;
   }
   Mesh const mesh{stl};
+  // Check that mesh goes from z=0 and upwards
 
   if (not validateParamsFile(paramsFileName)) {
     std::cerr << "Validation of " << paramsFileName << " failed\n";
