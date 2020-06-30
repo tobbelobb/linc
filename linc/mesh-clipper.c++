@@ -45,11 +45,7 @@ void MeshClipper::setDistances(Millimeter const zCut) {
 
 void MeshClipper::setPointsVisibility() {
   for (auto &point : m_points) {
-    if (point.m_distance > 0.0) {
-      point.m_visible = false;
-    } else {
-      point.m_visible = true;
-    }
+    point.m_visible = (point.m_distance <= 0.0);
   }
 }
 
