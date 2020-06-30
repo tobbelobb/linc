@@ -10,7 +10,7 @@ libs += ../extern/cppcore/lib{cppcore}
 # There is a non-slow version
 # If the static lib inside external/spdlib directory
 # is not built yet, build it separately, or swap
-# lib{spdlog} with lib{spdlog_slow} in the following line
+# lib{spdlog} with lib{spdlog} in the following line
 libs += ../extern/spdlog/lib{spdlog}
 
 # ./ means "when building this dir, also build following target"

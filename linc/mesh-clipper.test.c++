@@ -197,7 +197,7 @@ auto main() -> int {
       // Test maxHeight
       MeshClipper const meshClipper(
           Mesh{Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}});
-      compare(meshClipper.maxHeight(), 10.0);
+      compare(meshClipper.maxHeight(), 10.0_mm);
     }
     {
       MeshClipper const meshClipper(
@@ -207,7 +207,50 @@ auto main() -> int {
       check(48.0 + 0.01 > maxHeight);
     }
     {
-      // Confirm that we can load a large complicated mesh.
+      // Test setDistances and setPointsVisibility
+      MeshClipper meshClipper{
+          Mesh{Stl{getPath("test-models/tetrahedron.ascii.stl")}}};
+
+      compare(meshClipper.m_points.at(0).z(), 0.0_mm);
+      compare(meshClipper.m_points.at(1).z(), 1.0_mm);
+      compare(meshClipper.m_points.at(2).z(), 0.0_mm);
+      compare(meshClipper.m_points.at(3).z(), 0.0_mm);
+
+      meshClipper.setDistances(0.5_mm);
+      compare(meshClipper.m_points.at(0).m_distance, -0.5_mm);
+      compare(meshClipper.m_points.at(1).m_distance, 0.5_mm);
+      compare(meshClipper.m_points.at(2).m_distance, -0.5_mm);
+      compare(meshClipper.m_points.at(3).m_distance, -0.5_mm);
+      meshClipper.setPointsVisibility();
+      compare(meshClipper.m_points.at(0).m_visible, true);
+      compare(meshClipper.m_points.at(1).m_visible, false);
+      compare(meshClipper.m_points.at(2).m_visible, true);
+      compare(meshClipper.m_points.at(3).m_visible, true);
+
+      meshClipper.setDistances(-0.5_mm);
+      compare(meshClipper.m_points.at(0).m_distance, 0.5_mm);
+      compare(meshClipper.m_points.at(1).m_distance, 1.5_mm);
+      compare(meshClipper.m_points.at(2).m_distance, 0.5_mm);
+      compare(meshClipper.m_points.at(3).m_distance, 0.5_mm);
+      meshClipper.setPointsVisibility();
+      compare(meshClipper.m_points.at(0).m_visible, false);
+      compare(meshClipper.m_points.at(1).m_visible, false);
+      compare(meshClipper.m_points.at(2).m_visible, false);
+      compare(meshClipper.m_points.at(3).m_visible, false);
+
+      meshClipper.setDistances(1.5_mm);
+      compare(meshClipper.m_points.at(0).m_distance, -1.5_mm);
+      compare(meshClipper.m_points.at(1).m_distance, -0.5_mm);
+      compare(meshClipper.m_points.at(2).m_distance, -1.5_mm);
+      compare(meshClipper.m_points.at(3).m_distance, -1.5_mm);
+      meshClipper.setPointsVisibility();
+      compare(meshClipper.m_points.at(0).m_visible, true);
+      compare(meshClipper.m_points.at(1).m_visible, true);
+      compare(meshClipper.m_points.at(2).m_visible, true);
+      compare(meshClipper.m_points.at(3).m_visible, true);
+    }
+    {
+      // Confirm that we can load a large complicated broken mesh.
       // If this test gets annoyingly slow, work on performance
       // until it's not.
       MeshClipper const meshClipper(
@@ -219,10 +262,6 @@ auto main() -> int {
       double const maxHeight = meshClipper.maxHeight();
       check(maxHeight > 48.0 - eps);
       check(48.0 + eps > maxHeight);
-    }
-    {
-      // Stl const tetrahedronStl{"test-models/tetrahedron.ascii.stl"};
-      // MeshClipper meshClipper{};
     }
   } catch (...) {
     return 1;

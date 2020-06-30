@@ -7,6 +7,9 @@
 static auto logger = spdlog::get("file_logger");
 
 Mesh::Mesh(Stl const &stl) {
+  if (logger == nullptr) {
+    logger = spdlog::get("file_logger");
+  }
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
   // Build vertices

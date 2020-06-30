@@ -42,6 +42,8 @@
 #error "SEEK_SET not defined"
 #endif
 
+static auto logger = spdlog::basic_logger_mt("file_logger", "linc.log");
+
 template <std::size_t N>
 constexpr auto length(char const (&/*unused*/)[N]) /* NOLINT */
     -> std::size_t {
@@ -55,8 +57,6 @@ auto divide(auto dividend, auto divisor) {
   };
   return result{dividend / divisor, dividend % divisor};
 }
-
-static auto logger = spdlog::basic_logger_mt("file_logger", "linc.log");
 
 static auto openFile(std::string const &fileName)
     -> std::tuple<gsl::owner<FILE *>, Stl::Type> {

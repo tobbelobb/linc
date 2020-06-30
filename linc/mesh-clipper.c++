@@ -1,9 +1,20 @@
 #include <algorithm>
 
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG /* NOLINT */
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
+
 #include <linc/mesh-clipper.h++>
 #include <linc/util.h++>
 
+static auto logger = spdlog::get("file_logger");
+
 MeshClipper::MeshClipper(Mesh const &mesh) {
+  if (logger == nullptr) {
+    logger = spdlog::get("file_logger");
+  }
+  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
+  spdlog::set_level(spdlog::level::trace);
   // Allocate some memory and fill with default data
   m_points.assign(mesh.m_vertices.size(), {Vertex::Zero(), 0.0_mm});
   m_edges.assign(mesh.m_edges.size(), {m_points});
@@ -32,6 +43,16 @@ void MeshClipper::setDistances(Millimeter const zCut) {
   }
 }
 
+void MeshClipper::setPointsVisibility() {
+  for (auto &point : m_points) {
+    if (point.m_distance > 0.0) {
+      point.m_visible = false;
+    } else {
+      point.m_visible = true;
+    }
+  }
+}
+
 auto MeshClipper::maxHeight() const -> double {
   return (*std::max_element(m_points.begin(), m_points.end(),
                             [](Point const &point0, Point const &point1) {
@@ -40,26 +61,12 @@ auto MeshClipper::maxHeight() const -> double {
       .z();
 }
 
-// Given a z height, return a copy of the model that is cut
-// at that height
-auto clip(Mesh const &mesh, Millimeter const zCut) -> Mesh {
-  (void)zCut;
-  MeshClipper meshClipper{mesh};
-  meshClipper.setDistances(zCut);
-
-  //  size_t facetsToRemove = 0;
-  //  for (auto const &facet : m_facets) {
-  //    std::vector<double
-  //    facetsAbove = facet.vertices[0].z() > zCut
-  //    if (
-  //    if ( and facet.vertices[1].z() > zCut and
-  //        facet.vertices[2].z() > zCut) {
-  //      ++facetsToRemove;
-  //    }
-  //
-  //    facet.edgeFromBelow(z);
-  //  }
-  //
-  return mesh;
-  // return Stl{facets, neighbors, stats, true, Type::INMEMORY};
+void MeshClipper::clip(Millimeter const zCut) {
+  setDistances(zCut);
+  setPointsVisibility();
+  if (std::all_of(m_points.begin(), m_points.end(),
+                  [](auto const &point) { return point.m_visible; })) {
+    SPDLOG_LOGGER_WARN(logger, "Tried to cut away 0 points. Returning early.");
+    return;
+  }
 }
