@@ -20,7 +20,7 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   // We don't care here, since an extra iteration doesn't matter for us
   for (Millimeter h{topHeight}; h > 2 * layerHeight; /* NOLINT */
        h -= layerHeight) {                           /* NOLINT */
-    partialPrint.clip(h);
+    partialPrint.softClip(h);
 
     //   // Extract convex hull of the top points
     //   // This involves removing points that are enclosed by other points

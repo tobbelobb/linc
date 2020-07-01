@@ -32,14 +32,19 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
                               {meshTriangle.m_edgeIndices.at(0),
                                meshTriangle.m_edgeIndices.at(1),
                                meshTriangle.m_edgeIndices.at(2), INVALID_INDEX},
-                              meshTriangle.m_normal,
-                              true};
+                              meshTriangle.m_normal};
   }
 }
 
 void MeshClipper::setDistances(Millimeter const zCut) {
+  double constexpr eps = 1e-4;
   for (auto &point : m_points) {
-    point.m_distance = point.z() - zCut;
+    double const distance = point.z() - zCut;
+    if (abs(distance) > eps) {
+      point.m_distance = distance;
+    } else {
+      point.m_distance = 0.0;
+    }
   }
 }
 
@@ -47,6 +52,18 @@ void MeshClipper::setPointsVisibility() {
   for (auto &point : m_points) {
     point.m_visible = (point.m_distance <= 0.0);
   }
+}
+
+auto MeshClipper::softMaxHeight() const -> double {
+  if (m_points.empty()) {
+    return 0.0;
+  }
+  return (*std::max_element(m_points.begin(), m_points.end(),
+                            [](Point const &point0, Point const &point1) {
+                              return point1.m_visible and
+                                     point0.z() < point1.z();
+                            }))
+      .z();
 }
 
 auto MeshClipper::maxHeight() const -> double {
@@ -71,22 +88,80 @@ auto MeshClipper::minHeight() const -> double {
       .z();
 }
 
-// Return how much was clipped
-auto MeshClipper::clip(Millimeter const zCut) -> double {
+auto MeshClipper::countVisible() const -> std::size_t {
+  return static_cast<std::size_t>(
+      std::count_if(m_points.begin(), m_points.end(),
+                    [](Point const &point) { return point.m_visible; }));
+}
+
+auto MeshClipper::isAllVisible() const -> bool {
+  return std::all_of(m_points.begin(), m_points.end(),
+                     [](auto const &point) { return point.m_visible; });
+}
+
+auto MeshClipper::isInvisible() const -> bool {
+  return not std::any_of(m_points.begin(), m_points.end(),
+                         [](auto const &point) { return point.m_visible; });
+}
+
+void MeshClipper::adjustEdges() {
+  for (size_t edgeIndex{0}; edgeIndex < m_edges.size(); ++edgeIndex) {
+    Edge &edge = m_edges[edgeIndex];
+    double const distance0 = edge.point0().m_distance;
+    double const distance1 = edge.point1().m_distance;
+    if (distance0 >= 0.0 and distance1 >= 0.0) {
+      // Edge is entirely above cutting plane
+      // Go through edge's users and remove edge
+      // from them
+      for (auto const &triangleIndex : edge.m_users) {
+        for (auto &triangleEdgeIndex :
+             m_triangles[triangleIndex].m_edgeIndices) {
+          if (triangleEdgeIndex == edgeIndex) {
+            triangleEdgeIndex = INVALID_INDEX;
+          }
+        }
+      }
+    } else if ((distance0 > 0.0 and distance1 < 0.0) or
+               (distance0 < 0.0 and distance1 > 0.0)) {
+      // Edge is split by the plane
+      // edge = point0 + t*(point1 - point0)
+      // where t goes from 0 to 1.
+      auto const t = distance0 / (distance0 - distance1);
+      Vertex const newVertex =
+          (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
+      Point newPoint{newVertex, 0.0, 0, true};
+      size_t newPointIndex = m_points.size();
+      m_points.emplace_back(newPoint);
+      if (distance0 < 0.0) {
+        edge.m_pointIndices[0] = newPointIndex;
+      } else {
+        edge.m_pointIndices[1] = newPointIndex;
+      }
+    }
+  }
+}
+
+// Return how much was soft-clipped
+auto MeshClipper::softClip(Millimeter const zCut) -> double {
+  SPDLOG_LOGGER_DEBUG(logger, "Soft clipping at z={}", zCut);
   setDistances(zCut);
+  double const oldSoftMaxHeight = softMaxHeight();
   setPointsVisibility();
-  double const oldMaxHeight = maxHeight();
-  if (std::all_of(m_points.begin(), m_points.end(),
-                  [](auto const &point) { return point.m_visible; })) {
-    SPDLOG_LOGGER_WARN(logger, "Tried to cut away 0 points. Returning early.");
+  if (isAllVisible()) {
+    SPDLOG_LOGGER_INFO(logger, "Special case: All points visible.");
     return 0.0;
   }
-  if (std::all_of(m_points.begin(), m_points.end(),
-                  [](auto const &point) { return not point.m_visible; })) {
-    SPDLOG_LOGGER_WARN(logger,
-                       "Cuts away all points. Clearing and returning early.");
-    clear();
-    return oldMaxHeight;
+  if (not std::any_of(m_points.begin(), m_points.end(),
+                      [zCut](Point const &point) {
+                        return point.m_visible and point.z() < zCut;
+                      })) {
+    SPDLOG_LOGGER_INFO(logger, "Special case: No z-thickness left.");
+    return oldSoftMaxHeight;
   }
-  return oldMaxHeight - zCut;
+
+  adjustEdges();
+
+  // process triangles
+
+  return oldSoftMaxHeight - zCut;
 }

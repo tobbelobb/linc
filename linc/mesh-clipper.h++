@@ -3,6 +3,7 @@
 
 #include <linc/mesh.h++>
 #include <linc/units.h++>
+#include <linc/vertex.h++>
 
 using EdgePointIndices = std::array<size_t, 2>;
 
@@ -28,6 +29,7 @@ public:
     auto x() const { return m_vertex.x(); }
     auto y() const { return m_vertex.y(); }
     auto z() const { return m_vertex.z(); }
+
     bool operator<(Point const &other) const {
       return this->m_vertex < other.m_vertex;
     }
@@ -45,33 +47,30 @@ public:
     std::vector<Point> &m_points;
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
     EdgeUsers m_users{};
-    bool m_visible = true;
 
     Point &point0() const { return m_points[m_pointIndices[0]]; }
     Point &point1() const { return m_points[m_pointIndices[1]]; }
+
+    // true if one end is negative, and the other end is non-positive
+    bool visible() const {
+      return (point0().m_distance < 0.0 and point1().m_distance <= 0.0) or
+             (point0().m_distance <= 0.0 and point1().m_distance < 0.0);
+    }
 
     Edge &operator=(Edge const &other) {
       m_points = other.m_points;
       m_pointIndices = other.m_pointIndices;
       m_users = other.m_users;
-      m_visible = other.m_visible;
       return *this;
     }
 
-    Edge(MeshClipper::Edge const &other)
-        : m_points(other.m_points), m_pointIndices(other.m_pointIndices),
-          m_users(other.m_users), m_visible(other.m_visible) {}
-
+    Edge(MeshClipper::Edge const &other) = default;
     Edge(std::vector<Point> &points) : m_points(points) {}
     Edge(std::vector<Point> &points, EdgePointIndices pointIndices)
         : m_points(points), m_pointIndices(pointIndices) {}
     Edge(std::vector<Point> &points, EdgePointIndices pointIndices,
          EdgeUsers users)
         : m_points(points), m_pointIndices(pointIndices), m_users(users) {}
-    Edge(std::vector<Point> &points, EdgePointIndices pointIndices,
-         EdgeUsers users, bool visible)
-        : m_points(points), m_pointIndices(pointIndices), m_users(users),
-          m_visible(visible) {}
 
     bool operator<(Edge const &other) const {
       auto const &[lhsPointLow, lhsPointHigh] =
@@ -99,8 +98,7 @@ public:
     }
 
     bool fullEquals(Edge const &other) const {
-      return *this == other and m_users == other.m_users and
-             m_visible == other.m_visible;
+      return *this == other and m_users == other.m_users;
     }
 
     bool operator!=(Edge const &other) const { return not(*this == other); }
@@ -115,7 +113,7 @@ public:
         os << delim << user;
         delim = ", ";
       }
-      return os << ") " << (edge.m_visible ? "Visible" : "Invisible") << '}';
+      return os << ") " << (edge.visible() ? "Visible" : "Invisible") << '}';
     }
   };
 
@@ -126,7 +124,6 @@ public:
     std::array<size_t, 4> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                         INVALID_INDEX, INVALID_INDEX};
     Normal m_normal = Normal::Zero();
-    bool m_visible = true;
 
     Edge &edge0() const { return m_edges[m_edgeIndices[0]]; }
     Edge &edge1() const { return m_edges[m_edgeIndices[1]]; }
@@ -137,8 +134,16 @@ public:
       m_edges = other.m_edges;
       m_edgeIndices = other.m_edgeIndices;
       m_normal = other.m_normal;
-      m_visible = other.m_visible;
       return *this;
+    }
+
+    bool visible() const {
+      if (std::all_of(m_edgeIndices.begin(), m_edgeIndices.end(),
+                      [](size_t const idx) { return idx == INVALID_INDEX; })) {
+        return false;
+      }
+      return edge0().visible() or edge1().visible() or edge2().visible() or
+             (m_edgeIndices[3] != INVALID_INDEX and edge3().visible());
     }
 
     bool operator<(Triangle const &other) const {
@@ -178,8 +183,7 @@ public:
     }
 
     bool fullEquals(Triangle const &other) const {
-      return *this == other and m_normal == other.m_normal and
-             m_visible == other.m_visible;
+      return *this == other and m_normal == other.m_normal;
     }
   };
 
@@ -196,10 +200,15 @@ public:
   MeshClipper(Mesh const &mesh);
 
   double maxHeight() const;
+  double softMaxHeight() const;
   double minHeight() const;
+  size_t countVisible() const;
+  bool isAllVisible() const;
+  bool isInvisible() const;
   void setDistances(Millimeter zCut);
   void setPointsVisibility();
-  double clip(Millimeter zCut);
+  void adjustEdges();
+  double softClip(Millimeter zCut);
 };
 
 inline auto operator<<(std::ostream &os,

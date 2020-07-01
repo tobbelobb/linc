@@ -44,11 +44,6 @@ auto main() -> int {
       compare(forwards, backwards);
       check(not(forwards != backwards));
 
-      // Only vertices should affect equality
-      compare(forwards, MeshClipper::Edge{examplePoints, {0, 1}, {1, 2}, true});
-      compare(forwards,
-              MeshClipper::Edge{examplePoints, {0, 1}, {1, 2}, false});
-
       // Basing the edge off of another points list should not affect equality
       std::vector<MeshClipper::Point> examplePoints2{
           MeshClipper::Point{{1, 0, 0}}, MeshClipper::Point{{0, 0, 0}}};
@@ -132,24 +127,24 @@ auto main() -> int {
       // And m_visible is expected to be correct
       // For an edge to be fullyEqual another edge
       std::vector<MeshClipper::Edge> expectedEdges{
-          {expectedPoints, {0, 1}, {0, 1}, true},   // 0
-          {expectedPoints, {0, 2}, {2, 3}, true},   // 1
-          {expectedPoints, {0, 3}, {0, 2}, true},   // 2
-          {expectedPoints, {0, 4}, {4, 5}, true},   // 3
-          {expectedPoints, {0, 5}, {1, 4}, true},   // 4
-          {expectedPoints, {0, 6}, {3, 5}, true},   // 5
-          {expectedPoints, {1, 3}, {0, 6}, true},   // 6
-          {expectedPoints, {1, 5}, {1, 6}, true},   // 7
-          {expectedPoints, {2, 3}, {2, 7}, true},   // 8
-          {expectedPoints, {2, 6}, {3, 7}, true},   // 9
-          {expectedPoints, {3, 5}, {6, 8}, true},   // 10
-          {expectedPoints, {3, 6}, {7, 9}, true},   // 11
-          {expectedPoints, {3, 7}, {8, 9}, true},   // 12
-          {expectedPoints, {4, 5}, {4, 10}, true},  // 13
-          {expectedPoints, {4, 6}, {5, 10}, true},  // 14
-          {expectedPoints, {5, 6}, {10, 11}, true}, // 15
-          {expectedPoints, {5, 7}, {8, 11}, true},  // 16
-          {expectedPoints, {6, 7}, {9, 11}, true}}; // 17
+          {expectedPoints, {0, 1}, {0, 1}},   // 0
+          {expectedPoints, {0, 2}, {2, 3}},   // 1
+          {expectedPoints, {0, 3}, {0, 2}},   // 2
+          {expectedPoints, {0, 4}, {4, 5}},   // 3
+          {expectedPoints, {0, 5}, {1, 4}},   // 4
+          {expectedPoints, {0, 6}, {3, 5}},   // 5
+          {expectedPoints, {1, 3}, {0, 6}},   // 6
+          {expectedPoints, {1, 5}, {1, 6}},   // 7
+          {expectedPoints, {2, 3}, {2, 7}},   // 8
+          {expectedPoints, {2, 6}, {3, 7}},   // 9
+          {expectedPoints, {3, 5}, {6, 8}},   // 10
+          {expectedPoints, {3, 6}, {7, 9}},   // 11
+          {expectedPoints, {3, 7}, {8, 9}},   // 12
+          {expectedPoints, {4, 5}, {4, 10}},  // 13
+          {expectedPoints, {4, 6}, {5, 10}},  // 14
+          {expectedPoints, {5, 6}, {10, 11}}, // 15
+          {expectedPoints, {5, 7}, {8, 11}},  // 16
+          {expectedPoints, {6, 7}, {9, 11}}}; // 17
       std::sort(expectedEdges.begin(), expectedEdges.end());
       compare(expectedEdges.size(), meshClipper.m_edges.size());
 
@@ -167,18 +162,18 @@ auto main() -> int {
       // Triangles
       compare(meshClipper.m_triangles.size(), 12U);
       std::vector<MeshClipper::Triangle> const expectedTriangles{
-          {expectedEdges, {0, 2, 6}, Normal::Zero(), true},
-          {expectedEdges, {0, 4, 7}, Normal::Zero(), true},
-          {expectedEdges, {1, 2, 8}, Normal::Zero(), true},
-          {expectedEdges, {1, 5, 9}, Normal::Zero(), true},
-          {expectedEdges, {3, 4, 13}, Normal::Zero(), true},
-          {expectedEdges, {3, 5, 14}, Normal::Zero(), true},
-          {expectedEdges, {6, 7, 10}, Normal::Zero(), true},
-          {expectedEdges, {8, 9, 11}, Normal::Zero(), true},
-          {expectedEdges, {10, 12, 16}, Normal::Zero(), true},
-          {expectedEdges, {11, 12, 17}, Normal::Zero(), true},
-          {expectedEdges, {13, 14, 15}, Normal::Zero(), true},
-          {expectedEdges, {15, 16, 17}, Normal::Zero(), true}};
+          {expectedEdges, {0, 2, 6}, Normal::Zero()},
+          {expectedEdges, {0, 4, 7}, Normal::Zero()},
+          {expectedEdges, {1, 2, 8}, Normal::Zero()},
+          {expectedEdges, {1, 5, 9}, Normal::Zero()},
+          {expectedEdges, {3, 4, 13}, Normal::Zero()},
+          {expectedEdges, {3, 5, 14}, Normal::Zero()},
+          {expectedEdges, {6, 7, 10}, Normal::Zero()},
+          {expectedEdges, {8, 9, 11}, Normal::Zero()},
+          {expectedEdges, {10, 12, 16}, Normal::Zero()},
+          {expectedEdges, {11, 12, 17}, Normal::Zero()},
+          {expectedEdges, {13, 14, 15}, Normal::Zero()},
+          {expectedEdges, {15, 16, 17}, Normal::Zero()}};
       compare(expectedTriangles.size(), meshClipper.m_triangles.size());
 
       for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
@@ -269,26 +264,51 @@ auto main() -> int {
       compare(meshClipper.m_points.size(), 8U);
       compare(meshClipper.m_edges.size(), 18U);
       compare(meshClipper.m_triangles.size(), 12U);
-      double constexpr eps = 1e-6;
       double const maxHeight = meshClipper.maxHeight();
-      check(maxHeight > 10.0 - eps);
-      check(10.0 + eps > maxHeight);
+      // Comparing floating points with == is usually unpredictable
+      // but in this case, our parser should have parsed the string
+      // "10.0" into a floating point. We should really hope that
+      // gives us exactly what the compiler constant 10.0 gives.
+      compare(maxHeight, 10.0);
 
-      compare(meshClipper.clip(10.0), 0.0);
+      // If we soft-clip at the top layer, 0 mm should disappear
+      // And no points should be set invisible
+      // Again, 0.0 should be a compile time constant returned by the
+      // function, so it should be ok to compare with == here.
+      double const softClippedAt10 = meshClipper.softClip(10.0);
+      compare(softClippedAt10, 0.0);
+      check(meshClipper.isAllVisible());
 
-      double const clipped = meshClipper.clip(-eps);
-      check(clipped < 10.0 + eps);
-      check(clipped > 10.0 - eps);
-      double heightLeft = meshClipper.maxHeight();
-      check(heightLeft < 0.0 + eps);
-      check(heightLeft > 0.0 - eps);
+      // If we soft-clip at the bottom there should be another special case
+      // giving us an unaltered maxHeight
+      // Even though some points are still visible, the remaining visible
+      // mesh has no height.
+      double const softClippedAt0 = meshClipper.softClip(0.0);
+      compare(softClippedAt0, maxHeight);
+      // The four points at z=0.0 should not have been cut away
+      auto const visiblePoints = meshClipper.countVisible();
+      compare(visiblePoints, 4U);
 
-      // double const clipped = meshClipper.clip(5.0);
-      // check(clipped < 5.0 + eps);
-      // check(clipped > 5.0 - eps);
-      // double heightLeft = meshClipper.maxHeight();
-      // check(heightLeft < 5.0 + eps);
-      // check(heightLeft > 5.0 - eps);
+      // The value 0.0 is hard coded into the model's bottom layer,
+      // and we should get it back here unaltered, as a special case
+      // within the softClip function, so that we may compare doubles
+      // using operator==
+      double const softHeightLeft = meshClipper.softMaxHeight();
+      compare(softHeightLeft, 0.0);
+    }
+    {
+      MeshClipper meshClipper{
+          Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
+      compare(meshClipper.maxHeight(), 10.0);
+
+      double const softClippedAt5 = meshClipper.softClip(5.0);
+      double constexpr eps = 1e-6;
+      check(softClippedAt5 < 5.0 + eps);
+      check(softClippedAt5 > 5.0 - eps);
+
+      double const softHeightLeft = meshClipper.softMaxHeight();
+      check(softHeightLeft < 5.0 + eps);
+      check(softHeightLeft > 5.0 - eps);
     }
   } catch (...) {
     return 1;
