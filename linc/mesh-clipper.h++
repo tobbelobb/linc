@@ -47,20 +47,16 @@ public:
     std::vector<Point> &m_points;
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
     EdgeUsers m_users{};
+    bool m_visible = true;
 
     Point &point0() const { return m_points[m_pointIndices[0]]; }
     Point &point1() const { return m_points[m_pointIndices[1]]; }
-
-    // true if one end is negative, and the other end is non-positive
-    bool visible() const {
-      return (point0().m_distance < 0.0 and point1().m_distance <= 0.0) or
-             (point0().m_distance <= 0.0 and point1().m_distance < 0.0);
-    }
 
     Edge &operator=(Edge const &other) {
       m_points = other.m_points;
       m_pointIndices = other.m_pointIndices;
       m_users = other.m_users;
+      m_visible = other.m_visible;
       return *this;
     }
 
@@ -113,7 +109,7 @@ public:
         os << delim << user;
         delim = ", ";
       }
-      return os << ") " << (edge.visible() ? "Visible" : "Invisible") << '}';
+      return os << ") " << (edge.m_visible ? "Visible" : "Invisible") << '}';
     }
   };
 
@@ -124,6 +120,7 @@ public:
     std::array<size_t, 4> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                         INVALID_INDEX, INVALID_INDEX};
     Normal m_normal = Normal::Zero();
+    bool m_visible = true;
 
     Edge &edge0() const { return m_edges[m_edgeIndices[0]]; }
     Edge &edge1() const { return m_edges[m_edgeIndices[1]]; }
@@ -134,16 +131,8 @@ public:
       m_edges = other.m_edges;
       m_edgeIndices = other.m_edgeIndices;
       m_normal = other.m_normal;
+      m_visible = other.m_visible;
       return *this;
-    }
-
-    bool visible() const {
-      if (std::all_of(m_edgeIndices.begin(), m_edgeIndices.end(),
-                      [](size_t const idx) { return idx == INVALID_INDEX; })) {
-        return false;
-      }
-      return edge0().visible() or edge1().visible() or edge2().visible() or
-             (m_edgeIndices[3] != INVALID_INDEX and edge3().visible());
     }
 
     bool operator<(Triangle const &other) const {
@@ -185,6 +174,113 @@ public:
     bool fullEquals(Triangle const &other) const {
       return *this == other and m_normal == other.m_normal;
     }
+
+    std::tuple<bool, size_t, size_t> isOpen() const {
+      bool isOpen = false;
+      size_t startPointIndex = INVALID_INDEX;
+      size_t endPointIndex = INVALID_INDEX;
+      if (m_edgeIndices[0] != INVALID_INDEX) {
+        edge0().point0().m_occurs = 0;
+        edge0().point1().m_occurs = 0;
+      }
+      if (m_edgeIndices[1] != INVALID_INDEX) {
+        edge1().point0().m_occurs = 0;
+        edge1().point1().m_occurs = 0;
+      }
+      if (m_edgeIndices[2] != INVALID_INDEX) {
+        edge2().point0().m_occurs = 0;
+        edge2().point1().m_occurs = 0;
+      }
+      if (m_edgeIndices[3] != INVALID_INDEX) {
+        edge3().point0().m_occurs = 0;
+        edge3().point1().m_occurs = 0;
+      }
+      if (m_edgeIndices[0] != INVALID_INDEX) {
+        edge0().point0().m_occurs++;
+        edge0().point1().m_occurs++;
+      }
+      if (m_edgeIndices[1] != INVALID_INDEX) {
+        edge1().point0().m_occurs++;
+        edge1().point1().m_occurs++;
+      }
+      if (m_edgeIndices[2] != INVALID_INDEX) {
+        edge2().point0().m_occurs++;
+        edge2().point1().m_occurs++;
+      }
+      if (m_edgeIndices[3] != INVALID_INDEX) {
+        edge3().point0().m_occurs++;
+        edge3().point1().m_occurs++;
+      }
+      if (m_edgeIndices[0] != INVALID_INDEX) {
+        if (edge0().point0().m_occurs == 1) {
+          isOpen = true;
+          startPointIndex = edge0().m_pointIndices[0];
+        }
+        if (edge0().point1().m_occurs == 1) {
+          isOpen = true;
+          if (startPointIndex == INVALID_INDEX) {
+            startPointIndex = edge0().m_pointIndices[1];
+          } else {
+            endPointIndex = edge0().m_pointIndices[1];
+          }
+        }
+      }
+      if (m_edgeIndices[1] != INVALID_INDEX) {
+        if (edge1().point0().m_occurs == 1) {
+          isOpen = true;
+          if (startPointIndex == INVALID_INDEX) {
+            startPointIndex = edge1().m_pointIndices[0];
+          } else {
+            endPointIndex = edge1().m_pointIndices[0];
+          }
+        }
+        if (edge1().point1().m_occurs == 1) {
+          isOpen = true;
+          if (startPointIndex == INVALID_INDEX) {
+            startPointIndex = edge1().m_pointIndices[1];
+          } else {
+            endPointIndex = edge1().m_pointIndices[1];
+          }
+        }
+      }
+      if (m_edgeIndices[2] != INVALID_INDEX) {
+        if (edge2().point0().m_occurs == 1) {
+          isOpen = true;
+          if (startPointIndex == INVALID_INDEX) {
+            startPointIndex = edge2().m_pointIndices[0];
+          } else {
+            endPointIndex = edge2().m_pointIndices[0];
+          }
+        }
+        if (edge2().point1().m_occurs == 1) {
+          isOpen = true;
+          if (startPointIndex == INVALID_INDEX) {
+            startPointIndex = edge2().m_pointIndices[1];
+          } else {
+            endPointIndex = edge2().m_pointIndices[1];
+          }
+        }
+      }
+      if (m_edgeIndices[3] != INVALID_INDEX) {
+        if (edge3().point0().m_occurs == 1) {
+          isOpen = true;
+          if (startPointIndex == INVALID_INDEX) {
+            startPointIndex = edge3().m_pointIndices[0];
+          } else {
+            endPointIndex = edge3().m_pointIndices[0];
+          }
+        }
+        if (edge3().point1().m_occurs == 1) {
+          isOpen = true;
+          if (startPointIndex == INVALID_INDEX) {
+            startPointIndex = edge3().m_pointIndices[1];
+          } else {
+            endPointIndex = edge3().m_pointIndices[1];
+          }
+        }
+      }
+      return {isOpen, startPointIndex, endPointIndex};
+    }
   };
 
   std::vector<Point> m_points{};
@@ -202,12 +298,12 @@ public:
   double maxHeight() const;
   double softMaxHeight() const;
   double minHeight() const;
-  size_t countVisible() const;
-  bool isAllVisible() const;
-  bool isInvisible() const;
+  size_t countVisiblePoints() const;
+  bool isAllPointsVisible() const;
   void setDistances(Millimeter zCut);
   void setPointsVisibility();
   void adjustEdges();
+  void adjustTriangles();
   double softClip(Millimeter zCut);
 };
 

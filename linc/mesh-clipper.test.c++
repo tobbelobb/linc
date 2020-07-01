@@ -277,7 +277,7 @@ auto main() -> int {
       // function, so it should be ok to compare with == here.
       double const softClippedAt10 = meshClipper.softClip(10.0);
       compare(softClippedAt10, 0.0);
-      check(meshClipper.isAllVisible());
+      check(meshClipper.isAllPointsVisible());
 
       // If we soft-clip at the bottom there should be another special case
       // giving us an unaltered maxHeight
@@ -286,7 +286,7 @@ auto main() -> int {
       double const softClippedAt0 = meshClipper.softClip(0.0);
       compare(softClippedAt0, maxHeight);
       // The four points at z=0.0 should not have been cut away
-      auto const visiblePoints = meshClipper.countVisible();
+      auto const visiblePoints = meshClipper.countVisiblePoints();
       compare(visiblePoints, 4U);
 
       // The value 0.0 is hard coded into the model's bottom layer,
@@ -309,6 +309,9 @@ auto main() -> int {
       double const softHeightLeft = meshClipper.softMaxHeight();
       check(softHeightLeft < 5.0 + eps);
       check(softHeightLeft > 5.0 - eps);
+
+      compare(meshClipper.m_points.size(), 16U);
+      compare(meshClipper.m_edges.size(), 30U);
     }
   } catch (...) {
     return 1;

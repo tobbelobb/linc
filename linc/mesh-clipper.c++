@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG /* NOLINT */
 #include <spdlog/sinks/basic_file_sink.h>
@@ -88,54 +89,131 @@ auto MeshClipper::minHeight() const -> double {
       .z();
 }
 
-auto MeshClipper::countVisible() const -> std::size_t {
+auto MeshClipper::countVisiblePoints() const -> std::size_t {
   return static_cast<std::size_t>(
       std::count_if(m_points.begin(), m_points.end(),
                     [](Point const &point) { return point.m_visible; }));
 }
 
-auto MeshClipper::isAllVisible() const -> bool {
+auto MeshClipper::isAllPointsVisible() const -> bool {
   return std::all_of(m_points.begin(), m_points.end(),
                      [](auto const &point) { return point.m_visible; });
 }
 
-auto MeshClipper::isInvisible() const -> bool {
-  return not std::any_of(m_points.begin(), m_points.end(),
-                         [](auto const &point) { return point.m_visible; });
-}
-
 void MeshClipper::adjustEdges() {
-  for (size_t edgeIndex{0}; edgeIndex < m_edges.size(); ++edgeIndex) {
+  for (std::size_t edgeIndex{0}; edgeIndex < m_edges.size(); ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
-    double const distance0 = edge.point0().m_distance;
-    double const distance1 = edge.point1().m_distance;
-    if (distance0 >= 0.0 and distance1 >= 0.0) {
-      // Edge is entirely above cutting plane
-      // Go through edge's users and remove edge
-      // from them
-      for (auto const &triangleIndex : edge.m_users) {
-        for (auto &triangleEdgeIndex :
-             m_triangles[triangleIndex].m_edgeIndices) {
-          if (triangleEdgeIndex == edgeIndex) {
-            triangleEdgeIndex = INVALID_INDEX;
+    if (edge.m_visible) {
+      double const distance0 = edge.point0().m_distance;
+      double const distance1 = edge.point1().m_distance;
+      if (distance0 >= 0.0 and distance1 >= 0.0) {
+        // Edge is entirely above cutting plane
+        // Go through edge's users and remove edge
+        // from them
+        for (auto const &triangleIndex : edge.m_users) {
+          Triangle &triangle = m_triangles[triangleIndex];
+          for (auto &triangleEdgeIndex : triangle.m_edgeIndices) {
+            if (triangleEdgeIndex == edgeIndex) {
+              triangleEdgeIndex = INVALID_INDEX;
+            }
+          }
+          if (std::all_of(triangle.m_edgeIndices.begin(),
+                          triangle.m_edgeIndices.end(),
+                          [](std::size_t const triangleEdgeIndex) {
+                            return triangleEdgeIndex == INVALID_INDEX;
+                          })) {
+            triangle.m_visible = false;
           }
         }
+        edge.m_visible = false;
+      } else if ((distance0 > 0.0 and distance1 < 0.0) or
+                 (distance0 < 0.0 and distance1 > 0.0)) {
+        // Edge is split by the plane
+        // edge = point0 + t*(point1 - point0)
+        // where t goes from 0 to 1.
+        auto const t = distance0 / (distance0 - distance1);
+        Vertex const newVertex =
+            (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
+        Point newPoint{newVertex, 0.0, 0, true};
+        std::size_t newPointIndex = m_points.size();
+        m_points.emplace_back(newPoint);
+        if (distance0 < 0.0) {
+          edge.m_pointIndices[0] = newPointIndex;
+        } else {
+          edge.m_pointIndices[1] = newPointIndex;
+        }
       }
-    } else if ((distance0 > 0.0 and distance1 < 0.0) or
-               (distance0 < 0.0 and distance1 > 0.0)) {
-      // Edge is split by the plane
-      // edge = point0 + t*(point1 - point0)
-      // where t goes from 0 to 1.
-      auto const t = distance0 / (distance0 - distance1);
-      Vertex const newVertex =
-          (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
-      Point newPoint{newVertex, 0.0, 0, true};
-      size_t newPointIndex = m_points.size();
-      m_points.emplace_back(newPoint);
-      if (distance0 < 0.0) {
-        edge.m_pointIndices[0] = newPointIndex;
-      } else {
-        edge.m_pointIndices[1] = newPointIndex;
+    }
+  }
+}
+
+void MeshClipper::adjustTriangles() {
+  for (std::size_t triangleIndex{0}; triangleIndex < m_triangles.size();
+       ++triangleIndex) {
+    Triangle &triangle = m_triangles[triangleIndex];
+    if (triangle.m_visible) {
+      auto const [isOpen, startPointIndex, endPointIndex] = triangle.isOpen();
+      if (isOpen) {
+        std::size_t const newEdgeIndex = m_edges.size();
+        m_edges.emplace_back(
+            Edge{m_points, {startPointIndex, endPointIndex}, {triangleIndex}});
+        auto const emptySpot =
+            std::find(triangle.m_edgeIndices.begin(),
+                      triangle.m_edgeIndices.end(), INVALID_INDEX);
+        if (emptySpot == triangle.m_edgeIndices.end()) {
+          SPDLOG_LOGGER_ERROR(
+              logger, "Triangle had no space for another edge. Returning.");
+          return;
+        }
+        std::size_t const whichEdge = static_cast<std::size_t>(
+            std::distance(triangle.m_edgeIndices.begin(), emptySpot));
+        triangle.m_edgeIndices[whichEdge] = newEdgeIndex;
+        if (std::all_of(triangle.m_edgeIndices.begin(),
+                        triangle.m_edgeIndices.end(),
+                        [](std::size_t const index) {
+                          return index != INVALID_INDEX;
+                        })) {
+          // This triangle has four edges. Split it into two triangles.
+          // Create a new edge
+          std::size_t const newTriangleIndex = m_edges.size();
+          std::size_t const newNewEdgeIndex = m_edges.size();
+
+          // Find the non-new edge that shares the point at endPointIndex
+          // That edge's other end is where we want to connect to from
+          // startPointIndex
+          std::size_t crossPointIndex = INVALID_INDEX;
+          std::size_t betweenEdgeIndex = INVALID_INDEX;
+          for (auto &edgeIndex : triangle.m_edgeIndices) {
+            if (edgeIndex != newEdgeIndex) {
+              std::array<std::array<std::size_t, 2>, 2> constexpr ab{
+                  {{0, 1}, {1, 0}}};
+              for (auto const &[a, b] : ab) {
+                if (m_edges[edgeIndex].m_pointIndices[a] == endPointIndex) {
+                  crossPointIndex = m_edges[edgeIndex].m_pointIndices[b];
+                  betweenEdgeIndex = edgeIndex;
+                  // This edge shall switch triangleIndex to newTriangleIndex
+                  // in its user list
+                  for (auto &userIndex : m_edges[betweenEdgeIndex].m_users) {
+                    if (userIndex == triangleIndex) {
+                      userIndex = newTriangleIndex;
+                    }
+                  }
+                  // This triangle shall no longer use the betweenEdge.
+                  // The newNewEdge shall be used instead.
+                  edgeIndex = newNewEdgeIndex;
+                }
+              }
+            }
+          }
+
+          // Create the newNewEdge
+          m_edges.emplace_back(Edge{m_points,
+                                    {startPointIndex, crossPointIndex},
+                                    {triangleIndex, newTriangleIndex}});
+          // Create the new triangle
+          m_triangles.emplace_back(Triangle{
+              m_edges, {newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
+        }
       }
     }
   }
@@ -162,7 +240,7 @@ auto MeshClipper::softClip(Millimeter const zCut) -> double {
   setDistances(zCut);
   double const oldSoftMaxHeight = softMaxHeight();
   setPointsVisibility();
-  if (isAllVisible()) {
+  if (isAllPointsVisible()) {
     SPDLOG_LOGGER_INFO(logger, "Special case: All points visible.");
     return 0.0;
   }
