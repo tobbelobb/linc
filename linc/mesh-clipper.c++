@@ -141,6 +141,21 @@ void MeshClipper::adjustEdges() {
   }
 }
 
+void MeshClipper::adjustTriangles() {
+  for (auto &triangle : m_triangles) {
+    if (triangle.visible()) {
+      // Initiate all vertices touched by triangle with m_occurs = 0
+      for (auto const edgeIndex : triangle.m_edgeIndices) {
+        if (edgeIndex != INVALID_INDEX) {
+          triangle.m_edges[edgeIndex].vertex0().m_occurs = 0;
+          triangle.m_edges[edgeIndex].vertex1().m_occurs = 0;
+        }
+      }
+      if (triangle.isOpenPolyLine())
+    }
+  }
+}
+
 // Return how much was soft-clipped
 auto MeshClipper::softClip(Millimeter const zCut) -> double {
   SPDLOG_LOGGER_DEBUG(logger, "Soft clipping at z={}", zCut);
@@ -160,8 +175,7 @@ auto MeshClipper::softClip(Millimeter const zCut) -> double {
   }
 
   adjustEdges();
-
-  // process triangles
+  adjustTriangles();
 
   return oldSoftMaxHeight - zCut;
 }
