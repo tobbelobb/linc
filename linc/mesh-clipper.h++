@@ -316,10 +316,12 @@ public:
   size_t countVisibleEdges() const;
   size_t countVisibleTriangles() const;
   bool isAllPointsVisible() const;
+  void writeBinaryStl(std::string const &fileName) const;
   void setDistances(Millimeter zCut);
   void setPointsVisibility();
   void adjustEdges();
   void adjustTriangles();
+  bool removeNonTriangularTriangles();
   double softClip(Millimeter zCut);
 };
 
@@ -408,5 +410,3 @@ template <> struct fmt::formatter<MeshClipper::Edge> {
         edge.point1().z(), edge.m_pointIndices[1]);
   }
 };
-
-Mesh clip(Mesh const &mesh, Millimeter const zCut);

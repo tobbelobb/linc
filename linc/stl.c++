@@ -117,19 +117,24 @@ static auto countBinaryFacets(FILE *fp) -> std::size_t {
   std::size_t const numberOfFacets = quotient;
 
   // Read the binary header
+  rewind(fp);
   std::array<char, LABEL_SIZE + 1> headerBuf{'\0'};
   if (fread(headerBuf.data(), LABEL_SIZE, 1, fp) > LABEL_SIZE - 1) {
     headerBuf[LABEL_SIZE] = '\0';
   }
 
   // Read the int following the header.  This should contain # of facets.
-  std::size_t headerNumFacets = 0;
+  uint32_t headerNumFacets = 0;
   fread(&headerNumFacets, sizeof(uint32_t), 1, fp);
   if (headerNumFacets != numberOfFacets) {
     SPDLOG_LOGGER_WARN(logger,
                        "Binary header says file contains {} facets, but file "
                        "actually contains {} facets.",
                        headerNumFacets, numberOfFacets);
+  } else {
+    SPDLOG_LOGGER_DEBUG(
+        logger, "Binary header says file contains correct number of facets: {}",
+        headerNumFacets);
   }
 
   SPDLOG_LOGGER_INFO(logger, "Found {} facets", numberOfFacets);
@@ -317,26 +322,6 @@ auto Stl::readAsciiFacets(FILE *fp) -> bool {
 }
 
 auto Stl::readBinaryFacets(FILE *fp) -> bool {
-  using SmallVertex = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
-  using SmallNormal = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
-  struct SmallFacet {
-    SmallNormal normal;
-    std::array<SmallVertex, 3> vertices;
-    std::array<std::byte, 2> extra;
-  };
-  static_assert(sizeof(SmallVertex) == 12, /* NOLINT */
-                "size of Vertex incorrect");
-  static_assert(sizeof(SmallNormal) == 12, /* NOLINT */
-                "size of Normal incorrect");
-  static_assert(offsetof(SmallFacet, normal) == 0, /* NOLINT */
-                "SmallFacet.normal offset is not 0");
-  static_assert(offsetof(SmallFacet, vertices) == 12, /* NOLINT */
-                "SmallFacet.vertex offset is not 12");
-  static_assert(offsetof(SmallFacet, extra) == 48, /* NOLINT */
-                "SmallFacet.extra offset is not 48");
-  static_assert(sizeof(Stl::Facet) >= SIZEOF_STL_FACET,
-                "size of SmallFacet is too small");
-
   fseek(fp, HEADER_SIZE, SEEK_SET);
   for (Facet &facet : m_facets) {
     SmallFacet smallFacet{};

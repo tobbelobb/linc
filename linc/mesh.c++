@@ -21,11 +21,11 @@ Mesh::Mesh(Stl const &stl) {
       m_vertices.push_back(vertex);
     }
   }
+  SPDLOG_LOGGER_DEBUG(logger, "found {} vertices", m_vertices.size());
   std::sort(m_vertices.begin(), m_vertices.end());
   auto const endOfUniqueVertices =
       std::unique(m_vertices.begin(), m_vertices.end());
   m_vertices.erase(endOfUniqueVertices, m_vertices.end());
-
   SPDLOG_LOGGER_DEBUG(logger, "found {} unique vertices", m_vertices.size());
 
   // EDGES
@@ -62,17 +62,20 @@ Mesh::Mesh(Stl const &stl) {
       }
     }
   }
+
+  SPDLOG_LOGGER_DEBUG(logger, "found {} edges", m_edges.size());
   std::sort(m_edges.begin(), m_edges.end());
   auto const endOfUniqueEdges = std::unique(m_edges.begin(), m_edges.end());
   m_edges.erase(endOfUniqueEdges, m_edges.end());
+  SPDLOG_LOGGER_DEBUG(logger, "found {} unique edges", m_edges.size());
 
+  SPDLOG_LOGGER_DEBUG(logger, "found {} edge triplets",
+                      consideredEdgeTriplets.size());
   std::sort(consideredEdgeTriplets.begin(), consideredEdgeTriplets.end());
   auto const endOfUniqueEdgeTriplets =
       std::unique(consideredEdgeTriplets.begin(), consideredEdgeTriplets.end());
   consideredEdgeTriplets.erase(endOfUniqueEdgeTriplets,
                                consideredEdgeTriplets.end());
-
-  SPDLOG_LOGGER_DEBUG(logger, "found {} unique edges", m_edges.size());
   SPDLOG_LOGGER_DEBUG(logger, "found {} unique edge triplets",
                       consideredEdgeTriplets.size());
 

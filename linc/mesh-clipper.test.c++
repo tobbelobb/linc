@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 
 #include <linc/mesh-clipper.h++>
@@ -245,20 +246,6 @@ auto main() -> int {
       compare(meshClipper.m_points.at(3).m_visible, true);
     }
     {
-      // Confirm that we can load a large complicated broken mesh.
-      // If this test gets annoyingly slow, work on performance
-      // until it's not.
-      MeshClipper const meshClipper(
-          Mesh{Stl{getPath("test-models/broken/3DBenchy.binary.stl")}});
-      compare(meshClipper.m_points.size(), 112569U);
-      compare(meshClipper.m_edges.size(), 337731U);
-      compare(meshClipper.m_triangles.size(), 225154U);
-      double constexpr eps = 1e-6;
-      double const maxHeight = meshClipper.maxHeight();
-      check(maxHeight > 48.0 - eps);
-      check(48.0 + eps > maxHeight);
-    }
-    {
       MeshClipper meshClipper{
           Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
       compare(meshClipper.m_points.size(), 8U);
@@ -346,7 +333,6 @@ auto main() -> int {
         check(fullEquals);
       }
     }
-
     {
       MeshClipper meshClipper{
           Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
@@ -443,7 +429,42 @@ auto main() -> int {
 
       // TRIANGLE correctness
       compare(meshClipper.m_triangles.size(), 16U);
-      // meshClipper.writeStl(getPath("test-models/broken/clipped-small-cube.binary.stl"));
+      // meshClipper.writeBinaryStl(getPath("test-models/broken/clipped-small-cube.binary.stl"));
+    }
+    {
+      // Confirm that we can load a large complicated broken mesh.
+      // If this test gets annoyingly slow, work on performance
+      // until it's not.
+      MeshClipper meshClipper(
+          Mesh{Stl{getPath("test-models/broken/3DBenchy.binary.stl")}});
+      compare(meshClipper.m_points.size(), 112569U);
+      compare(meshClipper.m_edges.size(), 337731U);
+      compare(meshClipper.m_triangles.size(), 225154U);
+
+      double constexpr eps = 1e-6;
+      double const maxHeight = meshClipper.maxHeight();
+      check(maxHeight > 48.0 - eps);
+      check(48.0 + eps > maxHeight);
+
+      double const softClippedAt10 = meshClipper.softClip(1.0);
+      compare(softClippedAt10, 47.0);
+
+      // Check that we can write a binary stl and read it back again
+      auto const clippedBenchyPath{
+          getPath("test-models/broken/clipped-benchy.binary.stl")};
+      meshClipper.writeBinaryStl(clippedBenchyPath);
+      MeshClipper meshClipper2{Mesh{Stl{clippedBenchyPath}}};
+      std::filesystem::remove(clippedBenchyPath);
+
+      // Some non-unique vertices, edges, and triangles will have been created
+      // during our cutting procedure. These will get cleaned out only when
+      // the data is read back in. What we can check is that new vertices,
+      // edges, and triangles were invented, or printed although despite being
+      // invisible
+      check(meshClipper2.m_points.size() <= meshClipper.countVisiblePoints());
+      check(meshClipper2.m_edges.size() <= meshClipper.countVisibleEdges());
+      check(meshClipper2.m_triangles.size() <=
+            meshClipper.countVisibleTriangles());
     }
   } catch (...) {
     return 1;

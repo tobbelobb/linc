@@ -1,11 +1,14 @@
 #include <algorithm>
 #include <array>
+#include <fstream>
+#include <set>
 
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG /* NOLINT */
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
 #include <linc/mesh-clipper.h++>
+#include <linc/stl.h++>
 #include <linc/util.h++>
 
 using PairOfPairs = std::array<std::array<std::size_t, 2>, 2>;
@@ -37,6 +40,38 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
                                meshTriangle.m_edgeIndices.at(2), INVALID_INDEX},
                               meshTriangle.m_normal};
   }
+  if (removeNonTriangularTriangles()) {
+    SPDLOG_LOGGER_DEBUG(logger, "Removed something");
+  }
+}
+
+auto MeshClipper::removeNonTriangularTriangles() -> bool {
+  // Make triangles with 1, 2, or 4 points invisible
+  size_t const visibleTrianglesBeforeClean = countVisibleTriangles();
+  for (auto &triangle : m_triangles) {
+    if (triangle.m_visible) {
+      std::set<Point> points{};
+      for (auto const &edgeIndex : triangle.m_edgeIndices) {
+        if (edgeIndex != INVALID_INDEX) {
+          points.insert(triangle.m_edges[edgeIndex].point0());
+          points.insert(triangle.m_edges[edgeIndex].point1());
+        }
+      }
+      if (points.size() != 3) {
+        triangle.m_visible = false;
+      }
+    }
+  }
+  size_t const visibleTrianglesAfterClean = countVisibleTriangles();
+  if (visibleTrianglesAfterClean != visibleTrianglesBeforeClean) {
+    SPDLOG_LOGGER_DEBUG(logger,
+                        "Made {} triangles invisible because they had"
+                        " 1, 2, or 4 corners.",
+                        visibleTrianglesBeforeClean -
+                            visibleTrianglesAfterClean);
+    return true;
+  }
+  return false;
 }
 
 void MeshClipper::setDistances(Millimeter const zCut) {
@@ -178,7 +213,7 @@ void MeshClipper::adjustTriangles() {
         SPDLOG_LOGGER_TRACE(
             logger, "Creating a new edge to close open triangle: {}, index {}",
             m_edges[newEdgeIndex], newEdgeIndex);
-        auto const emptySpot =
+        auto *const emptySpot =
             std::find(triangle.m_edgeIndices.begin(),
                       triangle.m_edgeIndices.end(), INVALID_INDEX);
         if (emptySpot == triangle.m_edgeIndices.end()) {
@@ -186,11 +221,11 @@ void MeshClipper::adjustTriangles() {
               logger, "Triangle had no space for another edge. Returning.");
           return;
         }
-        std::size_t const whichEdge = static_cast<std::size_t>(
+        auto const whichEdge = static_cast<std::size_t>(
             std::distance(triangle.m_edgeIndices.begin(), emptySpot));
         SPDLOG_LOGGER_TRACE(logger, "Triangle has space for new edge at {}",
                             whichEdge);
-        triangle.m_edgeIndices[whichEdge] = newEdgeIndex;
+        triangle.m_edgeIndices.at(whichEdge) = newEdgeIndex;
         if (std::all_of(triangle.m_edgeIndices.begin(),
                         triangle.m_edgeIndices.end(),
                         [](std::size_t const index) {
@@ -200,7 +235,7 @@ void MeshClipper::adjustTriangles() {
                               "This triangle has four edges. Splitting it.");
           SPDLOG_LOGGER_TRACE(logger, "Disabling edge {} for triangle {}",
                               newEdgeIndex, triangleIndex);
-          triangle.m_edgeIndices[whichEdge] = INVALID_INDEX;
+          triangle.m_edgeIndices.at(whichEdge) = INVALID_INDEX;
 
           std::size_t const newTriangleIndex = m_triangles.size();
           std::size_t const newNewEdgeIndex = m_edges.size();
@@ -296,5 +331,44 @@ auto MeshClipper::softClip(Millimeter const zCut) -> double {
                       "after adjustTriangles().",
                       m_points.size(), m_edges.size(), m_triangles.size());
 
+  if (removeNonTriangularTriangles()) {
+    SPDLOG_LOGGER_DEBUG(logger, "Removed something");
+  }
   return oldSoftMaxHeight - zCut;
+}
+
+void MeshClipper::writeBinaryStl(std::string const &fileName) const {
+  SPDLOG_LOGGER_DEBUG(logger, "Writing binary stl: {}", fileName);
+  auto myfile = std::fstream(fileName, std::ios::out | std::ios::binary);
+  constexpr std::array<char const, LABEL_SIZE> emptyHeader = {'\0'};
+  myfile.write(emptyHeader.data(), LABEL_SIZE);
+
+  auto const facetCounter = static_cast<uint32_t>(countVisibleTriangles());
+  SPDLOG_LOGGER_DEBUG(logger, "Writing into header that we have {} facets",
+                      facetCounter);
+  myfile.write(reinterpret_cast<char const *>(&facetCounter),
+               FACET_COUNTER_SIZE);
+
+  for (auto const &triangle : m_triangles) {
+    if (triangle.m_visible) {
+      // Only write visible triangles
+      std::set<Point> points{};
+      for (auto const &edgeIndex : triangle.m_edgeIndices) {
+        if (edgeIndex != INVALID_INDEX) {
+          points.insert(triangle.m_edges[edgeIndex].point0());
+          points.insert(triangle.m_edges[edgeIndex].point1());
+        }
+      }
+      SmallFacet smallFacet{};
+      smallFacet.normal = triangle.m_normal.cast<float>();
+      size_t i{0};
+      for (auto it{points.begin()}; it != points.end(); ++it, ++i) {
+        smallFacet.vertices.at(i) = (*it).m_vertex.cast<float>();
+      }
+      myfile.write(reinterpret_cast<char const *>(&smallFacet),
+                   SIZEOF_STL_FACET);
+    }
+  }
+
+  myfile.close();
 }

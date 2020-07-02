@@ -35,11 +35,31 @@
 auto constexpr ASCII_TABLE_SIZE = 128U;
 // Size of the binary STL header, free form.
 auto constexpr LABEL_SIZE = 80U;
-// Binary STL, sizeof header (free form) + number of faces.
+auto constexpr FACET_COUNTER_SIZE = 4U;
+// Binary STL, sizeof header (free form) + number of facets.
 auto constexpr HEADER_SIZE = 84U;
 auto constexpr STL_MIN_FILE_SIZE = 284L;
 auto constexpr ASCII_LINES_PER_FACET = 7U;
 auto constexpr SIZEOF_STL_FACET = 50U;
+
+// We need this stuff to read/write binary stls
+using SmallVertex = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
+using SmallNormal = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
+struct SmallFacet {
+  SmallNormal normal;
+  std::array<SmallVertex, 3> vertices;
+  std::array<std::byte, 2> extra;
+};
+static_assert(sizeof(SmallVertex) == 12, /* NOLINT */
+              "size of Vertex incorrect");
+static_assert(sizeof(SmallNormal) == 12, /* NOLINT */
+              "size of Normal incorrect");
+static_assert(offsetof(SmallFacet, normal) == 0, /* NOLINT */
+              "SmallFacet.normal offset is not 0");
+static_assert(offsetof(SmallFacet, vertices) == 12, /* NOLINT */
+              "SmallFacet.vertex offset is not 12");
+static_assert(offsetof(SmallFacet, extra) == 48, /* NOLINT */
+              "SmallFacet.extra offset is not 48");
 
 class Stl {
 public:
@@ -123,3 +143,6 @@ private:
   bool readAsciiFacets(FILE *fp);
   void computeSomeStats();
 };
+
+static_assert(sizeof(Stl::Facet) >= SIZEOF_STL_FACET,
+              "size of SmallFacet is too small");
