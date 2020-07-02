@@ -1,5 +1,8 @@
 #pragma once
+#include <iomanip>
 #include <vector>
+
+#include <spdlog/spdlog.h>
 
 #include <linc/mesh.h++>
 #include <linc/units.h++>
@@ -39,7 +42,7 @@ public:
     };
 
     friend std::ostream &operator<<(std::ostream &os, Point const &point) {
-      return os << point.x() << ' ' << point.y() << ' ' << point.z();
+      return os << point.m_vertex;
     }
   };
 
@@ -67,6 +70,10 @@ public:
     Edge(std::vector<Point> &points, EdgePointIndices pointIndices,
          EdgeUsers users)
         : m_points(points), m_pointIndices(pointIndices), m_users(users) {}
+    Edge(std::vector<Point> &points, EdgePointIndices pointIndices,
+         EdgeUsers users, bool visible)
+        : m_points(points), m_pointIndices(pointIndices), m_users(users),
+          m_visible(visible) {}
 
     bool operator<(Edge const &other) const {
       auto const &[lhsPointLow, lhsPointHigh] =
@@ -94,7 +101,8 @@ public:
     }
 
     bool fullEquals(Edge const &other) const {
-      return *this == other and m_users == other.m_users;
+      return *this == other and m_users == other.m_users and
+             m_visible == other.m_visible;
     }
 
     bool operator!=(Edge const &other) const { return not(*this == other); }
@@ -102,14 +110,19 @@ public:
     friend std::ostream &operator<<(std::ostream &os, Edge const &edge) {
       Point const &p0 = edge.point0();
       Point const &p1 = edge.point1();
-      os << '{' << p0 << " (" << edge.m_pointIndices[0] << ")--- " << p1 << " ("
-         << edge.m_pointIndices[1] << ") users: (";
+      os << '{' << p0 << " (" << std::setiosflags(std::ios::right)
+         << std::setw(3) << std::setfill(' ') << edge.m_pointIndices[0]
+         << ") --- " << p1 << " (" << std::setw(3) << edge.m_pointIndices[1]
+         << ") users: (";
       std::string delim{""};
-      for (auto const &user : edge.m_users) {
-        os << delim << user;
-        delim = ", ";
+      if (edge.m_users.size() == 1) {
+        delim = "    ";
       }
-      return os << ") " << (edge.m_visible ? "Visible" : "Invisible") << '}';
+      for (auto const &user : edge.m_users) {
+        os << delim << std::setw(3) << user;
+        delim = ",";
+      }
+      return os << ") " << (edge.m_visible ? "  Visible" : "Invisible") << '}';
     }
   };
 
@@ -163,16 +176,17 @@ public:
 
     friend std::ostream &operator<<(std::ostream &os,
                                     Triangle const &triangle) {
-      os << '{' << triangle.edge0() << ",\n " << triangle.edge1() << ",\n "
+      os << '{' << triangle.edge0() << ",\n  " << triangle.edge1() << ",\n  "
          << triangle.edge2();
       if (triangle.m_edgeIndices[3] != INVALID_INDEX) {
-        os << ",\n " << triangle.edge3();
+        os << ",\n  " << triangle.edge3();
       }
       return os << '}';
     }
 
     bool fullEquals(Triangle const &other) const {
-      return *this == other and m_normal == other.m_normal;
+      return *this == other and m_normal == other.m_normal and
+             m_visible == other.m_visible;
     }
 
     std::tuple<bool, size_t, size_t> isOpen() const {
@@ -299,6 +313,8 @@ public:
   double softMaxHeight() const;
   double minHeight() const;
   size_t countVisiblePoints() const;
+  size_t countVisibleEdges() const;
+  size_t countVisibleTriangles() const;
   bool isAllPointsVisible() const;
   void setDistances(Millimeter zCut);
   void setPointsVisibility();
@@ -312,10 +328,10 @@ inline auto operator<<(std::ostream &os,
     -> std::ostream & {
 
   std::string delim{""};
-  os << '{';
+  os << "\n{";
   for (auto const &point : points) {
     os << delim << point;
-    delim = ", ";
+    delim = ",\n ";
   }
   os << '}';
   return os;
@@ -326,13 +342,71 @@ inline auto operator<<(std::ostream &os,
     -> std::ostream & {
 
   std::string delim{""};
-  os << '{';
+  os << "\n{";
   for (auto const &edge : edges) {
     os << delim << edge;
-    delim = ", ";
+    delim = ",\n ";
   }
-  os << '}';
+  os << "}\n";
   return os;
 }
+
+inline auto operator<<(std::ostream &os,
+                       std::vector<MeshClipper::Triangle> triangles)
+    -> std::ostream & {
+  std::string delim{""};
+  os << "\n{";
+  for (auto const &triangle : triangles) {
+    os << delim << triangle;
+    delim = ",\n ";
+  }
+  os << "}\n";
+  return os;
+}
+
+template <> struct fmt::formatter<MeshClipper::Edge> {
+  constexpr auto parse(format_parse_context &ctx) {
+    // [ctx.begin(), ctx.end()) is a character range that contains a part of
+    // the format string starting from the format specifications to be parsed,
+    // e.g. in
+    //
+    //   fmt::format("{:f} - point of interest", point{1, 2});
+    //
+    // the range will contain "f} - point of interest". The formatter should
+    // parse specifiers until '}' or the end of the range. In this example
+    // the formatter should parse the 'f' specifier and return an iterator
+    // pointing to '}'.
+
+    // Parse the presentation format and store it in the formatter:
+    auto it = ctx.begin();
+    auto end = ctx.end();
+
+    if (it != end and *it != '}') {
+      it++;
+    }
+    if (it != end and *it != '}') {
+      it++;
+    }
+
+    // Check if reached the end of the range:
+    if (it != end and *it != '}') {
+      throw format_error("invalid format");
+    }
+
+    // Return an iterator past the end of the parsed range:
+    return it;
+  }
+
+  template <typename FormatContext>
+  auto format(const MeshClipper::Edge &edge, FormatContext &ctx) {
+    // ctx.out() is an output iterator to write to.
+    return format_to(
+        ctx.out(),
+        "{{{:.1f} {:.1f} {:.1f} ({}) --- {:.1f} {:.1f} {:.1f} ({})}}",
+        edge.point0().x(), edge.point0().y(), edge.point0().z(),
+        edge.m_pointIndices[0], edge.point1().x(), edge.point1().y(),
+        edge.point1().z(), edge.m_pointIndices[1]);
+  }
+};
 
 Mesh clip(Mesh const &mesh, Millimeter const zCut);

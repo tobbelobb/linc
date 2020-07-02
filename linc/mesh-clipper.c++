@@ -8,6 +8,8 @@
 #include <linc/mesh-clipper.h++>
 #include <linc/util.h++>
 
+using PairOfPairs = std::array<std::array<std::size_t, 2>, 2>;
+
 static auto logger = spdlog::get("file_logger");
 
 MeshClipper::MeshClipper(Mesh const &mesh) {
@@ -95,12 +97,25 @@ auto MeshClipper::countVisiblePoints() const -> std::size_t {
                     [](Point const &point) { return point.m_visible; }));
 }
 
+auto MeshClipper::countVisibleEdges() const -> std::size_t {
+  return static_cast<std::size_t>(
+      std::count_if(m_edges.begin(), m_edges.end(),
+                    [](Edge const &edge) { return edge.m_visible; }));
+}
+
+auto MeshClipper::countVisibleTriangles() const -> std::size_t {
+  return static_cast<std::size_t>(std::count_if(
+      m_triangles.begin(), m_triangles.end(),
+      [](Triangle const &triangle) { return triangle.m_visible; }));
+}
+
 auto MeshClipper::isAllPointsVisible() const -> bool {
   return std::all_of(m_points.begin(), m_points.end(),
                      [](auto const &point) { return point.m_visible; });
 }
 
 void MeshClipper::adjustEdges() {
+  SPDLOG_LOGGER_DEBUG(logger, "Adjusting edges");
   for (std::size_t edgeIndex{0}; edgeIndex < m_edges.size(); ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
     if (edge.m_visible) {
@@ -137,7 +152,7 @@ void MeshClipper::adjustEdges() {
         Point newPoint{newVertex, 0.0, 0, true};
         std::size_t newPointIndex = m_points.size();
         m_points.emplace_back(newPoint);
-        if (distance0 < 0.0) {
+        if (distance0 > 0.0) {
           edge.m_pointIndices[0] = newPointIndex;
         } else {
           edge.m_pointIndices[1] = newPointIndex;
@@ -148,15 +163,21 @@ void MeshClipper::adjustEdges() {
 }
 
 void MeshClipper::adjustTriangles() {
+  SPDLOG_LOGGER_DEBUG(logger, "Adjusting triangles");
   for (std::size_t triangleIndex{0}; triangleIndex < m_triangles.size();
        ++triangleIndex) {
     Triangle &triangle = m_triangles[triangleIndex];
     if (triangle.m_visible) {
+      SPDLOG_LOGGER_TRACE(logger, "Triangle {} is visible", triangleIndex);
       auto const [isOpen, startPointIndex, endPointIndex] = triangle.isOpen();
       if (isOpen) {
+        SPDLOG_LOGGER_TRACE(logger, "Triangle {} is open", triangleIndex);
         std::size_t const newEdgeIndex = m_edges.size();
         m_edges.emplace_back(
             Edge{m_points, {startPointIndex, endPointIndex}, {triangleIndex}});
+        SPDLOG_LOGGER_TRACE(
+            logger, "Creating a new edge to close open triangle: {}, index {}",
+            m_edges[newEdgeIndex], newEdgeIndex);
         auto const emptySpot =
             std::find(triangle.m_edgeIndices.begin(),
                       triangle.m_edgeIndices.end(), INVALID_INDEX);
@@ -167,15 +188,21 @@ void MeshClipper::adjustTriangles() {
         }
         std::size_t const whichEdge = static_cast<std::size_t>(
             std::distance(triangle.m_edgeIndices.begin(), emptySpot));
+        SPDLOG_LOGGER_TRACE(logger, "Triangle has space for new edge at {}",
+                            whichEdge);
         triangle.m_edgeIndices[whichEdge] = newEdgeIndex;
         if (std::all_of(triangle.m_edgeIndices.begin(),
                         triangle.m_edgeIndices.end(),
                         [](std::size_t const index) {
                           return index != INVALID_INDEX;
                         })) {
-          // This triangle has four edges. Split it into two triangles.
-          // Create a new edge
-          std::size_t const newTriangleIndex = m_edges.size();
+          SPDLOG_LOGGER_TRACE(logger,
+                              "This triangle has four edges. Splitting it.");
+          SPDLOG_LOGGER_TRACE(logger, "Disabling edge {} for triangle {}",
+                              newEdgeIndex, triangleIndex);
+          triangle.m_edgeIndices[whichEdge] = INVALID_INDEX;
+
+          std::size_t const newTriangleIndex = m_triangles.size();
           std::size_t const newNewEdgeIndex = m_edges.size();
 
           // Find the non-new edge that shares the point at endPointIndex
@@ -184,22 +211,31 @@ void MeshClipper::adjustTriangles() {
           std::size_t crossPointIndex = INVALID_INDEX;
           std::size_t betweenEdgeIndex = INVALID_INDEX;
           for (auto &edgeIndex : triangle.m_edgeIndices) {
-            if (edgeIndex != newEdgeIndex) {
-              std::array<std::array<std::size_t, 2>, 2> constexpr ab{
-                  {{0, 1}, {1, 0}}};
-              for (auto const &[a, b] : ab) {
+            if (edgeIndex != INVALID_INDEX) {
+              SPDLOG_LOGGER_TRACE(logger, "Investigating edge {}", edgeIndex);
+              for (auto const &[a, b] : PairOfPairs{{{0, 1}, {1, 0}}}) {
                 if (m_edges[edgeIndex].m_pointIndices[a] == endPointIndex) {
                   crossPointIndex = m_edges[edgeIndex].m_pointIndices[b];
                   betweenEdgeIndex = edgeIndex;
+                  SPDLOG_LOGGER_TRACE(logger, "Found the betweenEdgeIndex: {}",
+                                      betweenEdgeIndex);
                   // This edge shall switch triangleIndex to newTriangleIndex
                   // in its user list
                   for (auto &userIndex : m_edges[betweenEdgeIndex].m_users) {
                     if (userIndex == triangleIndex) {
+                      SPDLOG_LOGGER_TRACE(
+                          logger,
+                          "Switching user {} to user {} for the betweenEdge",
+                          userIndex, newTriangleIndex);
                       userIndex = newTriangleIndex;
                     }
                   }
                   // This triangle shall no longer use the betweenEdge.
                   // The newNewEdge shall be used instead.
+                  SPDLOG_LOGGER_TRACE(
+                      logger,
+                      "Switching edge index {} to edge {} for triangle {}",
+                      edgeIndex, newNewEdgeIndex, triangleIndex);
                   edgeIndex = newNewEdgeIndex;
                 }
               }
@@ -210,26 +246,23 @@ void MeshClipper::adjustTriangles() {
           m_edges.emplace_back(Edge{m_points,
                                     {startPointIndex, crossPointIndex},
                                     {triangleIndex, newTriangleIndex}});
-          // Create the new triangle
-          m_triangles.emplace_back(Triangle{
-              m_edges, {newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
-        }
-      }
-    }
-  }
-}
+          SPDLOG_LOGGER_TRACE(logger, "Creating the newNewEdge: {}",
+                              m_edges[newNewEdgeIndex]);
+          m_triangles.emplace_back(Triangle{m_edges,
+                                            {newEdgeIndex, betweenEdgeIndex,
+                                             newNewEdgeIndex, INVALID_INDEX}});
+          SPDLOG_LOGGER_TRACE(logger, "Creating a new triangle.");
 
-void MeshClipper::adjustTriangles() {
-  for (auto &triangle : m_triangles) {
-    if (triangle.visible()) {
-      // Initiate all vertices touched by triangle with m_occurs = 0
-      for (auto const edgeIndex : triangle.m_edgeIndices) {
-        if (edgeIndex != INVALID_INDEX) {
-          triangle.m_edges[edgeIndex].vertex0().m_occurs = 0;
-          triangle.m_edges[edgeIndex].vertex1().m_occurs = 0;
+          for (auto &userIndex : m_edges[newEdgeIndex].m_users) {
+            if (userIndex == triangleIndex) {
+              SPDLOG_LOGGER_TRACE(
+                  logger, "Switching user {} to user {} for the newEdge",
+                  userIndex, newTriangleIndex);
+              userIndex = newTriangleIndex;
+            }
+          }
         }
       }
-      if (triangle.isOpenPolyLine())
     }
   }
 }
@@ -253,7 +286,15 @@ auto MeshClipper::softClip(Millimeter const zCut) -> double {
   }
 
   adjustEdges();
+  SPDLOG_LOGGER_DEBUG(
+      logger,
+      "There exists {} points, {} edges, and {} triangles after adjustEdges().",
+      m_points.size(), m_edges.size(), m_triangles.size());
   adjustTriangles();
+  SPDLOG_LOGGER_DEBUG(logger,
+                      "There exists {} points, {} edges, and {} triangles "
+                      "after adjustTriangles().",
+                      m_points.size(), m_edges.size(), m_triangles.size());
 
   return oldSoftMaxHeight - zCut;
 }

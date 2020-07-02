@@ -113,8 +113,8 @@ auto main() -> int {
           {{-5, -5, 10}, 0.0_mm, 0, true},
           {{-5,  5,  0}, 0.0_mm, 0, true},
           {{-5,  5, 10}, 0.0_mm, 0, true},
-          {{ 5, -5, 10}, 0.0_mm, 0, true},
           {{ 5, -5,  0}, 0.0_mm, 0, true},
+          {{ 5, -5, 10}, 0.0_mm, 0, true},
           {{ 5,  5,  0}, 0.0_mm, 0, true},
           {{ 5,  5, 10}, 0.0_mm, 0, true}};
       // clang-format on
@@ -298,6 +298,57 @@ auto main() -> int {
     }
     {
       MeshClipper meshClipper{
+          Mesh{Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}}};
+      double const softClippedAt5 = meshClipper.softClip(5.0);
+      compare(softClippedAt5, 5.0);
+      compare(meshClipper.softMaxHeight(), 5.0);
+
+      // POINTS correctness
+      compare(meshClipper.m_points.size(), 5U);
+      compare(meshClipper.countVisiblePoints(), 4U);
+      std::vector<MeshClipper::Point> expectedPoints{
+          {0, -5, 0}, {0, 0, 10}, {0, 5, 0}, {0, -2.5, 5}, {0, 2.5, 5}};
+      compare(meshClipper.m_points, expectedPoints);
+
+      // EDGES correctness
+      compare(meshClipper.m_edges.size(), 5U);
+      compare(meshClipper.countVisibleEdges(), 5U);
+      std::vector<MeshClipper::Edge> expectedEdges{
+          {expectedPoints, {0, 3}, {0}, true},
+          {expectedPoints, {0, 2}, {0}, true},
+          {expectedPoints, {2, 4}, {1}, true},
+          {expectedPoints, {3, 4}, {1}, true},
+          {expectedPoints, {2, 3}, {0, 1}, true}};
+      compare(meshClipper.m_edges, expectedEdges);
+      for (auto const &[i, expectedEdge] : enumerate(expectedEdges)) {
+        bool fullEquals = expectedEdge.fullEquals(meshClipper.m_edges[i]);
+        if (not fullEquals) {
+          std::cerr << "Index " << i << " Expected " << expectedEdge << " got "
+                    << meshClipper.m_edges[i] << '\n';
+        }
+        check(fullEquals);
+      }
+
+      // TRIANGLE correctness
+      compare(meshClipper.m_triangles.size(), 2U);
+      compare(meshClipper.countVisibleTriangles(), 2U);
+      std::vector<MeshClipper::Triangle> expectedTriangles{
+          {expectedEdges, {0, 1, 4}, Normal::Zero(), true},
+          {expectedEdges, {2, 3, 4}, Normal::Zero(), true}};
+      compare(meshClipper.m_triangles, expectedTriangles);
+      for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
+        bool fullEquals =
+            expectedTriangle.fullEquals(meshClipper.m_triangles[i]);
+        if (not fullEquals) {
+          std::cerr << "Index " << i << " Expected " << expectedTriangle
+                    << " got " << meshClipper.m_triangles[i] << '\n';
+        }
+        check(fullEquals);
+      }
+    }
+
+    {
+      MeshClipper meshClipper{
           Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
       compare(meshClipper.maxHeight(), 10.0);
 
@@ -310,8 +361,89 @@ auto main() -> int {
       check(softHeightLeft < 5.0 + eps);
       check(softHeightLeft > 5.0 - eps);
 
+      // POINT correctness
       compare(meshClipper.m_points.size(), 16U);
+      compare(meshClipper.countVisiblePoints(), 12U);
+      // clang-format off
+      std::vector<MeshClipper::Point> expectedPoints{
+        {{-5, -5,  0}, -5.0_mm, 0, true},
+        {{-5, -5, 10},  5.0_mm, 0, false},
+        {{-5,  5,  0}, -5.0_mm, 0, true},
+        {{-5,  5, 10},  5.0_mm, 0, false},
+        {{ 5, -5,  0}, -5.0_mm, 0, true},
+        {{ 5, -5, 10},  5.0_mm, 0, false},
+        {{ 5,  5,  0}, -5.0_mm, 0, true},
+        {{ 5,  5, 10},  5.0_mm, 0, false},
+        {{-5, -5,  5},  0.0_mm, 0, true},
+        {{-5,  0,  5},  0.0_mm, 0, true},
+        {{ 0, -5,  5},  0.0_mm, 0, true},
+        {{-5,  5,  5},  0.0_mm, 0, true},
+        {{ 0,  5,  5},  0.0_mm, 0, true},
+        {{ 5, -5,  5},  0.0_mm, 0, true},
+        {{ 5,  0,  5},  0.0_mm, 0, true},
+        {{ 5,  5,  5},  0.0_mm, 0, true}};
+      // clang-format on
+      compare(meshClipper.m_points, expectedPoints);
+      for (auto const &[i, expectedPoint] : enumerate(expectedPoints)) {
+        bool const fullEquals =
+            expectedPoint.m_distance == meshClipper.m_points[i].m_distance and
+            expectedPoint.m_visible == meshClipper.m_points[i].m_visible;
+        if (not fullEquals) {
+          std::cerr << "Index " << i << " Expected " << expectedPoint << " got "
+                    << meshClipper.m_points[i] << '\n';
+        }
+        check(fullEquals);
+      }
+
+      // EDGE correctness
       compare(meshClipper.m_edges.size(), 30U);
+      compare(meshClipper.countVisibleEdges(), 25U);
+      // clang-format off
+      std::vector<MeshClipper::Edge> expectedEdges{
+          {expectedPoints, { 0,  8}, { 0,  1},  true},
+          {expectedPoints, { 0,  2}, { 2,  3},  true},
+          {expectedPoints, { 0,  9}, { 0,  2},  true},
+          {expectedPoints, { 0,  4}, { 4,  5},  true},
+          {expectedPoints, {10,  0}, { 1,  4},  true},
+          {expectedPoints, { 6,  0}, { 3,  5},  true},
+          {expectedPoints, { 3,  1}, { 0,  6}, false},
+          {expectedPoints, { 5,  1}, { 1,  6}, false},
+          {expectedPoints, {11,  2}, {12,  7},  true},
+          {expectedPoints, { 2,  6}, { 3,  7},  true},
+          {expectedPoints, { 3,  5}, { 6,  8}, false},
+          {expectedPoints, {12,  6}, {14,  9},  true},
+          {expectedPoints, { 7,  3}, { 8,  9}, false},
+          {expectedPoints, {13,  4}, {13, 10},  true},
+          {expectedPoints, { 4,  6}, { 5, 10},  true},
+          {expectedPoints, { 6, 14}, {15, 11},  true},
+          {expectedPoints, { 7,  5}, { 8, 11}, false},
+          {expectedPoints, {15,  6}, { 9, 11},  true},
+          {expectedPoints, { 8,  9}, {     0},  true},
+          {expectedPoints, { 8, 10}, {     1},  true},
+          {expectedPoints, { 9, 11}, {    12},  true},
+          {expectedPoints, { 9,  2}, { 2, 12},  true},
+          {expectedPoints, {10, 13}, {    13},  true},
+          {expectedPoints, {10,  4}, { 4, 13},  true},
+          {expectedPoints, {11, 12}, {    14},  true},
+          {expectedPoints, {11,  6}, { 7, 14},  true},
+          {expectedPoints, {12, 15}, {     9},  true},
+          {expectedPoints, {13, 14}, {    15},  true},
+          {expectedPoints, {13,  6}, {10, 15},  true},
+          {expectedPoints, {14, 15}, {    11},  true}};
+      // clang-format on
+      compare(meshClipper.m_edges, expectedEdges);
+      for (auto const &[i, expectedEdge] : enumerate(expectedEdges)) {
+        bool fullEquals = expectedEdge.fullEquals(meshClipper.m_edges[i]);
+        if (not fullEquals) {
+          std::cerr << "Index " << i << " Expected " << expectedEdge << " got "
+                    << meshClipper.m_edges[i] << '\n';
+        }
+        check(fullEquals);
+      }
+
+      // TRIANGLE correctness
+      compare(meshClipper.m_triangles.size(), 16U);
+      // meshClipper.writeStl(getPath("test-models/broken/clipped-small-cube.binary.stl"));
     }
   } catch (...) {
     return 1;
