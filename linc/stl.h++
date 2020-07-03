@@ -42,14 +42,31 @@ auto constexpr STL_MIN_FILE_SIZE = 284L;
 auto constexpr ASCII_LINES_PER_FACET = 7U;
 auto constexpr SIZEOF_STL_FACET = 50U;
 
-// We need this stuff to read/write binary stls
-using SmallVertex = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
-using SmallNormal = Eigen::Matrix<float, 3, 1, Eigen::DontAlign>;
+// We need this stuff to read/write binary stls portably and safely
+using SmallVertex = std::array<float, 3>;
+using SmallNormal = std::array<float, 3>;
 struct SmallFacet {
   SmallNormal normal;
   std::array<SmallVertex, 3> vertices;
   std::array<std::byte, 2> extra;
 };
+
+// If SmallFacet is not trivially copyable, then we cannot predictably
+// write it into a binary file.
+static_assert(std::is_trivially_copyable<SmallNormal>::value, /* NOLINT */
+              "SmallNormal is not trivially copyable");
+static_assert(std::is_trivially_copyable<SmallVertex>::value, /* NOLINT */
+              "SmallVertex is not trivially copyable");
+static_assert(
+    std::is_trivially_copyable<std::array<SmallVertex, 3>>::value, /* NOLINT */
+    "Array of SmallVertex is not trivially copyable");
+static_assert(std::is_trivially_copyable<std::byte>::value, /* NOLINT */
+              "std::byte is not trivially copyable");
+static_assert(
+    std::is_trivially_copyable<std::array<std::byte, 2>>::value, /* NOLINT */
+    "Array of std::byte is not trivially copyable");
+static_assert(std::is_trivially_copyable<SmallFacet>::value, /* NOLINT */
+              "SmallFacet is not trivially copyable");
 static_assert(sizeof(SmallVertex) == 12, /* NOLINT */
               "size of Vertex incorrect");
 static_assert(sizeof(SmallNormal) == 12, /* NOLINT */

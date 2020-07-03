@@ -328,10 +328,18 @@ auto Stl::readBinaryFacets(FILE *fp) -> bool {
     if (fread(&smallFacet, 1, SIZEOF_STL_FACET, fp) != SIZEOF_STL_FACET) {
       return false;
     }
-    facet.normal = smallFacet.normal.cast<double>();
-    facet.vertices[0] = smallFacet.vertices[0].cast<double>();
-    facet.vertices[1] = smallFacet.vertices[1].cast<double>();
-    facet.vertices[2] = smallFacet.vertices[2].cast<double>();
+    facet.normal.x() = static_cast<double>(smallFacet.normal[0]);
+    facet.normal.y() = static_cast<double>(smallFacet.normal[1]);
+    facet.normal.z() = static_cast<double>(smallFacet.normal[2]);
+    facet.vertices[0].x() = static_cast<double>(smallFacet.vertices[0][0]);
+    facet.vertices[0].y() = static_cast<double>(smallFacet.vertices[0][1]);
+    facet.vertices[0].z() = static_cast<double>(smallFacet.vertices[0][2]);
+    facet.vertices[1].x() = static_cast<double>(smallFacet.vertices[1][0]);
+    facet.vertices[1].y() = static_cast<double>(smallFacet.vertices[1][1]);
+    facet.vertices[1].z() = static_cast<double>(smallFacet.vertices[1][2]);
+    facet.vertices[2].x() = static_cast<double>(smallFacet.vertices[2][0]);
+    facet.vertices[2].y() = static_cast<double>(smallFacet.vertices[2][1]);
+    facet.vertices[2].z() = static_cast<double>(smallFacet.vertices[2][2]);
   }
   return true;
 }

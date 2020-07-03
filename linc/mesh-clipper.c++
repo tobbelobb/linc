@@ -344,10 +344,16 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
   myfile.write(emptyHeader.data(), LABEL_SIZE);
 
   auto const facetCounter = static_cast<uint32_t>(countVisibleTriangles());
+  // We would like to
+  // #include <bit>
+  // auto facetCounterBytes{std::bit_cast<char,
+  // FACET_COUNTER_SIZE>(facetCounter)};
+  // ... but bit_cast is not available yet as of July 3, 2020.
+  std::array<char, FACET_COUNTER_SIZE> facetCounterBytes{'\0'};
+  std::memcpy(facetCounterBytes.data(), &facetCounter, FACET_COUNTER_SIZE);
   SPDLOG_LOGGER_DEBUG(logger, "Writing into header that we have {} facets",
                       facetCounter);
-  myfile.write(reinterpret_cast<char const *>(&facetCounter),
-               FACET_COUNTER_SIZE);
+  myfile.write(facetCounterBytes.data(), FACET_COUNTER_SIZE);
 
   for (auto const &triangle : m_triangles) {
     if (triangle.m_visible) {
@@ -360,13 +366,21 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
         }
       }
       SmallFacet smallFacet{};
-      smallFacet.normal = triangle.m_normal.cast<float>();
+      smallFacet.normal[0] = static_cast<float>(triangle.m_normal.x());
+      smallFacet.normal[1] = static_cast<float>(triangle.m_normal.y());
+      smallFacet.normal[2] = static_cast<float>(triangle.m_normal.z());
       size_t i{0};
       for (auto it{points.begin()}; it != points.end(); ++it, ++i) {
-        smallFacet.vertices.at(i) = (*it).m_vertex.cast<float>();
+        smallFacet.vertices.at(i).at(0) =
+            static_cast<float>((*it).m_vertex.x());
+        smallFacet.vertices.at(i).at(1) =
+            static_cast<float>((*it).m_vertex.y());
+        smallFacet.vertices.at(i).at(2) =
+            static_cast<float>((*it).m_vertex.z());
       }
-      myfile.write(reinterpret_cast<char const *>(&smallFacet),
-                   SIZEOF_STL_FACET);
+      std::array<char, SIZEOF_STL_FACET> stlFacetBytes{'\0'};
+      std::memcpy(stlFacetBytes.data(), &smallFacet, SIZEOF_STL_FACET);
+      myfile.write(stlFacetBytes.data(), SIZEOF_STL_FACET);
     }
   }
 
