@@ -7,13 +7,12 @@
 auto main() -> int {
   try {
     {
-      Mesh const mesh{Stl{getPath("test-models/tetrahedron.ascii.stl")}};
+      Mesh const mesh{Stl{getPath("test-models/small-cube.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 1.0_mm));
+      check(not willCollide(mesh, pivots, 0.3_mm));
     }
   } catch (...) {
     return 1;
   }
-
   return 0;
 }

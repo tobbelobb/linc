@@ -1,82 +1,132 @@
+#include <cmath>
+#include <numeric>
+#include <vector>
+
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG /* NOLINT */
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
+
 #include <linc/linc.h++>
 #include <linc/mesh-clipper.h++>
 #include <linc/util.h++>
+#include <linc/vertex.h++>
+
+static auto logger = spdlog::get("file_logger");
+
+// Disregard z and construct hull as if all vertices were at z=0
+static auto hull(std::vector<Vertex> const vertices) -> std::vector<Vertex> {
+  auto ret{vertices};
+  return ret;
+}
+
+static auto intersect(MeshClipper::Triangle const &triangle0,
+                      Mesh::Triangle const &triangle1) -> bool {
+  (void)triangle0;
+  (void)triangle1;
+  return false;
+}
+
+static void orderCounterClockWise(std::vector<Vertex> &vertices) {
+  Vertex middlePoint{Vertex::Zero()};
+  for (auto const &vertex : vertices) {
+    middlePoint += vertex;
+  }
+  middlePoint = middlePoint / vertices.size();
+
+  std::sort(vertices.begin(), vertices.end(),
+            [middlePoint](Vertex const &vertex0, Vertex const &vertex1) {
+              Vertex const offsetPoint0 = vertex0 - middlePoint;
+              Vertex const offsetPoint1 = vertex1 - middlePoint;
+              auto const angle0 = atan2(offsetPoint0.y(), offsetPoint0.x());
+              auto const angle1 = atan2(offsetPoint1.y(), offsetPoint1.x());
+              return angle0 < angle1;
+            });
+}
 
 auto willCollide(Mesh const &mesh, Pivots const &pivots,
                  Millimeter const layerHeight) -> bool {
-  (void)pivots;
+  if (logger == nullptr) {
+    logger = spdlog::get("file_logger");
+  }
 
-  MeshClipper partialPrint{mesh};
-
-  double const minHeight = partialPrint.minHeight();
+  double const minHeight = mesh.minHeight();
 
   assert(minHeight > -VertexConstants::eps);  // NOLINT
   assert(minHeight < VertexConstants::eps);   // NOLINT
   assert(layerHeight > VertexConstants::eps); // NOLINT
 
-  double const topHeight = partialPrint.maxHeight();
+  double const topHeight = mesh.maxHeight();
 
   // clang-format might complain that h-=layerHeight will accumulate an error.
-  // We don't care here, since an extra iteration doesn't matter for us
+  // We don't care here, since an extra iteration more or less when we're
+  // getting close to the bottom of the print doesn't matter for us
   for (Millimeter h{topHeight}; h > 2 * layerHeight; /* NOLINT */
        h -= layerHeight) {                           /* NOLINT */
+
+    MeshClipper partialPrint{mesh};
     partialPrint.softClip(h);
+    SPDLOG_LOGGER_DEBUG(logger, "New soft max height after clip is {}",
+                        partialPrint.softMaxHeight());
 
-    //   // Extract convex hull of the top points
-    //   // This involves removing points that are enclosed by other points
-    //   points std::vector<Vertex> topPoints =
-    //   hull(partialPrint.getTopPoints()); size_t const numTopPoints =
-    //   topPoints.size();
-    //
-    //   // Could be achieved with std::sort and a function that finds an inner
-    //   point,
-    //   // And does < on angle from inner point to outer point (use (1,0) as
-    //   reference 0 angle) orderCounterClockWise(topPoints);
-    //
-    //   // Build the cones and check for collision, one by one
-    //   for (auto const& [i, anchorPivot] : enumerate(pivots.anchors)) {
-    //     // POINTS
-    //     Mesh cone{.m_vertices = {anchorPivot}};
-    //     for (auto const& topPoint : topPoints) {
-    //       cone.m_vertices.emplace_back(topPoint + pivots.effectors[i]);
-    //     }
-    //     size_t const numPoints = cone.m_vertices.size();
-    //
-    //     // EDGES
-    //     // Add star topology down to anchorPivot
-    //     for (size_t pointIdx{1}; pointIdx < numPoints; ++pointIdx) {
-    //       cone.m_edges.emplace_back({0, pointIdx});
-    //     }
-    //     // Add ring of edges through all top points
-    //     for (size_t pointIdx{1}; pointIdx < numPoints - 1; ++pointIdx) {
-    //       cone.m_edges.emplace_back({pointIdx, pointIdx + 1});
-    //     }
-    //     cone.m_edges.emplace_back({numPoints - 1, 0});
-    //
-    //     // TRIANGLES
-    //     // There are numTopPoints top points (and thus star-topology edges)
-    //     // Right after star-topology edges comes as many ring edges
-    //     for (size_t starEdgeIdx{0}; starEdgeIdx < numTopPoints,
-    //     ++starEdgeIdx)
-    //     {
-    //       size_t const ringEdgeIdx = starEdgeIdx + numTopPoints;
-    //       cone.m_triangles.emplace_back({starEdgeIdx, (starEdgeIdx + 1) %
-    //       numTopPoints, ringEdgeIdx});
-    //     }
-    //
-    //     // Check for collision
-    //     // An intersection between a print triangle and a cone triangle
-    //     // means the two meshes intersect, and we regard that as a line
-    //     collision for (auto const& partialPrintTriangle :
-    //     partialPrint.m_triangles) {
-    //       for (auto const& coneTriangle : cone.m_triangles) {
-    //         if (intersect(partialPrintTriangle, coneTriangle)) {
-    //           return true;
-    //         }
-    //       }
-    //     }
-    //   }
+    // Extract convex hull of the top points
+    // This involves removing points that are enclosed by other points
+    std::vector<Vertex> topVertices{partialPrint.getTopVertices()};
+    SPDLOG_LOGGER_DEBUG(logger, "Found {} top vertices", topVertices.size());
+    std::vector<Vertex> topVerticesHull{hull(topVertices)};
+    SPDLOG_LOGGER_DEBUG(logger, "The hull of those has {} vertices",
+                        topVerticesHull.size());
+
+    orderCounterClockWise(topVerticesHull);
+
+    // Build the cones and check for collision, one by one
+    for (auto const &[i, anchorPivot] : enumerate(pivots.anchors)) {
+      // POINTS
+      Mesh cone{anchorPivot};
+      for (auto const &topVertex : topVerticesHull) {
+        cone.m_vertices.emplace_back(topVertex + pivots.effector[i]);
+      }
+      size_t const numPoints = cone.m_vertices.size();
+
+      // EDGES
+      // Add star topology down to anchorPivot
+      for (size_t pointIdx{1}; pointIdx < numPoints; ++pointIdx) {
+        cone.m_edges.emplace_back(Mesh::Edge{cone.m_vertices, {0, pointIdx}});
+      }
+      // Add ring of edges through all top points
+      for (size_t pointIdx{1}; pointIdx < numPoints - 1; ++pointIdx) {
+        cone.m_edges.emplace_back(
+            Mesh::Edge{cone.m_vertices, {pointIdx, pointIdx + 1}});
+      }
+      cone.m_edges.emplace_back(
+          Mesh::Edge{cone.m_vertices, {numPoints - 1, 0}});
+
+      // TRIANGLES
+      // There are numTopPoints top points (and thus star-topology edges)
+      // Right after star-topology edges comes as many ring edges
+      size_t const numTopHullVertices = topVerticesHull.size();
+      for (size_t starEdgeIdx{0}; starEdgeIdx < numTopHullVertices;
+           ++starEdgeIdx) {
+        size_t const ringEdgeIdx = starEdgeIdx + numTopHullVertices;
+        cone.m_triangles.emplace_back(
+            Mesh::Triangle{cone.m_edges,
+                           {starEdgeIdx, (starEdgeIdx + 1) % numTopHullVertices,
+                            ringEdgeIdx}});
+
+        // Check for collision
+        // An intersection between a print triangle and a cone triangle
+        // means the two meshes intersect, and we regard that as a line
+        // collision
+        for (auto const &partialPrintTriangle : partialPrint.m_triangles) {
+          if (partialPrintTriangle.m_visible) {
+            for (auto const &coneTriangle : cone.m_triangles) {
+              if (intersect(partialPrintTriangle, coneTriangle)) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+    }
   }
-
   return false;
 }

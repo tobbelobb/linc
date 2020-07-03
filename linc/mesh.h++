@@ -92,6 +92,11 @@ public:
   std::vector<Triangle> m_triangles{};
 
   Mesh(Stl const &stl);
+  // A mesh can start out from a single point
+  Mesh(Vertex v) : m_vertices{{v}} {}
+
+  double maxHeight() const;
+  double minHeight() const;
 };
 
 inline auto operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {

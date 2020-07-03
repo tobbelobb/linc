@@ -6,6 +6,28 @@
 #include <linc/util.h++>
 static auto logger = spdlog::get("file_logger");
 
+auto Mesh::maxHeight() const -> double {
+  if (m_vertices.empty()) {
+    return 0.0;
+  }
+  return (*std::max_element(m_vertices.begin(), m_vertices.end(),
+                            [](Vertex const &vertex0, Vertex const &vertex1) {
+                              return vertex0.z() < vertex1.z();
+                            }))
+      .z();
+}
+
+auto Mesh::minHeight() const -> double {
+  if (m_vertices.empty()) {
+    return 0.0;
+  }
+  return (*std::min_element(m_vertices.begin(), m_vertices.end(),
+                            [](Vertex const &vertex0, Vertex const &vertex1) {
+                              return vertex0.z() < vertex1.z();
+                            }))
+      .z();
+}
+
 Mesh::Mesh(Stl const &stl) {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");

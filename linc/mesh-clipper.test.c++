@@ -429,7 +429,31 @@ auto main() -> int {
 
       // TRIANGLE correctness
       compare(meshClipper.m_triangles.size(), 16U);
+      // I got tired.
       // meshClipper.writeBinaryStl(getPath("test-models/broken/clipped-small-cube.binary.stl"));
+    }
+    {
+      Mesh const mesh{Stl{getPath("test-models/small-cube.binary.stl")}};
+      double const topHeight = mesh.maxHeight();
+      compare(topHeight, 10.0);
+      double const minHeight = mesh.minHeight();
+      compare(minHeight, 0.0);
+      for (size_t h{0}; h <= 10; ++h) {
+        MeshClipper partialPrint{mesh};
+        auto const newH{static_cast<double>(h)};
+        partialPrint.softClip(newH);
+        // Clip should give exactly the new max height that we ask for.
+        // No truncation errors allowed.
+        compare(partialPrint.softMaxHeight(), newH);
+        std::vector<Vertex> topVertices = partialPrint.getTopVertices();
+        // Top and bottom cut of the cube should have 4 vertices
+        // All in between should have 8
+        if (h == 0 or h == 10) {
+          compare(topVertices.size(), 4U);
+        } else {
+          compare(topVertices.size(), 8U);
+        }
+      }
     }
     {
       // Confirm that we can load a large complicated broken mesh.
@@ -469,6 +493,5 @@ auto main() -> int {
   } catch (...) {
     return 1;
   }
-
   return 0;
 }

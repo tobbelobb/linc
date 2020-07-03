@@ -35,9 +35,9 @@ inline std::ostream &operator<<(std::ostream &os, PivotTokens const &tokens) {
 
 class Pivots {
 public:
-  static auto constexpr cols = 6;
-  Eigen::Matrix<double, 3, cols> effector = Eigen::MatrixXd::Zero(3, cols);
-  Eigen::Matrix<double, 3, cols> anchors = Eigen::MatrixXd::Zero(3, cols);
+  static auto constexpr COLS = 6;
+  std::array<Vertex, COLS> effector = {Vertex::Zero()};
+  std::array<Vertex, COLS> anchors = {Vertex::Zero()};
   enum ColumnIndex {
     A1 = 0,
     A2 = 1,
@@ -55,8 +55,14 @@ private:
 };
 
 inline std::ostream &operator<<(std::ostream &os, Pivots const &pivots) {
-  os << "effector:\n" << pivots.effector << '\n';
-  os << "anchors:\n" << pivots.anchors << '\n';
+  os << "effector:\n";
+  for (auto const &effectorPivot : pivots.effector) {
+    os << effectorPivot << '\n';
+  }
+  os << "anchors:\n";
+  for (auto const &anchorPivot : pivots.anchors) {
+    os << anchorPivot << '\n';
+  }
   return os;
 }
 

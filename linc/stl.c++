@@ -381,9 +381,9 @@ void Stl::allocate(std::size_t const numberOfFacets) {
 }
 
 Stl::Stl(std::string const &fileName) {
-  SPDLOG_LOGGER_DEBUG(logger, "Stl constructor start: {}", fileName);
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
+  SPDLOG_LOGGER_DEBUG(logger, "Stl constructor start: {}", fileName);
 
   auto [fp, type] = openFile(fileName);
   if (fp == nullptr) {

@@ -149,7 +149,7 @@ auto MeshClipper::isAllPointsVisible() const -> bool {
                      [](auto const &point) { return point.m_visible; });
 }
 
-void MeshClipper::adjustEdges() {
+void MeshClipper::adjustEdges(Millimeter const zCut) {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting edges");
   for (std::size_t edgeIndex{0}; edgeIndex < m_edges.size(); ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
@@ -184,7 +184,10 @@ void MeshClipper::adjustEdges() {
         auto const t = distance0 / (distance0 - distance1);
         Vertex const newVertex =
             (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
-        Point newPoint{newVertex, 0.0, 0, true};
+
+        // Don't use newVertex.z() since it has roundoff errors, and we
+        // want exactly zCut to be the new hight
+        Point newPoint{{newVertex.x(), newVertex.y(), zCut}, 0.0, 0, true};
         std::size_t newPointIndex = m_points.size();
         m_points.emplace_back(newPoint);
         if (distance0 > 0.0) {
@@ -320,7 +323,7 @@ auto MeshClipper::softClip(Millimeter const zCut) -> double {
     return oldSoftMaxHeight;
   }
 
-  adjustEdges();
+  adjustEdges(zCut);
   SPDLOG_LOGGER_DEBUG(
       logger,
       "There exists {} points, {} edges, and {} triangles after adjustEdges().",
@@ -385,4 +388,16 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
   }
 
   myfile.close();
+}
+
+std::vector<Vertex> MeshClipper::getTopVertices() const {
+  double const height{softMaxHeight()};
+  std::vector<Vertex> res;
+  for (auto const &point : m_points) {
+    if (point.m_visible and point.z() <= VertexConstants::eps + height and
+        -VertexConstants::eps + height <= point.z()) {
+      res.emplace_back(point.m_vertex);
+    }
+  }
+  return res;
 }

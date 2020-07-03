@@ -120,14 +120,14 @@ Pivots::Pivots(std::string const &fileName) {
 void Pivots::save(PivotTokens const &tokens) {
   auto const col = pivotNameToColumn(tokens.name);
   if (tokens.isEffector()) {
-    effector(0, col) = toDouble(tokens.x);
-    effector(1, col) = toDouble(tokens.y);
-    effector(2, col) = toDouble(tokens.z);
+    effector.at(col).x() = toDouble(tokens.x);
+    effector.at(col).y() = toDouble(tokens.y);
+    effector.at(col).z() = toDouble(tokens.z);
   }
   if (tokens.isAnchor()) {
-    anchors(0, col) = toDouble(tokens.x);
-    anchors(1, col) = toDouble(tokens.y);
-    anchors(2, col) = toDouble(tokens.z);
+    anchors.at(col).x() = toDouble(tokens.x);
+    anchors.at(col).y() = toDouble(tokens.y);
+    anchors.at(col).z() = toDouble(tokens.z);
   }
 }
 
