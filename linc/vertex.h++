@@ -79,7 +79,7 @@ inline auto operator<<(std::ostream &os, Vertex const &vertex)
   constexpr size_t w = 8;
   // std::ios_base::fmtflags f = output.flags(std::ios::right);
   return os << std::setiosflags(std::ios::right) << std::fixed
-            << std::setprecision(3) << std::setw(w) << std::setfill(' ')
+            << std::setprecision(6) << std::setw(w) << std::setfill(' ')
             << vertex.x() << ' ' << std::setw(w) << vertex.y() << ' '
             << std::setw(w) << vertex.z();
 }

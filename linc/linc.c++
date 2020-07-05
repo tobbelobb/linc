@@ -1,5 +1,6 @@
 #include <cmath>
 #include <numeric>
+#include <utility>
 #include <vector>
 
 #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG /* NOLINT */
@@ -22,18 +23,15 @@ auto hull(std::vector<Vertex> const &vertices) -> std::vector<Vertex> {
 enum class Side { ABOVE, BELOW, BOTH };
 
 static auto whichSide(Triangle const &triangle,
-                      Normal const &separationDirection, Vertex const &point)
-    -> Side {
+                      Normal const &separationDirection, Vertex const &point,
+                      Millimeter const precision) -> Side {
   bool isAbove = false;
   bool isBelow = false;
   for (auto const &corner : triangle.m_corners) {
     auto const t = separationDirection.dot(corner - point);
-    if (t < VertexConstants::eps and -VertexConstants::eps < t) {
-      return Side::BOTH;
-    }
-    if (t < 0) {
+    if (t < -precision) {
       isBelow = true;
-    } else {
+    } else if (precision < t) {
       isAbove = true;
     }
     if (isAbove and isBelow) {
@@ -43,11 +41,69 @@ static auto whichSide(Triangle const &triangle,
   return isAbove ? Side::ABOVE : Side::BELOW;
 }
 
-auto intersect(Triangle const &triangle0, Triangle const &triangle1) -> bool {
-  if (whichSide(triangle1, triangle0.m_normal, triangle0.m_corners[0]) !=
-      Side::BOTH) {
-    return false;
+static auto whichSide(Triangle const &triangle0,
+                      Normal const &separationDirection,
+                      Triangle const &triangle1, Millimeter const precision)
+    -> Side {
+  bool isAbove = false;
+  bool isBelow = false;
+  for (auto const &point : triangle1.m_corners) {
+    for (auto const &corner : triangle0.m_corners) {
+      auto const t = separationDirection.dot(corner - point);
+      if (t < -precision) {
+        isBelow = true;
+      } else if (precision < t) {
+        isAbove = true;
+      }
+      if (isAbove and isBelow) {
+        return Side::BOTH;
+      }
+    }
   }
+  return isAbove ? Side::ABOVE : Side::BELOW;
+}
+
+auto intersect(Triangle const &triangle0, Triangle const &triangle1) -> bool {
+  for (auto const &point : triangle0.m_corners) {
+    Side const side =
+        whichSide(triangle1, triangle0.m_normal, point, VertexConstants::eps);
+    if (side != Side::BOTH) {
+      // Found an axis that completely separates the triangles
+      return false;
+    }
+  }
+  for (auto const &point : triangle1.m_corners) {
+    Side const side =
+        whichSide(triangle0, triangle1.m_normal, point, VertexConstants::eps);
+    if (side != Side::BOTH) {
+      // Found an axis that completely separates the triangles
+      return false;
+    }
+  }
+  std::array<Vertex, 3> const edges0 = {
+      triangle0.m_corners[0] - triangle0.m_corners[1],
+      triangle0.m_corners[1] - triangle0.m_corners[2],
+      triangle0.m_corners[2] - triangle0.m_corners[0]};
+  std::array<Vertex, 3> const edges1 = {
+      triangle1.m_corners[0] - triangle1.m_corners[1],
+      triangle1.m_corners[1] - triangle1.m_corners[2],
+      triangle1.m_corners[2] - triangle1.m_corners[0]};
+  constexpr std::array<std::pair<size_t, size_t>, 9> mixPairs = {
+      std::pair{0, 0}, std::pair{0, 1}, std::pair{0, 2},
+      std::pair{1, 0}, std::pair{1, 1}, std::pair{1, 2},
+      std::pair{2, 0}, std::pair{2, 1}, std::pair{2, 2}};
+
+  for (auto const &mixPair : mixPairs) {
+    Vertex const mixedCrossProduct =
+        edges0.at(mixPair.first).cross(edges1.at(mixPair.second));
+    Side const side = whichSide(triangle0, mixedCrossProduct, triangle1,
+                                VertexConstants::eps);
+    if (side != Side::BOTH) {
+      // Found an axis that completely separates the triangles
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -104,11 +160,11 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     orderCounterClockWise(topVerticesHull);
 
     // Build the cones and check for collision, one by one
-    for (auto const &[i, anchorPivot] : enumerate(pivots.anchors)) {
+    for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
       // POINTS
       Mesh cone{anchorPivot};
       for (auto const &topVertex : topVerticesHull) {
-        cone.m_vertices.emplace_back(topVertex + pivots.effector[i]);
+        cone.m_vertices.emplace_back(topVertex + pivots.effector[anchorIndex]);
       }
       size_t const numPoints = cone.m_vertices.size();
 
@@ -126,7 +182,7 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
           Mesh::Edge{cone.m_vertices, {numPoints - 1, 0}});
 
       // TRIANGLES
-      // There are numTopPoints top points (and thus star-topology edges)
+      // There are numTopPoints top points (and thus star-topology-edges)
       // Right after star-topology edges comes as many ring edges
       size_t const numTopHullVertices = topVerticesHull.size();
       for (size_t starEdgeIdx{0}; starEdgeIdx < numTopHullVertices;
@@ -136,17 +192,21 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
             Mesh::Triangle{cone.m_edges,
                            {starEdgeIdx, (starEdgeIdx + 1) % numTopHullVertices,
                             ringEdgeIdx}});
+      }
+      // Cone built.
 
-        // Check for collision
-        // An intersection between a print triangle and a cone triangle
-        // means the two meshes intersect, and we regard that as a line
-        // collision
-        for (auto const &partialPrintTriangle : partialPrint.m_triangles) {
-          if (partialPrintTriangle.m_visible) {
-            for (auto const &coneTriangle : cone.m_triangles) {
-              if (intersect(partialPrintTriangle, coneTriangle)) {
-                return true;
-              }
+      // Check for collision
+      // An intersection between a print triangle and a cone triangle
+      // means the two meshes intersect, and we regard that as a line
+      // collision
+      for (auto const &partialPrintTriangle : partialPrint.m_triangles) {
+        if (partialPrintTriangle.m_visible) {
+          for (auto const &coneTriangle : cone.m_triangles) {
+            if (intersect(partialPrintTriangle, coneTriangle)) {
+              SPDLOG_LOGGER_DEBUG(logger, "Found collision! Between {} and {}",
+                                  Triangle{partialPrintTriangle},
+                                  Triangle{coneTriangle});
+              return true;
             }
           }
         }

@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include <linc/linc.h++>
+#include <linc/mesh-clipper.h++>
 #include <linc/test-framework.h++>
 #include <linc/units.h++>
 #include <linc/vertex.h++>
@@ -8,18 +9,12 @@
 auto main() -> int {
   try {
     {
-      Mesh const mesh{Stl{getPath("test-models/small-cube.ascii.stl")}};
-      Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 0.3_mm));
-    }
-    // Triangle intersection detection
-    {
-      // Test Triangle constructor
-      std::vector<Vertex> vertices{
-          {Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
-      std::vector<Mesh::Edge> edges{
-          {vertices, {0, 1}}, {vertices, {1, 2}}, {vertices, {2, 0}}};
-      Mesh::Triangle triangle{edges, {0, 1, 2}};
+      // Test Triangle constructor from MeshClipper types
+      std::vector<MeshClipper::Point> points{
+          {{-2, 0, 0}, {0, -1, 0}, {0, 1, 0}}};
+      std::vector<MeshClipper::Edge> edges{
+          {points, {0, 1}}, {points, {1, 2}}, {points, {2, 0}}};
+      MeshClipper::Triangle triangle{edges, {0, 1, 2}};
 
       Triangle const t0{triangle};
       compare(t0.m_normal, Normal{0, 0, 1});
@@ -27,7 +22,10 @@ auto main() -> int {
       // The Triangle constructor should use the first three vertices that it
       // can find, so edge0's 0'th vertex, then edge0's 1'st vertex, then
       // edge1's 0'th or 1'st vertex in that order.
-      compare(t0.m_corners, vertices);
+      for (auto const &[i, corner] : enumerate(t0.m_corners)) {
+        Vertex const &vertex = points[i].m_vertex;
+        compare(corner, vertex);
+      }
 
       triangle.m_normal = Normal{20.0, 1.1, -2.0};
       // The triangle constructor should not check if the normal make sense
@@ -36,6 +34,23 @@ auto main() -> int {
       compare(t1.m_normal, Normal{20.0, 1.1, -2.0});
     }
     {
+      // Test Triangle constructor from Mesh types
+      std::vector<Vertex> vertices{
+          {Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
+      std::vector<Mesh::Edge> edges{
+          {vertices, {0, 1}}, {vertices, {1, 2}}, {vertices, {2, 0}}};
+      Mesh::Triangle triangle{edges, {0, 1, 2}};
+
+      Triangle const t0{triangle};
+      compare(t0.m_normal, Normal{0, 0, 1});
+      compare(t0.m_corners, vertices);
+
+      triangle.m_normal = Normal{20.0, 1.1, -2.0};
+      Triangle const t1{triangle};
+      compare(t1.m_normal, Normal{20.0, 1.1, -2.0});
+    }
+    // Triangle intersection detection
+    {
       // One edge of t0 goes straight through t1 and vice versa
       // "Chained" configuration not 90 degrees
       Triangle const t0{{Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
@@ -43,7 +58,7 @@ auto main() -> int {
           {Vertex{-1, -0.1, 1}, Vertex{-1, 0.1, -1}, Vertex{1, 0.1, 0}}};
 
       compare(t0.m_normal, Normal{0, 0, 1});
-      compare(t1.m_normal, Normal{0.0, -0.995, -0.0995});
+      compare(t1.m_normal, Normal{0.049690, -0.993808, -0.099381});
 
       check(intersect(t0, t1));
     }
@@ -70,6 +85,22 @@ auto main() -> int {
       Triangle const t0{
           {Vertex{-2, 0.1, 1}, Vertex{0, -0.1, 1}, Vertex{-1, -0.1, -1}}};
       check(intersect(t0, t1));
+    }
+    {
+      // Two edges of t1 does not go through middle of t0
+      // no "Dunk", but one point of t1 is on plane of t0. no 90 degrees
+      Triangle const t0{{Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
+      Triangle const t1{
+          {Vertex{-2, 0.1, 3}, Vertex{0, -0.1, 3}, Vertex{-1, -0.1, 0}}};
+      check(not intersect(t0, t1));
+    }
+    {
+      // Two edges of t1 does not go through middle of t0
+      // no "Dunk", no touch. no 90 degrees
+      Triangle const t0{{Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
+      Triangle const t1{
+          {Vertex{-2, 0.1, 4}, Vertex{0, -0.1, 4}, Vertex{-1, -0.1, 1}}};
+      check(not intersect(t0, t1));
     }
     {
       // Two edges of t1 goes through middle of t0
@@ -129,6 +160,54 @@ auto main() -> int {
       Triangle const t0{{Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
       Triangle const t1{{Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
       check(not intersect(t0, t1));
+    }
+    {
+      Triangle const t0{{Vertex{134.0, -134.0, 268.0},
+                         Vertex{134.0, -134.0, 0.0},
+                         Vertex{134.0, 134.0, 0.0}}};
+      Triangle const t1{{Vertex{220.0, -1744.5, 15.9},
+                         Vertex{354.0, -6.0, 398.0},
+                         Vertex{86.0, -6.0, 398.0}}};
+      compare(t0.m_normal, Normal{1, 0, 0});
+      compare(t1.m_normal, Normal{0.0, -0.214664, 0.976688});
+
+      check(not intersect(t0, t1));
+    }
+    // Real world collision detections examples for cube prints
+    {
+      Mesh const mesh{Stl{getPath("test-models/small-cube.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 1.0_mm));
+    }
+    {
+      Mesh const mesh{Stl{getPath("test-models/cube-100.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 10.0_mm));
+    }
+    {
+      Mesh const mesh{Stl{getPath("test-models/cube-268.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 10.0_mm));
+    }
+    {
+      Mesh const mesh{Stl{getPath("test-models/cube-468.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 10.0_mm));
+    }
+    {
+      Mesh const mesh{Stl{getPath("test-models/cube-469.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 10.0_mm));
+    }
+    {
+      Mesh const mesh{Stl{getPath("test-models/cube-470.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 10.0_mm));
+    }
+    {
+      Mesh const mesh{Stl{getPath("test-models/cube-471.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(willCollide(mesh, pivots, 10.0_mm));
     }
   } catch (...) {
     return 1;
