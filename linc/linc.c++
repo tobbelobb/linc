@@ -14,19 +14,44 @@
 static auto logger = spdlog::get("file_logger");
 
 // Disregard z and construct hull as if all vertices were at z=0
-static auto hull(std::vector<Vertex> const vertices) -> std::vector<Vertex> {
+auto hull(std::vector<Vertex> const &vertices) -> std::vector<Vertex> {
   auto ret{vertices};
   return ret;
 }
 
-static auto intersect(MeshClipper::Triangle const &triangle0,
-                      Mesh::Triangle const &triangle1) -> bool {
-  (void)triangle0;
-  (void)triangle1;
-  return false;
+enum class Side { ABOVE, BELOW, BOTH };
+
+static auto whichSide(Triangle const &triangle,
+                      Normal const &separationDirection, Vertex const &point)
+    -> Side {
+  bool isAbove = false;
+  bool isBelow = false;
+  for (auto const &corner : triangle.m_corners) {
+    auto const t = separationDirection.dot(corner - point);
+    if (t < VertexConstants::eps and -VertexConstants::eps < t) {
+      return Side::BOTH;
+    }
+    if (t < 0) {
+      isBelow = true;
+    } else {
+      isAbove = true;
+    }
+    if (isAbove and isBelow) {
+      return Side::BOTH;
+    }
+  }
+  return isAbove ? Side::ABOVE : Side::BELOW;
 }
 
-static void orderCounterClockWise(std::vector<Vertex> &vertices) {
+auto intersect(Triangle const &triangle0, Triangle const &triangle1) -> bool {
+  if (whichSide(triangle1, triangle0.m_normal, triangle0.m_corners[0]) !=
+      Side::BOTH) {
+    return false;
+  }
+  return true;
+}
+
+void orderCounterClockWise(std::vector<Vertex> &vertices) {
   Vertex middlePoint{Vertex::Zero()};
   for (auto const &vertex : vertices) {
     middlePoint += vertex;
@@ -34,7 +59,7 @@ static void orderCounterClockWise(std::vector<Vertex> &vertices) {
   middlePoint = middlePoint / vertices.size();
 
   std::sort(vertices.begin(), vertices.end(),
-            [middlePoint](Vertex const &vertex0, Vertex const &vertex1) {
+            [&middlePoint](Vertex const &vertex0, Vertex const &vertex1) {
               Vertex const offsetPoint0 = vertex0 - middlePoint;
               Vertex const offsetPoint1 = vertex1 - middlePoint;
               auto const angle0 = atan2(offsetPoint0.y(), offsetPoint0.x());

@@ -66,6 +66,9 @@ public:
     Triangle() = delete;
     Triangle(std::vector<Edge> &edges, std::array<size_t, 3> edgeIndices)
         : m_edges(edges), m_edgeIndices(edgeIndices) {}
+    Triangle(std::vector<Edge> &edges, std::array<size_t, 3> edgeIndices,
+             Normal normal)
+        : m_edges(edges), m_edgeIndices(edgeIndices), m_normal(normal) {}
 
     Triangle(Triangle const &) = default;
 

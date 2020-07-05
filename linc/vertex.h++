@@ -10,6 +10,7 @@
 #include <Eigen/Geometry>
 
 #include <linc/units.h++>
+#include <linc/util.h++>
 
 using Vertex = Eigen::Matrix<Millimeter, 3, 1, Eigen::DontAlign>;
 using Normal = Vertex;
@@ -47,6 +48,32 @@ inline auto operator==(Vertex const &lhs, Vertex const &rhs) -> bool {
   return not(lhs < rhs) and not(rhs < lhs);
 }
 
+inline auto operator!=(Vertex const &lhs, Vertex const &rhs) -> bool {
+  return not(lhs == rhs);
+}
+
+inline auto operator==(std::array<Vertex, 3> const &lhs,
+                       std::vector<Vertex> const &rhs) -> bool {
+  for (auto const &[i, lh] : enumerate(lhs)) {
+    auto const &rh = rhs[i];
+    if (lh != rh) {
+      return false;
+    }
+  }
+  return true;
+}
+
+inline auto operator==(std::vector<Vertex> const &lhs,
+                       std::vector<Vertex> const &rhs) -> bool {
+  for (auto const &[i, lh] : enumerate(lhs)) {
+    auto const &rh = rhs[i];
+    if (lh != rh) {
+      return false;
+    }
+  }
+  return true;
+}
+
 inline auto operator<<(std::ostream &os, Vertex const &vertex)
     -> std::ostream & {
   constexpr size_t w = 8;
@@ -58,6 +85,19 @@ inline auto operator<<(std::ostream &os, Vertex const &vertex)
 }
 
 inline auto operator<<(std::ostream &os, std::vector<Vertex> const &vertices)
+    -> std::ostream & {
+
+  std::string delim{""};
+  os << '{';
+  for (auto const &vertex : vertices) {
+    os << delim << vertex;
+    delim = ", ";
+  }
+  os << '}';
+  return os;
+}
+
+inline auto operator<<(std::ostream &os, std::array<Vertex, 3> const &vertices)
     -> std::ostream & {
 
   std::string delim{""};
