@@ -164,7 +164,8 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
       // POINTS
       Mesh cone{anchorPivot};
       for (auto const &topVertex : topVerticesHull) {
-        cone.m_vertices.emplace_back(topVertex + pivots.effector[anchorIndex]);
+        cone.m_vertices.emplace_back(topVertex +
+                                     pivots.effector.at(anchorIndex));
       }
       size_t const numPoints = cone.m_vertices.size();
 
@@ -203,9 +204,9 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
         if (partialPrintTriangle.m_visible) {
           for (auto const &coneTriangle : cone.m_triangles) {
             if (intersect(partialPrintTriangle, coneTriangle)) {
-              SPDLOG_LOGGER_DEBUG(logger, "Found collision! Between {} and {}",
-                                  Triangle{partialPrintTriangle},
-                                  Triangle{coneTriangle});
+              SPDLOG_LOGGER_INFO(logger, "Found collision! Between {} and {}",
+                                 Triangle{partialPrintTriangle},
+                                 Triangle{coneTriangle});
               return true;
             }
           }

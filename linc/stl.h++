@@ -27,8 +27,6 @@
 #include <string>
 #include <vector>
 
-#include <gsl/pointers>
-
 #include <linc/vertex.h++>
 
 // Size of the ascii table

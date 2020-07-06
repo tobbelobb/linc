@@ -390,7 +390,7 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
   myfile.close();
 }
 
-std::vector<Vertex> MeshClipper::getTopVertices() const {
+auto MeshClipper::getTopVertices() const -> std::vector<Vertex> {
   double const height{softMaxHeight()};
   std::vector<Vertex> res;
   for (auto const &point : m_points) {
