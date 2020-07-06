@@ -1,4 +1,6 @@
+#include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <numeric>
 #include <utility>
 #include <vector>
@@ -14,9 +16,57 @@
 
 static auto logger = spdlog::get("file_logger");
 
-// Disregard z and construct hull as if all vertices were at z=0
-auto hull(std::vector<Vertex> const &vertices) -> std::vector<Vertex> {
-  auto ret{vertices};
+static inline auto signed2DCross(Vertex const &v0, Vertex const &v1,
+                                 Vertex const &v2) {
+  return (v1.x() - v0.x()) * (v2.y() - v0.y()) -
+         (v2.x() - v0.x()) * (v1.y() - v0.y());
+}
+
+static inline auto isLeft(Vertex const &v0, Vertex const &v1, Vertex const &v2)
+    -> bool {
+  return signed2DCross(v0, v1, v2) > 0.0;
+}
+
+static void fanSort(std::vector<Vertex> &fan) {
+  // Establish a reference point
+  std::iter_swap(fan.begin(), std::min_element(fan.begin(), fan.end()));
+  // Since this reference point is min_element, we know that all other
+  // points are on one side of a line that goes through this point
+  const auto &pivot = fan[0];
+  // Sort points in a ccw radially ordered "fan" with pivot in fan[0]
+  std::sort(std::next(fan.begin()), fan.end(),
+            [&pivot](Vertex const &lhs, Vertex const &rhs) -> bool {
+              return isLeft(pivot, lhs, rhs);
+            });
+}
+
+// Graham Scan Algorithm
+auto hullAndSortCcw(std::vector<Vertex> const &vertices)
+    -> std::vector<Vertex> {
+  auto fan{vertices};
+  if (fan.size() < 3) {
+    return fan;
+  }
+  fanSort(fan);
+
+  std::vector<Vertex> ret;
+  ret.reserve(fan.size());
+  ret.emplace_back(fan[0]);
+  ret.emplace_back(fan[1]);
+
+  for (size_t k{2}; k < fan.size(); ++k) {
+    if (isLeft(ret[ret.size() - 2], ret.back(), fan[k])) {
+      // Enclosed no previous elements with new line to fan[k]
+      ret.emplace_back(fan[k]);
+    } else {
+      // Enclosed one or more previous elements with new line to fan[k]
+      while (ret.size() >= 3 and not isLeft(ret.at(ret.size() - 3),
+                                            ret.at(ret.size() - 2), fan[k])) {
+        ret.pop_back();
+      }
+      ret.back() = fan[k];
+    }
+  }
   return ret;
 }
 
@@ -107,7 +157,7 @@ auto intersect(Triangle const &triangle0, Triangle const &triangle1) -> bool {
   return true;
 }
 
-void orderCounterClockWise(std::vector<Vertex> &vertices) {
+void sortCcwInPlace(std::vector<Vertex> &vertices) {
   Vertex middlePoint{Vertex::Zero()};
   for (auto const &vertex : vertices) {
     middlePoint += vertex;
@@ -125,7 +175,7 @@ void orderCounterClockWise(std::vector<Vertex> &vertices) {
 }
 
 auto willCollide(Mesh const &mesh, Pivots const &pivots,
-                 Millimeter const layerHeight) -> bool {
+                 Millimeter const layerHeight, bool hullIt) -> bool {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
@@ -153,17 +203,20 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     // This involves removing points that are enclosed by other points
     std::vector<Vertex> topVertices{partialPrint.getTopVertices()};
     SPDLOG_LOGGER_DEBUG(logger, "Found {} top vertices", topVertices.size());
-    std::vector<Vertex> topVerticesHull{hull(topVertices)};
-    SPDLOG_LOGGER_DEBUG(logger, "The hull of those has {} vertices",
-                        topVerticesHull.size());
-
-    orderCounterClockWise(topVerticesHull);
+    if (hullIt) {
+      topVertices = hullAndSortCcw(topVertices);
+      SPDLOG_LOGGER_DEBUG(logger, "The hull of those has {} vertices",
+                          topVertices.size());
+    } else {
+      // TODO: We should use edges from model here instead of sorting ccw
+      sortCcwInPlace(topVertices);
+    }
 
     // Build the cones and check for collision, one by one
     for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
       // POINTS
       Mesh cone{anchorPivot};
-      for (auto const &topVertex : topVerticesHull) {
+      for (auto const &topVertex : topVertices) {
         cone.m_vertices.emplace_back(topVertex +
                                      pivots.effector.at(anchorIndex));
       }
@@ -185,14 +238,12 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
       // TRIANGLES
       // There are numTopPoints top points (and thus star-topology-edges)
       // Right after star-topology edges comes as many ring edges
-      size_t const numTopHullVertices = topVerticesHull.size();
-      for (size_t starEdgeIdx{0}; starEdgeIdx < numTopHullVertices;
-           ++starEdgeIdx) {
-        size_t const ringEdgeIdx = starEdgeIdx + numTopHullVertices;
-        cone.m_triangles.emplace_back(
-            Mesh::Triangle{cone.m_edges,
-                           {starEdgeIdx, (starEdgeIdx + 1) % numTopHullVertices,
-                            ringEdgeIdx}});
+      size_t const numTopVertices = topVertices.size();
+      for (size_t starEdgeIdx{0}; starEdgeIdx < numTopVertices; ++starEdgeIdx) {
+        size_t const ringEdgeIdx = starEdgeIdx + numTopVertices;
+        cone.m_triangles.emplace_back(Mesh::Triangle{
+            cone.m_edges,
+            {starEdgeIdx, (starEdgeIdx + 1) % numTopVertices, ringEdgeIdx}});
       }
       // Cone built.
 

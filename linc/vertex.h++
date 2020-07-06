@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <iomanip>
 #include <iostream>
@@ -79,8 +80,8 @@ inline auto operator<<(std::ostream &os, Vertex const &vertex)
   constexpr size_t w = 8;
   // std::ios_base::fmtflags f = output.flags(std::ios::right);
   return os << std::setiosflags(std::ios::right) << std::fixed
-            << std::setprecision(6) << std::setw(w) << std::setfill(' ')
-            << vertex.x() << ' ' << std::setw(w) << vertex.y() << ' '
+            << std::setprecision(5) << std::setw(w) << std::setfill(' ')
+            << vertex.x() << ", " << std::setw(w) << vertex.y() << ", "
             << std::setw(w) << vertex.z();
 }
 
@@ -90,7 +91,7 @@ inline auto operator<<(std::ostream &os, std::vector<Vertex> const &vertices)
   std::string delim{""};
   os << '{';
   for (auto const &vertex : vertices) {
-    os << delim << vertex;
+    os << delim << '[' << vertex << ']';
     delim = ", ";
   }
   os << '}';

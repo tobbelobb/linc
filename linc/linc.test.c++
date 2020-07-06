@@ -1,4 +1,5 @@
 #include <iostream>
+#include <random>
 
 #include <linc/linc.h++>
 #include <linc/mesh-clipper.h++>
@@ -8,6 +9,62 @@
 
 auto main() -> int {
   try {
+    {
+      std::vector<Vertex> vertices{{1, -2, 0}, {-2, -0.1, 0}, {1, 2, 0}};
+      std::vector<Vertex> const sortedCcw{{-2, -0.1, 0}, {1, -2, 0}, {1, 2, 0}};
+      sortCcwInPlace(vertices);
+      compare(sortedCcw, vertices);
+    }
+    {
+      std::vector<Vertex> const vertices{
+          {1, -2, 0}, {-2, -0.1, 0}, {1, 2, 0}, {-0.1, -0.1, 0}};
+      std::vector<Vertex> const hullOfThem{
+          {-2, -0.1, 0}, {1, -2, 0}, {1, 2, 0}};
+      compare(hullOfThem, hullAndSortCcw(vertices));
+    }
+    {
+      std::vector<Vertex> const hullOfThem{
+          {-1, -1, 0}, {1, -1, 0}, {1, 1, 0}, {-1, 1, 0}};
+      std::vector<Vertex> vertices;
+      vertices.reserve(10004);
+      vertices.emplace_back(hullOfThem[0]);
+      vertices.emplace_back(hullOfThem[1]);
+      vertices.emplace_back(hullOfThem[2]);
+      vertices.emplace_back(hullOfThem[3]);
+
+      std::random_device rd;
+      std::mt19937 gen(rd());
+      // Generate numbers in open interval (-1.0, 1.0)
+      std::uniform_real_distribution<> dis(std::nexttoward(-1.0, 0), 1.0);
+      for (size_t i{0}; i < 10000; ++i) {
+        vertices.emplace_back(dis(gen), dis(gen), dis(gen));
+      }
+      auto const res = hullAndSortCcw(vertices);
+
+      compare(res.size(), 4U);
+      compare(hullOfThem, res);
+    }
+    {
+      // Next representable values from -1 towards 0 and from 1 towards 0
+      // Our code is not numerically stable enough to sort away 16 points along
+      // the perimeter of the convex hull reliably. Only inner points are
+      // reliably sorted out
+      double const minusIn = std::nexttoward(-1.0, 0.0);
+      double const plusIn = std::nexttoward(1.0, 0.0);
+      std::vector<Vertex> const vertices{
+          {-1, -1, 0},        {1, -1, 0},         {1, 1, 0},
+          {-1, 1, 0},         {-0.9, minusIn, 0}, {-0.8, minusIn, 0},
+          {-0.7, minusIn, 0}, {plusIn, -0.9, 0},  {plusIn, -0.8, 0},
+          {plusIn, -0.7, 0},  {-0.9, plusIn, 0},  {-0.8, plusIn, 0},
+          {-0.7, plusIn, 0},  {minusIn, 0.9, 0},  {minusIn, 0.8, 0},
+          {minusIn, 0.7, 0}};
+      std::vector<Vertex> const hullOfThem{
+          {-1, -1, 0}, {1, -1, 0}, {1, 1, 0}, {-1, 1, 0}};
+      auto const res = hullAndSortCcw(vertices);
+
+      compare(res.size(), 4U);
+      compare(hullOfThem, res);
+    }
     {
       // Test Triangle constructor from MeshClipper types
       std::vector<MeshClipper::Point> points{
@@ -208,6 +265,18 @@ auto main() -> int {
       Mesh const mesh{Stl{getPath("test-models/cube-471.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
       check(willCollide(mesh, pivots, 10.0_mm));
+    }
+    {
+      Mesh const mesh{Stl{getPath(
+          "test-models/towards-anchors-star-800-300-twisted-30.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(willCollide(mesh, pivots, 10.0_mm, true));
+    }
+    {
+      Mesh const mesh{Stl{getPath(
+          "test-models/towards-anchors-star-800-300-twisted-30.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 10.0_mm, false));
     }
   } catch (...) {
     return 1;

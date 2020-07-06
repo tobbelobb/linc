@@ -72,20 +72,24 @@ template <> struct fmt::formatter<Triangle> {
   template <typename FormatContext>
   auto format(const Triangle &triangle, FormatContext &ctx) {
     // ctx.out() is an output iterator to write to.
-    return format_to(
-        ctx.out(),
-        "{{{:.1f} {:.1f} {:.1f}, {:.1f} {:.1f} {:.1f}, {:.1f} {:.1f} {:.1f}}}",
-        triangle.m_corners[0].x(), triangle.m_corners[0].y(),
-        triangle.m_corners[0].z(), triangle.m_corners[1].x(),
-        triangle.m_corners[1].y(), triangle.m_corners[1].z(),
-        triangle.m_corners[2].x(), triangle.m_corners[2].y(),
-        triangle.m_corners[2].z());
+    return format_to(ctx.out(),
+                     "{{[{:.1f}, {:.1f}, {:.1f}], [{:.1f}, {:.1f}, {:.1f}], "
+                     "[{:.1f}, {:.1f}, {:.1f}]}}",
+                     triangle.m_corners[0].x(), triangle.m_corners[0].y(),
+                     triangle.m_corners[0].z(), triangle.m_corners[1].x(),
+                     triangle.m_corners[1].y(), triangle.m_corners[1].z(),
+                     triangle.m_corners[2].x(), triangle.m_corners[2].y(),
+                     triangle.m_corners[2].z());
   }
 };
 
-[[nodiscard]] std::vector<Vertex> hull(std::vector<Vertex> const &);
+// Disregards z and constructs hull as if all vertices were at z=0
+[[nodiscard]] std::vector<Vertex> hullAndSortCcw(std::vector<Vertex> const &);
 [[nodiscard]] bool intersect(Triangle const &, Triangle const &);
 
-void orderCounterClockWise(std::vector<Vertex> &v);
+// Sorts vertices in counterClockwise order around mean point
+// Disregards z and constructs hull as if all vertices were at z=0
+void sortCcwInPlace(std::vector<Vertex> &v);
 
-[[nodiscard]] bool willCollide(Mesh const &, Pivots const &, Millimeter);
+[[nodiscard]] bool willCollide(Mesh const &, Pivots const &, Millimeter,
+                               bool hullIt = true);
