@@ -183,7 +183,6 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   double const minHeight = mesh.minHeight();
 
   assert(minHeight > -VertexConstants::eps);  // NOLINT
-  assert(minHeight < VertexConstants::eps);   // NOLINT
   assert(layerHeight > VertexConstants::eps); // NOLINT
 
   double const topHeight = mesh.maxHeight();
@@ -202,6 +201,14 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     // Extract convex hull of the top points
     // This involves removing points that are enclosed by other points
     std::vector<Vertex> topVertices{partialPrint.getTopVertices()};
+    if (topVertices.size() == 0) {
+      SPDLOG_LOGGER_WARN(logger,
+                         "Found no vertices below height {}. Assuming "
+                         "no vertices left to analyze. Returning.",
+                         h);
+      return false;
+    }
+
     SPDLOG_LOGGER_DEBUG(logger, "Found {} top vertices", topVertices.size());
     if (hullIt) {
       topVertices = hullAndSortCcw(topVertices);

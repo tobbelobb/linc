@@ -96,12 +96,21 @@ auto MeshClipper::softMaxHeight() const -> double {
   if (m_points.empty()) {
     return 0.0;
   }
-  return (*std::max_element(m_points.begin(), m_points.end(),
-                            [](Point const &point0, Point const &point1) {
-                              return point1.m_visible and
-                                     point0.z() < point1.z();
-                            }))
-      .z();
+  if (std::none_of(m_points.begin(), m_points.end(),
+                   [](Point const &p) { return p.m_visible; })) {
+    return 0.0;
+  }
+  auto it = m_points.begin();
+  while (it != m_points.end() and not((*it).m_visible)) {
+    ++it;
+  }
+  double max = (*it).m_vertex.z();
+  for (; it != m_points.end(); ++it) {
+    if ((*it).m_visible and (*it).m_vertex.z() > max) {
+      max = (*it).m_vertex.z();
+    }
+  }
+  return max;
 }
 
 auto MeshClipper::maxHeight() const -> double {
@@ -167,6 +176,8 @@ void MeshClipper::adjustEdges(Millimeter const zCut) {
               triangleEdgeIndex = INVALID_INDEX;
             }
           }
+          // If this was the triangle's last visible edge,
+          // the triangle has also become invisible
           if (std::all_of(triangle.m_edgeIndices.begin(),
                           triangle.m_edgeIndices.end(),
                           [](std::size_t const triangleEdgeIndex) {
@@ -184,10 +195,10 @@ void MeshClipper::adjustEdges(Millimeter const zCut) {
         auto const t = distance0 / (distance0 - distance1);
         Vertex const newVertex =
             (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
-
         // Don't use newVertex.z() since it has roundoff errors, and we
         // want exactly zCut to be the new hight
         Point newPoint{{newVertex.x(), newVertex.y(), zCut}, 0.0, 0, true};
+
         std::size_t newPointIndex = m_points.size();
         m_points.emplace_back(newPoint);
         if (distance0 > 0.0) {
@@ -202,7 +213,8 @@ void MeshClipper::adjustEdges(Millimeter const zCut) {
 
 void MeshClipper::adjustTriangles() {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting triangles");
-  for (std::size_t triangleIndex{0}; triangleIndex < m_triangles.size();
+  std::size_t const numTriangles = m_triangles.size();
+  for (std::size_t triangleIndex{0}; triangleIndex < numTriangles;
        ++triangleIndex) {
     Triangle &triangle = m_triangles[triangleIndex];
     if (triangle.m_visible) {
@@ -211,6 +223,7 @@ void MeshClipper::adjustTriangles() {
       if (isOpen) {
         SPDLOG_LOGGER_TRACE(logger, "Triangle {} is open", triangleIndex);
         std::size_t const newEdgeIndex = m_edges.size();
+        assert(startPointIndex != endPointIndex);
         m_edges.emplace_back(
             Edge{m_points, {startPointIndex, endPointIndex}, {triangleIndex}});
         SPDLOG_LOGGER_TRACE(
@@ -234,6 +247,7 @@ void MeshClipper::adjustTriangles() {
                         [](std::size_t const index) {
                           return index != INVALID_INDEX;
                         })) {
+
           SPDLOG_LOGGER_TRACE(logger,
                               "This triangle has four edges. Splitting it.");
           SPDLOG_LOGGER_TRACE(logger, "Disabling edge {} for triangle {}",
@@ -392,10 +406,10 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
 
 auto MeshClipper::getTopVertices() const -> std::vector<Vertex> {
   double const height{softMaxHeight()};
-  std::vector<Vertex> res;
+  std::vector<Vertex> res{};
   for (auto const &point : m_points) {
-    if (point.m_visible and point.z() <= VertexConstants::eps + height and
-        -VertexConstants::eps + height <= point.z()) {
+    if (point.m_visible and (point.z() <= VertexConstants::eps + height) and
+        (height - VertexConstants::eps <= point.z())) {
       res.emplace_back(point.m_vertex);
     }
   }

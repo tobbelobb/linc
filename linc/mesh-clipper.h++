@@ -49,7 +49,7 @@ public:
   struct Edge {
     std::vector<Point> &m_points;
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
-    EdgeUsers m_users{};
+    std::vector<size_t> m_users{};
     bool m_visible = true;
 
     Point &point0() const { return m_points[m_pointIndices[0]]; }
@@ -68,10 +68,10 @@ public:
     Edge(std::vector<Point> &points, EdgePointIndices pointIndices)
         : m_points(points), m_pointIndices(pointIndices) {}
     Edge(std::vector<Point> &points, EdgePointIndices pointIndices,
-         EdgeUsers users)
+         std::vector<size_t> users)
         : m_points(points), m_pointIndices(pointIndices), m_users(users) {}
     Edge(std::vector<Point> &points, EdgePointIndices pointIndices,
-         EdgeUsers users, bool visible)
+         std::vector<size_t> users, bool visible)
         : m_points(points), m_pointIndices(pointIndices), m_users(users),
           m_visible(visible) {}
 
@@ -176,8 +176,16 @@ public:
 
     friend std::ostream &operator<<(std::ostream &os,
                                     Triangle const &triangle) {
-      os << '{' << triangle.edge0() << ",\n  " << triangle.edge1() << ",\n  "
-         << triangle.edge2();
+      os << '{';
+      if (triangle.m_edgeIndices[0] != INVALID_INDEX) {
+        os << triangle.edge0();
+      }
+      if (triangle.m_edgeIndices[1] != INVALID_INDEX) {
+        os << ",\n " << triangle.edge1();
+      }
+      if (triangle.m_edgeIndices[2] != INVALID_INDEX) {
+        os << ",\n " << triangle.edge2();
+      }
       if (triangle.m_edgeIndices[3] != INVALID_INDEX) {
         os << ",\n  " << triangle.edge3();
       }

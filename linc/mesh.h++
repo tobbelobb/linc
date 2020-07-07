@@ -12,23 +12,20 @@ constexpr std::size_t INVALID_INDEX{std::numeric_limits<std::size_t>::max()};
 // Describing an edge by indexing into a sequence of vertices.
 // An edge must have exactly two endpoints.
 using EdgeVertexIndices = std::array<size_t, 2>;
-// Pointers into triangle vector
-using EdgeUsers = std::vector<size_t>;
 
 class Mesh {
 public:
-  // An edge knows about which vertexes it's made of
   struct Edge {
     std::vector<Vertex> &m_vertices;
     EdgeVertexIndices m_vertexIndices{INVALID_INDEX, INVALID_INDEX};
-    EdgeUsers m_users{};
+    std::vector<size_t> m_users{};
 
     Edge() = delete;
     Edge(std::vector<Vertex> &vertices, EdgeVertexIndices const &vertexIndices)
         : m_vertices(vertices), m_vertexIndices(vertexIndices) {}
 
     Edge(std::vector<Vertex> &vertices, EdgeVertexIndices const &vertexIndices,
-         EdgeUsers const &users)
+         std::vector<size_t> const &users)
         : m_vertices(vertices), m_vertexIndices(vertexIndices), m_users(users) {
     }
     Edge(Edge const &) = default;

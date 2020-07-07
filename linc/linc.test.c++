@@ -278,6 +278,12 @@ auto main() -> int {
       Pivots pivots{getPath("params-example")};
       check(not willCollide(mesh, pivots, 10.0_mm, false));
     }
+    {
+      // We got core dumps before, when doing this
+      Mesh const mesh{Stl{getPath("test-models/clips/chimney3.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(mesh, pivots, 1.0_mm, false));
+    }
   } catch (...) {
     return 1;
   }
