@@ -25,3 +25,38 @@ When a collision is detected, export:
   press in Blender or whatever other viewer program otherwise
 
 Make multi threaded to save some time
+
+# Bounding volume hierarchy (suggested by @drayde on Twitter)
+When loading the Mesh, include enclosing/bounding tetrahedrons, and place each triangle
+in one, two, or three such bounding tetrahedrons.
+The bounding tetrahedrons could live in a vector member
+std::vector<Mesh::BoundingVolume> m_boundingVolumes;
+... within the Mesh class.
+
+The class BoundingVolume could be what a Mesh is today, a collection of points,
+edges, and triangles.
+But it should also contain an
+std::vector<std::size_t> m_memberTriangles;
+... with offsets into the m_triangles vector in the Mesh class.
+
+Then, we can change the algorithm in willCollide() from
+
+for every cone triangle t0:
+  for every Mesh triangle t1:
+    if(intersect(t0, t1)):
+      return true
+
+to ...
+
+for every Mesh bounding volume b0:
+  for every cone triangle t0:
+    if(intersect(b0, t0)):
+      for every triangle t1 within b0:
+        if (intersect(t0, t1)):
+          return true;
+
+Some mesh triangles will be tested two or three times, if they are on the edge
+between two or three bounding volumes.
+This should not be a problem, as long as the vast majority of Mesh triangles
+don't get tested at all.
+Guaranteeing 0 of these "border triangles" would take some computation, maybe not worthwhile.
