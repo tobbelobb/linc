@@ -39,6 +39,9 @@ But it should also contain an
 std::vector<std::size_t> m_memberTriangles;
 ... with offsets into the m_triangles vector in the Mesh class.
 
+A triangle is added as a member of a bounding volume if one of its edges
+intersects with the bounding volume
+
 Then, we can change the algorithm in willCollide() from
 
 for every cone triangle t0:
