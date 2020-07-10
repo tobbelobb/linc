@@ -81,6 +81,7 @@ void MeshClipper::setDistances(Millimeter const zCut) {
     if (abs(distance) > eps) {
       point.m_distance = distance;
     } else {
+      point.m_vertex.z() = zCut;
       point.m_distance = 0.0;
     }
   }
@@ -100,14 +101,15 @@ auto MeshClipper::softMaxHeight() const -> double {
                    [](Point const &p) { return p.m_visible; })) {
     return 0.0;
   }
+  // At least one visible point exists. Find it.
   auto it = m_points.begin();
-  while (it != m_points.end() and not((*it).m_visible)) {
+  while (not((*it).m_visible)) {
     ++it;
   }
-  double max = (*it).m_vertex.z();
+  double max = (*it).z();
   for (; it != m_points.end(); ++it) {
-    if ((*it).m_visible and (*it).m_vertex.z() > max) {
-      max = (*it).m_vertex.z();
+    if ((*it).m_visible and (*it).z() > max) {
+      max = (*it).z();
     }
   }
   return max;
@@ -158,49 +160,62 @@ auto MeshClipper::isAllPointsVisible() const -> bool {
                      [](auto const &point) { return point.m_visible; });
 }
 
+// Go through edge's users and remove edge
+// from them
+void MeshClipper::propagateInvisibilityToUsers(size_t const edgeIndex,
+                                               Edge const &edge) {
+  for (auto const &triangleIndex : edge.m_users) {
+    Triangle &triangle = m_triangles[triangleIndex];
+    for (auto &triangleEdgeIndex : triangle.m_edgeIndices) {
+      if (triangleEdgeIndex == edgeIndex) {
+        triangleEdgeIndex = INVALID_INDEX;
+      }
+    }
+    // If this was the triangle's last visible edge,
+    // the triangle has also become invisible
+    if (std::all_of(triangle.m_edgeIndices.begin(),
+                    triangle.m_edgeIndices.end(),
+                    [](std::size_t const triangleEdgeIndex) {
+                      return triangleEdgeIndex == INVALID_INDEX;
+                    })) {
+      triangle.m_visible = false;
+    }
+  }
+}
+
+// Creates new point along direction of edge
+// newPoint = point0 + t*(point1 - point0)
+// t = 0 gives back point0
+// t = 1 gives back point1
+// 0 < t < 1 gives back a point in between
+static auto pointAlong(MeshClipper::Edge const &edge, double const t)
+    -> MeshClipper::Point {
+  Vertex const newVertex =
+      (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
+  return {{newVertex.x(), newVertex.y(), newVertex.z()}, 0.0, 0, true};
+}
+
 void MeshClipper::adjustEdges(Millimeter const zCut) {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting edges");
-  for (std::size_t edgeIndex{0}; edgeIndex < m_edges.size(); ++edgeIndex) {
+  std::size_t const numEdges = m_edges.size();
+  for (std::size_t edgeIndex{0}; edgeIndex < numEdges; ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
     if (edge.m_visible) {
       double const distance0 = edge.point0().m_distance;
       double const distance1 = edge.point1().m_distance;
       if (distance0 >= 0.0 and distance1 >= 0.0) {
         // Edge is entirely above cutting plane
-        // Go through edge's users and remove edge
-        // from them
-        for (auto const &triangleIndex : edge.m_users) {
-          Triangle &triangle = m_triangles[triangleIndex];
-          for (auto &triangleEdgeIndex : triangle.m_edgeIndices) {
-            if (triangleEdgeIndex == edgeIndex) {
-              triangleEdgeIndex = INVALID_INDEX;
-            }
-          }
-          // If this was the triangle's last visible edge,
-          // the triangle has also become invisible
-          if (std::all_of(triangle.m_edgeIndices.begin(),
-                          triangle.m_edgeIndices.end(),
-                          [](std::size_t const triangleEdgeIndex) {
-                            return triangleEdgeIndex == INVALID_INDEX;
-                          })) {
-            triangle.m_visible = false;
-          }
-        }
         edge.m_visible = false;
+        propagateInvisibilityToUsers(edgeIndex, edge);
       } else if ((distance0 > 0.0 and distance1 < 0.0) or
                  (distance0 < 0.0 and distance1 > 0.0)) {
-        // Edge is split by the plane
-        // edge = point0 + t*(point1 - point0)
-        // where t goes from 0 to 1.
-        auto const t = distance0 / (distance0 - distance1);
-        Vertex const newVertex =
-            (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
-        // Don't use newVertex.z() since it has roundoff errors, and we
-        // want exactly zCut to be the new hight
-        Point newPoint{{newVertex.x(), newVertex.y(), zCut}, 0.0, 0, true};
+        // Edge is split by the plane, we need a new point
+        Point newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
+        newPoint.m_vertex.z() = zCut; // Hedge against truncation errors
 
-        std::size_t newPointIndex = m_points.size();
+        std::size_t const newPointIndex = m_points.size();
         m_points.emplace_back(newPoint);
+
         if (distance0 > 0.0) {
           edge.m_pointIndices[0] = newPointIndex;
         } else {
@@ -211,6 +226,86 @@ void MeshClipper::adjustEdges(Millimeter const zCut) {
   }
 }
 
+void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex) {
+  Triangle &triangle = m_triangles[triangleIndex];
+
+  std::size_t const newEdgeIndex = m_edges.size();
+  m_edges.emplace_back(Edge{m_points,
+                            {triangle.m_integrity.startPointIndex,
+                             triangle.m_integrity.endPointIndex},
+                            {triangleIndex}});
+  auto *const emptySpot =
+      std::find(triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
+                INVALID_INDEX);
+
+  auto const insertEdgeIndexAt = static_cast<std::size_t>(
+      std::distance(triangle.m_edgeIndices.begin(), emptySpot));
+  triangle.m_edgeIndices.at(insertEdgeIndexAt) = newEdgeIndex;
+}
+
+void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex) {
+  Triangle &triangle = m_triangles[triangleIndex];
+
+  // We will add one triangle
+  std::size_t const newTriangleIndex = m_triangles.size();
+  // We will add two new edges
+  std::size_t const newEdgeIndex = m_edges.size();
+  std::size_t const newNewEdgeIndex = newEdgeIndex + 1;
+  // One from startPointIndex to endPointIndex
+  // One from startPointIndex to crossPointIndex
+  std::size_t crossPointIndex = INVALID_INDEX;
+  // The new triangle will use both new edges, but also one
+  // old edge, called the betweenEdge
+  // The betweenEdge has one end in the endPointIndex
+  // ... and one end in crossPointIndex
+  std::size_t betweenEdgeIndex = INVALID_INDEX;
+  // The old triangle will use two old edges and the newNewEdge
+  // The old triangle will no longer use the betweenEdge
+
+  // Look at the three edges. One of them is the betweenEdge.
+  // That edge's other end defines the crossPointIndex
+  for (auto &edgeIndex : triangle.m_edgeIndices) {
+    if (edgeIndex != INVALID_INDEX) {
+      if (m_edges[edgeIndex].m_pointIndices[0] ==
+          triangle.m_integrity.endPointIndex) {
+        crossPointIndex = m_edges[edgeIndex].m_pointIndices[1];
+        betweenEdgeIndex = edgeIndex;
+        edgeIndex = newNewEdgeIndex;
+      } else if (m_edges[edgeIndex].m_pointIndices[1] ==
+                 triangle.m_integrity.endPointIndex) {
+        crossPointIndex = m_edges[edgeIndex].m_pointIndices[0];
+        betweenEdgeIndex = edgeIndex;
+        edgeIndex = newNewEdgeIndex;
+      }
+    }
+  }
+
+  // The betweenEdge was previously used by old triangle
+  // It will be used by new triangle instead
+  for (auto &betweenEdgeUserIndex : m_edges[betweenEdgeIndex].m_users) {
+    if (betweenEdgeUserIndex == triangleIndex) {
+      betweenEdgeUserIndex = newTriangleIndex;
+    }
+  }
+
+  // The newEdge
+  m_edges.emplace_back(Edge{m_points,
+                            {triangle.m_integrity.startPointIndex,
+                             triangle.m_integrity.endPointIndex},
+                            {newTriangleIndex}});
+  // The newNewEdge
+  m_edges.emplace_back(
+      Edge{m_points,
+           {triangle.m_integrity.startPointIndex, crossPointIndex},
+           {triangleIndex, newTriangleIndex}});
+
+  // The new triangle
+  m_triangles.emplace_back(
+      Triangle{m_edges,
+               {newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex, INVALID_INDEX},
+               triangle.m_normal});
+}
+
 void MeshClipper::adjustTriangles() {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting triangles");
   std::size_t const numTriangles = m_triangles.size();
@@ -218,101 +313,16 @@ void MeshClipper::adjustTriangles() {
        ++triangleIndex) {
     Triangle &triangle = m_triangles[triangleIndex];
     if (triangle.m_visible) {
-      SPDLOG_LOGGER_TRACE(logger, "Triangle {} is visible", triangleIndex);
-      auto const [isOpen, startPointIndex, endPointIndex] = triangle.isOpen();
-      if (isOpen) {
-        SPDLOG_LOGGER_TRACE(logger, "Triangle {} is open", triangleIndex);
-        std::size_t const newEdgeIndex = m_edges.size();
-        assert(startPointIndex != endPointIndex);
-        m_edges.emplace_back(
-            Edge{m_points, {startPointIndex, endPointIndex}, {triangleIndex}});
-        SPDLOG_LOGGER_TRACE(
-            logger, "Creating a new edge to close open triangle: {}, index {}",
-            m_edges[newEdgeIndex], newEdgeIndex);
-        auto *const emptySpot =
-            std::find(triangle.m_edgeIndices.begin(),
-                      triangle.m_edgeIndices.end(), INVALID_INDEX);
-        if (emptySpot == triangle.m_edgeIndices.end()) {
+      triangle.updateIntegrity();
+      if (triangle.m_integrity.isOpen) {
+        // Add the new edge
+        if (triangle.m_integrity.numEdges == 2) {
+          close2EdgeOpenTriangle(triangleIndex);
+        } else if (triangle.m_integrity.numEdges == 3) {
+          close3EdgeOpenTriangle(triangleIndex);
+        } else {
           SPDLOG_LOGGER_ERROR(
-              logger, "Triangle had no space for another edge. Returning.");
-          return;
-        }
-        auto const whichEdge = static_cast<std::size_t>(
-            std::distance(triangle.m_edgeIndices.begin(), emptySpot));
-        SPDLOG_LOGGER_TRACE(logger, "Triangle has space for new edge at {}",
-                            whichEdge);
-        triangle.m_edgeIndices.at(whichEdge) = newEdgeIndex;
-        if (std::all_of(triangle.m_edgeIndices.begin(),
-                        triangle.m_edgeIndices.end(),
-                        [](std::size_t const index) {
-                          return index != INVALID_INDEX;
-                        })) {
-
-          SPDLOG_LOGGER_TRACE(logger,
-                              "This triangle has four edges. Splitting it.");
-          SPDLOG_LOGGER_TRACE(logger, "Disabling edge {} for triangle {}",
-                              newEdgeIndex, triangleIndex);
-          triangle.m_edgeIndices.at(whichEdge) = INVALID_INDEX;
-
-          std::size_t const newTriangleIndex = m_triangles.size();
-          std::size_t const newNewEdgeIndex = m_edges.size();
-
-          // Find the non-new edge that shares the point at endPointIndex
-          // That edge's other end is where we want to connect to from
-          // startPointIndex
-          std::size_t crossPointIndex = INVALID_INDEX;
-          std::size_t betweenEdgeIndex = INVALID_INDEX;
-          for (auto &edgeIndex : triangle.m_edgeIndices) {
-            if (edgeIndex != INVALID_INDEX) {
-              SPDLOG_LOGGER_TRACE(logger, "Investigating edge {}", edgeIndex);
-              for (auto const &[a, b] : PairOfPairs{{{0, 1}, {1, 0}}}) {
-                if (m_edges[edgeIndex].m_pointIndices[a] == endPointIndex) {
-                  crossPointIndex = m_edges[edgeIndex].m_pointIndices[b];
-                  betweenEdgeIndex = edgeIndex;
-                  SPDLOG_LOGGER_TRACE(logger, "Found the betweenEdgeIndex: {}",
-                                      betweenEdgeIndex);
-                  // This edge shall switch triangleIndex to newTriangleIndex
-                  // in its user list
-                  for (auto &userIndex : m_edges[betweenEdgeIndex].m_users) {
-                    if (userIndex == triangleIndex) {
-                      SPDLOG_LOGGER_TRACE(
-                          logger,
-                          "Switching user {} to user {} for the betweenEdge",
-                          userIndex, newTriangleIndex);
-                      userIndex = newTriangleIndex;
-                    }
-                  }
-                  // This triangle shall no longer use the betweenEdge.
-                  // The newNewEdge shall be used instead.
-                  SPDLOG_LOGGER_TRACE(
-                      logger,
-                      "Switching edge index {} to edge {} for triangle {}",
-                      edgeIndex, newNewEdgeIndex, triangleIndex);
-                  edgeIndex = newNewEdgeIndex;
-                }
-              }
-            }
-          }
-
-          // Create the newNewEdge
-          m_edges.emplace_back(Edge{m_points,
-                                    {startPointIndex, crossPointIndex},
-                                    {triangleIndex, newTriangleIndex}});
-          SPDLOG_LOGGER_TRACE(logger, "Creating the newNewEdge: {}",
-                              m_edges[newNewEdgeIndex]);
-          m_triangles.emplace_back(Triangle{m_edges,
-                                            {newEdgeIndex, betweenEdgeIndex,
-                                             newNewEdgeIndex, INVALID_INDEX}});
-          SPDLOG_LOGGER_TRACE(logger, "Creating a new triangle.");
-
-          for (auto &userIndex : m_edges[newEdgeIndex].m_users) {
-            if (userIndex == triangleIndex) {
-              SPDLOG_LOGGER_TRACE(
-                  logger, "Switching user {} to user {} for the newEdge",
-                  userIndex, newTriangleIndex);
-              userIndex = newTriangleIndex;
-            }
-          }
+              logger, "Cannot close 1- or 4-edge triangle with one new edge.");
         }
       }
     }

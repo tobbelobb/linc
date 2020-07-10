@@ -1,9 +1,6 @@
 Refactor to make use of Eigen matrix operations?
 Add a zip function in <linc/util.h++> that makes raw-loops prettier?
 
-Refactor MeshClipper::softClip. Particularly adjustTriangles() function is
-ugly and probably not even perfectly correct
-
 If we need more performance later:
   - sort vertices based on z, y, x, in that order instead of x, y, z like we do now
     that would speed up MeshClipper::setDistances by more than 50% since we could
@@ -58,8 +55,7 @@ for every Mesh bounding volume b0:
         if (intersect(t0, t1)):
           return true;
 
-Some mesh triangles will be tested two or three times, if they are on the edge
-between two or three bounding volumes.
+Some mesh triangles will be tested many times, if their edges cross
+several bounding volumes.
 This should not be a problem, as long as the vast majority of Mesh triangles
 don't get tested at all.
-Guaranteeing 0 of these "border triangles" would take some computation, maybe not worthwhile.

@@ -201,7 +201,7 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     // Extract convex hull of the top points
     // This involves removing points that are enclosed by other points
     std::vector<Vertex> topVertices{partialPrint.getTopVertices()};
-    if (topVertices.size() == 0) {
+    if (topVertices.empty()) {
       SPDLOG_LOGGER_WARN(logger,
                          "Found no vertices below height {}. Assuming "
                          "no vertices left to analyze. Returning.",
