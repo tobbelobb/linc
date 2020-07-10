@@ -87,9 +87,17 @@ public:
     }
   };
 
+  struct BoundingVolume {
+    std::vector<Vertex> m_vertices{};
+    std::vector<Edge> m_edges{};
+    std::vector<Triangle> m_triangles{};
+    std::vector<std::size_t> m_members{};
+  };
+
   std::vector<Vertex> m_vertices{};
   std::vector<Edge> m_edges{};
   std::vector<Triangle> m_triangles{};
+  std::vector<BoundingVolume> m_boundingVolumes{};
 
   Mesh(Stl const &stl);
   // A mesh can start out from a single point
@@ -102,6 +110,7 @@ public:
   extractEdgeTriplets(std::vector<Stl::Facet> const &facets);
   void loadEdges(std::vector<std::array<Edge, 3>> const &edgeTriplets);
   void loadTriangles(std::vector<std::array<Edge, 3>> const &edgeTriplets);
+  void loadBoundingVolumes(Vertex const &min, Vertex const &max);
 };
 
 inline auto operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {

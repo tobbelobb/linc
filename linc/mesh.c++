@@ -124,6 +124,93 @@ void Mesh::loadTriangles(
   }
 }
 
+void Mesh::loadBoundingVolumes(Vertex const &min, Vertex const &max) {
+  (void)max;
+  BoundingVolume boundingVolume{};
+  // Construct the bounding volumes
+  // The 8 corner of a cube
+  std::vector<Vertex> &verts = boundingVolume.m_vertices;
+  verts.emplace_back(min.x(), min.y(), min.z());
+  verts.emplace_back(min.x() + 50.0, min.y(), min.z());
+  verts.emplace_back(min.x() + 50.0, min.y() + 50.0, min.z());
+  verts.emplace_back(min.x(), min.y() + 50.0, min.z());
+  verts.emplace_back(min.x(), min.y(), min.z() + 50.0);
+  verts.emplace_back(min.x() + 50.0, min.y(), min.z() + 50.0);
+  verts.emplace_back(min.x() + 50.0, min.y() + 50.0, min.z() + 50.0);
+  verts.emplace_back(min.x(), min.y() + 50.0, min.z() + 50.0);
+  // 18 Edges of a cube
+  // Bottom plane
+  std::vector<Edge> &edges = boundingVolume.m_edges;
+  edges.emplace_back(Edge{verts, {0, 1}}); // 0
+  edges.emplace_back(Edge{verts, {0, 2}}); // 1
+  edges.emplace_back(Edge{verts, {0, 3}}); // 2
+  edges.emplace_back(Edge{verts, {1, 2}}); // 3
+  edges.emplace_back(Edge{verts, {2, 3}}); // 4
+  // Top Plane
+  edges.emplace_back(Edge{verts, {4, 5}}); // 5
+  edges.emplace_back(Edge{verts, {4, 6}}); // 6
+  edges.emplace_back(Edge{verts, {4, 7}}); // 7
+  edges.emplace_back(Edge{verts, {5, 6}}); // 8
+  edges.emplace_back(Edge{verts, {6, 7}}); // 9
+  // Verticals
+  edges.emplace_back(Edge{verts, {0, 4}}); // 10
+  edges.emplace_back(Edge{verts, {1, 5}}); // 11
+  edges.emplace_back(Edge{verts, {2, 6}}); // 12
+  edges.emplace_back(Edge{verts, {3, 7}}); // 13
+  // Vertical crossovers
+  edges.emplace_back(Edge{verts, {0, 5}}); // 14
+  edges.emplace_back(Edge{verts, {1, 6}}); // 15
+  edges.emplace_back(Edge{verts, {2, 7}}); // 16
+  edges.emplace_back(Edge{verts, {3, 4}}); // 17
+
+  // 12 faces of a cube
+  // Bottom plane
+  std::vector<Triangle> &triangles = boundingVolume.m_triangles;
+  triangles.emplace_back(Triangle{edges, {0, 1, 3}, {0, 0, -1}});
+  triangles.emplace_back(Triangle{edges, {4, 1, 2}, {0, 0, -1}});
+  // Top plane
+  triangles.emplace_back(Triangle{edges, {5, 6, 8}, {0, 0, 1}});
+  triangles.emplace_back(Triangle{edges, {9, 6, 7}, {0, 0, 1}});
+  // -y side
+  triangles.emplace_back(Triangle{edges, {0, 14, 11}, {0, -1, 0}});
+  triangles.emplace_back(Triangle{edges, {5, 14, 10}, {0, -1, 0}});
+  // x side
+  triangles.emplace_back(Triangle{edges, {3, 15, 12}, {1, 0, 0}});
+  triangles.emplace_back(Triangle{edges, {8, 15, 11}, {1, 0, 0}});
+  // y side
+  triangles.emplace_back(Triangle{edges, {4, 16, 13}, {0, 1, 0}});
+  triangles.emplace_back(Triangle{edges, {9, 16, 12}, {0, 1, 0}});
+  // -x side
+  triangles.emplace_back(Triangle{edges, {2, 17, 10}, {-1, 0, 0}});
+  triangles.emplace_back(Triangle{edges, {7, 17, 13}, {-1, 0, 0}});
+
+  m_boundingVolumes.emplace_back(boundingVolume);
+
+  // All vertices...
+  // for (Millimeter x{min.x()}; x < max.x(); x += 50.0) {
+  //  for (Millimeter y{min.y()}; y < max.y(); y += 50.0) {
+  //    for (Millimeter z{min.z()}; z < max.z(); z += 50.0) {
+  //      m_boundingVolumes.m_vertices.emplace_back(x, y, z);
+  //    }
+  //    m_boundingVolumes.m_vertices.emplace_back(x, y, max.z());
+  //  }
+  //  for (Millimeter z{min.z()}; z < max.z(); z += 50.0) {
+  //    m_boundingVolumes.m_vertices.emplace_back(x, max.y(), z);
+  //  }
+  //  m_boundingVolumes.m_vertices.emplace_back(x, max.y(), max.z());
+  //}
+  // for (Millimeter y{min.y()}; y < max.y(); y += 50.0) {
+  //  for (Millimeter z{min.z()}; z < max.z(); z += 50.0) {
+  //    m_boundingVolumes.m_vertices.emplace_back(max.x(), y, z);
+  //  }
+  //  m_boundingVolumes.m_vertices.emplace_back(max.x(), y, max.z());
+  //}
+  // for (Millimeter z{min.z()}; z < max.z(); z += 50.0) {
+  //  m_boundingVolumes.m_vertices.emplace_back(max.x(), max.y(), z);
+  //}
+  // m_boundingVolumes.m_vertices.emplace_back(max.x(), max.y(), max.z());
+}
+
 Mesh::Mesh(Stl const &stl) {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
@@ -141,6 +228,13 @@ Mesh::Mesh(Stl const &stl) {
   loadEdges(edgeTriplets);
 
   loadTriangles(edgeTriplets);
+
+  constexpr Millimeter BOUNDING_VOLUME_THRESHOLD =
+      (50.0_mm * 20 * 50.0_mm * 20 * 50.0_mm * 20);
+  if (stl.m_stats.size.x() * stl.m_stats.size.y() * stl.m_stats.size.z() >
+      BOUNDING_VOLUME_THRESHOLD) {
+    loadBoundingVolumes(stl.m_stats.min, stl.m_stats.max);
+  }
 
   SPDLOG_LOGGER_DEBUG(logger, "finished loading Mesh from Stl");
 }
