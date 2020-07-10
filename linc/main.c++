@@ -23,7 +23,8 @@ auto main(int argc, char *argv[]) -> int {
   auto const layerHeight =
       Millimeter((argc > 3) ? std::stod(gsl::at(args, 3)) : 1.0);
   if (layerHeight < 0.0) {
-    std::cerr << "Negative layer height is not allowed: " << layerHeight << '\n';
+    std::cerr << "Negative layer height is not allowed: " << layerHeight
+              << '\n';
     return -1;
   }
 

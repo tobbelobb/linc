@@ -179,9 +179,11 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
-  if (layerHeight < 0.1) {
+
+  constexpr Millimeter SMALL_LAYER_HEIGHT{1.0};
+  if (layerHeight < SMALL_LAYER_HEIGHT) {
     SPDLOG_LOGGER_WARN(logger,
-                       "Layer height {} is very low. Execution might take "
+                       "Layer height {} is very small. Execution might take "
                        "a very long time",
                        layerHeight);
   }
@@ -200,12 +202,14 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
           .z();
   if (topHeight < lowestAnchorZ) {
     SPDLOG_LOGGER_INFO(
-        logger, "Special case: Mesh entirely below anchors. Collision impossible.");
+        logger,
+        "Special case: Mesh entirely below anchors. Collision impossible.");
     return false;
   }
 
   Millimeter const startAnalysisAt = topHeight;
-  Millimeter const stopAnalysisAt = std::max(minHeight, std::max(lowestAnchorZ, 0.0));
+  Millimeter const stopAnalysisAt =
+      std::max(minHeight, std::max(lowestAnchorZ, 0.0));
 
   // clang-format might complain that h-=layerHeight will accumulate an error.
   // We don't care here, since an extra iteration more or less when we're

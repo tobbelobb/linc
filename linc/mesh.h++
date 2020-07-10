@@ -97,6 +97,11 @@ public:
 
   double maxHeight() const;
   double minHeight() const;
+  void loadVertices(std::vector<Stl::Facet> const &facets);
+  std::vector<std::array<Edge, 3>>
+  extractEdgeTriplets(std::vector<Stl::Facet> const &facets);
+  void loadEdges(std::vector<std::array<Edge, 3>> const &edgeTriplets);
+  void loadTriangles(std::vector<std::array<Edge, 3>> const &edgeTriplets);
 };
 
 inline auto operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) -> bool {
