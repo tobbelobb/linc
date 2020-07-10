@@ -14,37 +14,37 @@ auto main(int argc, char *argv[]) -> int {
   if (not(argc == 3 or argc == 4)) {
     std::cerr << "Usage:\n"
               << *argv << " <3d-model> <params> [layer-height (mm)]\n";
-    return 1;
+    return -1;
   }
-  // Init the logger
-
   gsl::span<char *> const args(argv, static_cast<unsigned int>(argc));
   auto *const modelFileName = gsl::at(args, 1);
   auto *const paramsFileName = gsl::at(args, 2);
 
   auto const layerHeight =
       Millimeter((argc > 3) ? std::stod(gsl::at(args, 3)) : 1.0);
-  // Check that layerHeight is a positive number larger than some eps
+  if (layerHeight < 0.0) {
+    std::cerr << "Negative layer height is not allowed: " << layerHeight << '\n';
+    return -1;
+  }
 
   Stl const stl{modelFileName};
   if (not stl.m_initialized) {
     std::cerr << "Failed to load " << modelFileName << '\n';
-    return 1;
+    return -1;
   }
   Mesh const mesh{stl};
-  // Check that mesh goes from z=0 and upwards
 
   if (not validateParamsFile(paramsFileName)) {
     std::cerr << "Validation of " << paramsFileName << " failed\n";
-    return 1;
+    return -1;
   }
   Pivots pivots{paramsFileName};
 
   if (willCollide(mesh, pivots, layerHeight)) {
     std::cout << "Collision detected\n";
-  } else {
-    std::cout << "No collision detected\n";
+    return 1;
   }
 
+  std::cout << "No collision detected\n";
   return 0;
 }

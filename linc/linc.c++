@@ -179,19 +179,39 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
+  if (layerHeight < 0.1) {
+    SPDLOG_LOGGER_WARN(logger,
+                       "Layer height {} is very low. Execution might take "
+                       "a very long time",
+                       layerHeight);
+  }
 
-  double const minHeight = mesh.minHeight();
+  Millimeter const minHeight = mesh.minHeight();
+  if (minHeight < 0.0) {
+    SPDLOG_LOGGER_WARN(logger, "Mesh goes below z=0.0");
+  }
 
-  assert(minHeight > -VertexConstants::eps);  // NOLINT
-  assert(layerHeight > VertexConstants::eps); // NOLINT
+  Millimeter const topHeight = mesh.maxHeight();
+  Millimeter const lowestAnchorZ =
+      (*std::min_element(pivots.anchors.begin(), pivots.anchors.end(),
+                         [](Vertex const &lhs, Vertex const &rhs) {
+                           return lhs.z() < rhs.z();
+                         }))
+          .z();
+  if (topHeight < lowestAnchorZ) {
+    SPDLOG_LOGGER_INFO(
+        logger, "Special case: Mesh entirely below anchors. Collision impossible.");
+    return false;
+  }
 
-  double const topHeight = mesh.maxHeight();
+  Millimeter const startAnalysisAt = topHeight;
+  Millimeter const stopAnalysisAt = std::max(minHeight, std::max(lowestAnchorZ, 0.0));
 
   // clang-format might complain that h-=layerHeight will accumulate an error.
   // We don't care here, since an extra iteration more or less when we're
-  // getting close to the bottom of the print doesn't matter for us
-  for (Millimeter h{topHeight}; h > 2 * layerHeight; /* NOLINT */
-       h -= layerHeight) {                           /* NOLINT */
+  // getting close to the bottom of the print doesn't matter
+  for (Millimeter h{startAnalysisAt}; h > stopAnalysisAt; /* NOLINT */
+       h -= layerHeight) {                                /* NOLINT */
 
     MeshClipper partialPrint{mesh};
     partialPrint.softClip(h);
@@ -201,15 +221,15 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     // Extract convex hull of the top points
     // This involves removing points that are enclosed by other points
     std::vector<Vertex> topVertices{partialPrint.getTopVertices()};
-    if (topVertices.empty()) {
+    SPDLOG_LOGGER_DEBUG(logger, "Found {} top vertices", topVertices.size());
+    if (topVertices.size() < 3) {
       SPDLOG_LOGGER_WARN(logger,
-                         "Found no vertices below height {}. Assuming "
-                         "no vertices left to analyze. Returning.",
+                         "Found zero area layer at z={}. Did user forget to "
+                         "add support structures?",
                          h);
-      return false;
+      continue;
     }
 
-    SPDLOG_LOGGER_DEBUG(logger, "Found {} top vertices", topVertices.size());
     if (hullIt) {
       topVertices = hullAndSortCcw(topVertices);
       SPDLOG_LOGGER_DEBUG(logger, "The hull of those has {} vertices",

@@ -222,26 +222,34 @@ EOE
 : Forgot-a-comma
 : Checks error when user forgot a comma between position coordinates
 cat <<EOI >=test.params;
-effector-pivot-A1: 220.0, -140.0, 130.0
-effector-pivot-A2: -220.0, -140.0, 130.0
-effector-pivot-B1:  230.0, -130.0, 130.0
-effector-pivot-B2:    5.0,  270.0 130.0
-effector-pivot-C1:   -5.0,  270.0, 130.0
-effector-pivot-C2: -230.0, -130.0, 130.0
-anchor-pivot-A1:   220.00, -1744.54,  15.92
-anchor-pivot-A2:  -220.00, -1744.54,  15.92
-anchor-pivot-B1:  1542.51,  1140.88, -32.19
-anchor-pivot-B2:  1317.51,  1540.88, -32.19
-anchor-pivot-C1: -1435.30,  1011.60, -31.23
-anchor-pivot-C2: -1670.30,   611.63, -31.23
+effector-pivot-A1:  220.00,  -140.00, 130.00
+effector-pivot-A2: -220.00,  -140.00, 130.00
+effector-pivot-B1:  230.00,  -130.00, 130.00
+effector-pivot-B2:    5.00,   270.00  130.00
+effector-pivot-C1:   -5.00,   270.00, 130.00
+effector-pivot-C2: -230.00,  -130.00, 130.00
+anchor-pivot-A1:    220.00, -1744.54,  15.92
+anchor-pivot-A2:   -220.00, -1744.54,  15.92
+anchor-pivot-B1:   1542.51,  1140.88, -32.19
+anchor-pivot-B2:   1317.51,  1540.88, -32.19
+anchor-pivot-C1:  -1435.30,  1011.60, -31.23
+anchor-pivot-C2:  -1670.30,   611.63, -31.23
 EOI
 $* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
 Invalid line:
-effector-pivot-B2:    5.0,  270.0 130.0
+effector-pivot-B2:    5.00,   270.00  130.00
 Validation of test.params failed
 EOE
 
+: Cube-input-almost-collision
+: Analysis detects no collision
+$* "$src_base/test-models/cube-470.ascii.stl" "$src_base/params-example" &linc.log > 'No collision detected'
 
-#: Cube-input
-#: Analysis detects collision with big object
-#$* "$src_base/big-cube.stl" "$src_base/params-example" > 'Collision detected'
+: Cube-input-collision
+: Analysis detects no collision
+$* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" &linc.log > 'Collision detected' != 0
+
+: Negative-layer-height
+$* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" -0.1 &linc.log 2>>EOE != 0
+Negative layer height is not allowed: -0.1
+EOE
