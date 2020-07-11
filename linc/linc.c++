@@ -174,6 +174,40 @@ void sortCcwInPlace(std::vector<Vertex> &vertices) {
             });
 }
 
+static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
+                      std::vector<Vertex> const &topVertices) -> Mesh {
+  // POINTS
+  Mesh cone{anchorPivot};
+  for (auto const &topVertex : topVertices) {
+    cone.m_vertices.emplace_back(topVertex + effectorPivot);
+  }
+  size_t const numPoints = cone.m_vertices.size();
+
+  // EDGES
+  // Add star topology down to anchorPivot
+  for (size_t pointIdx{1}; pointIdx < numPoints; ++pointIdx) {
+    cone.m_edges.emplace_back(Mesh::Edge{cone.m_vertices, {0, pointIdx}});
+  }
+  // Add ring of edges through all top points
+  for (size_t pointIdx{1}; pointIdx < numPoints - 1; ++pointIdx) {
+    cone.m_edges.emplace_back(
+        Mesh::Edge{cone.m_vertices, {pointIdx, pointIdx + 1}});
+  }
+  cone.m_edges.emplace_back(Mesh::Edge{cone.m_vertices, {numPoints - 1, 0}});
+
+  // TRIANGLES
+  // There are numTopPoints top points (and thus star-topology-edges)
+  // Right after star-topology edges comes as many ring edges
+  size_t const numTopVertices = topVertices.size();
+  for (size_t starEdgeIdx{0}; starEdgeIdx < numTopVertices; ++starEdgeIdx) {
+    size_t const ringEdgeIdx = starEdgeIdx + numTopVertices;
+    cone.m_triangles.emplace_back(Mesh::Triangle{
+        cone.m_edges,
+        {starEdgeIdx, (starEdgeIdx + 1) % numTopVertices, ringEdgeIdx}});
+  }
+  return cone;
+}
+
 auto willCollide(Mesh const &mesh, Pivots const &pivots,
                  Millimeter const layerHeight, bool hullIt) -> bool {
   if (logger == nullptr) {
@@ -245,52 +279,72 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
 
     // Build the cones and check for collision, one by one
     for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
-      // POINTS
-      Mesh cone{anchorPivot};
-      for (auto const &topVertex : topVertices) {
-        cone.m_vertices.emplace_back(topVertex +
-                                     pivots.effector.at(anchorIndex));
-      }
-      size_t const numPoints = cone.m_vertices.size();
+      Vertex const &effectorPivot{pivots.effector.at(anchorIndex)};
+      Vertex const anchorToEffector{effectorPivot - anchorPivot};
+      Mesh cone = buildCone(anchorPivot, effectorPivot, topVertices);
 
-      // EDGES
-      // Add star topology down to anchorPivot
-      for (size_t pointIdx{1}; pointIdx < numPoints; ++pointIdx) {
-        cone.m_edges.emplace_back(Mesh::Edge{cone.m_vertices, {0, pointIdx}});
-      }
-      // Add ring of edges through all top points
-      for (size_t pointIdx{1}; pointIdx < numPoints - 1; ++pointIdx) {
-        cone.m_edges.emplace_back(
-            Mesh::Edge{cone.m_vertices, {pointIdx, pointIdx + 1}});
-      }
-      cone.m_edges.emplace_back(
-          Mesh::Edge{cone.m_vertices, {numPoints - 1, 0}});
+      // Find the sharpest angle towards xy-plane the line will have on this
+      // layer. Effector pivot will not travel farther away from anchorPivot
+      // than this.
+      auto const farthest =
+          *std::max_element(
+              topVertices.begin(), topVertices.end(),
+              [&anchorToEffector](Vertex const &v0, Vertex const &v1) {
+                return (v0 + anchorToEffector).norm() <
+                       (v1 + anchorToEffector).norm();
+              }) +
+          effectorPivot;
+      // to get from anchorPivot to farthest, travel along edge01
+      // This is where our line is
+      auto const edge01 = farthest - anchorPivot;
+      // If we rotate the effector with constant line length and constant z
+      // height we will travel in a direction orthogonal to edge01 and z-unit
+      // vector. We want our plane along this orthogonal direction. Cross
+      // product of edge01 = (x, y, z) with Z normal gives (x, y, z) x (0, 0, 1)
+      // = (y, -x, 0) So we could have done Vertex const edge12 =
+      // Vertex{edge01.y(), -edge01.x(), 0};
+      //
+      // So we've defined a plane with a triangle that has corners in
+      // farthest, anchorPivot, and (farthest + edge12)
+      // Normal to the plane is edge12 x edge01
+      // So we could have done
+      // Normal const normal = edge12.cross(edge01);
+      // But we save some cycles by hand-simplifying this to:
+      Normal const normal =
+          Vertex{-edge01.x() * edge01.z(), -edge01.z() * edge01.y(),
+                 edge01.x() * edge01.x() + edge01.y() * edge01.y()};
+      // Note the guaranteed positive z-component of this normal.
 
-      // TRIANGLES
-      // There are numTopPoints top points (and thus star-topology-edges)
-      // Right after star-topology edges comes as many ring edges
-      size_t const numTopVertices = topVertices.size();
-      for (size_t starEdgeIdx{0}; starEdgeIdx < numTopVertices; ++starEdgeIdx) {
-        size_t const ringEdgeIdx = starEdgeIdx + numTopVertices;
-        cone.m_triangles.emplace_back(Mesh::Triangle{
-            cone.m_edges,
-            {starEdgeIdx, (starEdgeIdx + 1) % numTopVertices, ringEdgeIdx}});
+      // Check if a visible point is above the checkit plane
+      for (auto &point : partialPrint.m_points) {
+        if (point.m_visible) {
+          Vertex const fromFarthestToPoint = point.m_vertex - farthest;
+          if (fromFarthestToPoint.dot(normal) >= 0.0) {
+            point.m_checkIt = true;
+          } else {
+            point.m_checkIt = false;
+          }
+        }
       }
-      // Cone built.
 
       // Check for collision
       // An intersection between a print triangle and a cone triangle
       // means the two meshes intersect, and we regard that as a line
       // collision
       for (auto const &partialPrintTriangle : partialPrint.m_triangles) {
-        if (partialPrintTriangle.m_visible) {
+        if (partialPrintTriangle.m_visible and
+            (partialPrintTriangle.edge0().point0().m_checkIt or
+             partialPrintTriangle.edge0().point1().m_checkIt or
+             partialPrintTriangle.edge1().point0().m_checkIt or
+             partialPrintTriangle.edge1().point1().m_checkIt)) {
           for (auto const &coneTriangle : cone.m_triangles) {
-            if (intersect(partialPrintTriangle, coneTriangle)) {
-              SPDLOG_LOGGER_INFO(logger, "Found collision! Between {} and {}",
-                                 Triangle{partialPrintTriangle},
-                                 Triangle{coneTriangle});
-              return true;
-            }
+            if (intersect(partialPrintTriangle, coneTriangle))
+              [[unlikely]] {
+                SPDLOG_LOGGER_INFO(logger, "Found collision! Between {} and {}",
+                                   Triangle{partialPrintTriangle},
+                                   Triangle{coneTriangle});
+                return true;
+              }
           }
         }
       }
