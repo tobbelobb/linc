@@ -1,7 +1,10 @@
 #include <algorithm>
+#include <chrono>
 #include <cmath>
+#include <future>
 #include <iterator>
 #include <numeric>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -208,49 +211,13 @@ static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
   return cone;
 }
 
-auto willCollide(Mesh const &mesh, Pivots const &pivots,
-                 Millimeter const layerHeight, bool hullIt) -> bool {
-  if (logger == nullptr) {
-    logger = spdlog::get("file_logger");
-  }
-
-  constexpr Millimeter SMALL_LAYER_HEIGHT{1.0};
-  if (layerHeight < SMALL_LAYER_HEIGHT) {
-    SPDLOG_LOGGER_WARN(logger,
-                       "Layer height {} is very small. Execution might take "
-                       "a very long time",
-                       layerHeight);
-  }
-
-  Millimeter const minHeight = mesh.minHeight();
-  if (minHeight < 0.0) {
-    SPDLOG_LOGGER_WARN(logger, "Mesh goes below z=0.0");
-  }
-
-  Millimeter const topHeight = mesh.maxHeight();
-  Millimeter const lowestAnchorZ =
-      (*std::min_element(pivots.anchors.begin(), pivots.anchors.end(),
-                         [](Vertex const &lhs, Vertex const &rhs) {
-                           return lhs.z() < rhs.z();
-                         }))
-          .z();
-  if (topHeight < lowestAnchorZ) {
-    SPDLOG_LOGGER_INFO(
-        logger,
-        "Special case: Mesh entirely below anchors. Collision impossible.");
-    return false;
-  }
-
-  Millimeter const startAnalysisAt = topHeight;
-  Millimeter const stopAnalysisAt =
-      std::max(minHeight, std::max(lowestAnchorZ, 0.0));
-
-  // clang-format might complain that h-=layerHeight will accumulate an error.
-  // We don't care here, since an extra iteration more or less when we're
-  // getting close to the bottom of the print doesn't matter
-  for (Millimeter h{startAnalysisAt}; h > stopAnalysisAt; /* NOLINT */
-       h -= layerHeight) {                                /* NOLINT */
-
+static auto findCollision(std::vector<Millimeter> const &heights,
+                          Mesh const &mesh, Pivots const &pivots, bool hullIt,
+                          std::stop_token &st) -> bool {
+  for (auto const h : heights) {
+    if (st.stop_requested()) {
+      return false;
+    }
     MeshClipper partialPrint{mesh};
     partialPrint.softClip(h);
     SPDLOG_LOGGER_DEBUG(logger, "New soft max height after clip is {}",
@@ -351,4 +318,102 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     }
   }
   return false;
+}
+
+auto willCollide(Mesh const &mesh, Pivots const &pivots,
+                 Millimeter const layerHeight, bool hullIt) -> bool {
+  if (logger == nullptr) {
+    logger = spdlog::get("file_logger");
+  }
+
+  constexpr Millimeter SMALL_LAYER_HEIGHT{1.0};
+  if (layerHeight < SMALL_LAYER_HEIGHT) {
+    SPDLOG_LOGGER_WARN(logger,
+                       "Layer height {} is very small. Execution might take "
+                       "a very long time",
+                       layerHeight);
+  }
+
+  Millimeter const minHeight = mesh.minHeight();
+  if (minHeight < 0.0) {
+    SPDLOG_LOGGER_WARN(logger, "Mesh goes below z=0.0");
+  }
+
+  Millimeter const topHeight = mesh.maxHeight();
+  Millimeter const lowestAnchorZ =
+      (*std::min_element(pivots.anchors.begin(), pivots.anchors.end(),
+                         [](Vertex const &lhs, Vertex const &rhs) {
+                           return lhs.z() < rhs.z();
+                         }))
+          .z();
+  if (topHeight < lowestAnchorZ) {
+    SPDLOG_LOGGER_INFO(
+        logger,
+        "Special case: Mesh entirely below anchors. Collision impossible.");
+    return false;
+  }
+
+  Millimeter const startAnalysisAt = topHeight;
+  Millimeter const stopAnalysisAt =
+      std::max(minHeight, std::max(lowestAnchorZ, 0.0));
+
+  // clang-format might complain that h-=layerHeight will accumulate an error.
+  // We don't care here, since an extra iteration more or less when we're
+  // getting close to the bottom of the print doesn't matter
+
+  // Create some worker threads
+  auto const numThreads = std::thread::hardware_concurrency();
+  std::vector<std::future<bool>> futures;
+  std::vector<std::jthread> threads{};
+
+  for (size_t i{0}; i < numThreads; ++i) {
+    // done.emplace_back(false);
+    // Which heights should this thread check?
+    std::vector<Millimeter> heights{};
+    for (Millimeter h{startAnalysisAt -
+                      static_cast<Millimeter>(i) * layerHeight};
+         h > stopAnalysisAt;              /* NOLINT */
+         h -= layerHeight * numThreads) { /* NOLINT */
+      heights.emplace_back(h);
+    }
+
+    std::packaged_task<bool(std::stop_token st)> task(
+        [heights, &mesh, &pivots, hullIt](std::stop_token st) {
+          return findCollision(heights, mesh, pivots, hullIt, st);
+        });
+    futures.emplace_back(task.get_future());
+    threads.emplace_back(std::move(task));
+  }
+
+  using namespace std::chrono_literals;
+  while (std::any_of(futures.begin(), futures.end(),
+                     [](std::future<bool> const &future) {
+                       return future.valid() and
+                              future.wait_for(0ms) != std::future_status::ready;
+                     })) {
+    for (auto &future : futures) {
+      if (future.valid() and
+          future.wait_for(0ms) == std::future_status::ready) {
+        if (future.get() == true) {
+          return true;
+        }
+      }
+    }
+    if (futures.at(0).valid() and
+        futures.at(0).wait_for(50ms) == std::future_status::ready) {
+      // This if statement saves us 50 ms for every unit test that
+      // is run on a simple model
+      if (futures.at(0).get() == true) {
+        return true;
+      }
+    } else {
+      // If thread 0 didn't find anything, sleep a while before
+      // checking the others
+      std::this_thread::sleep_for(50ms);
+    }
+  }
+
+  return std::any_of(futures.begin(), futures.end(), [](std::future<bool> &f) {
+    return f.valid() and f.get();
+  });
 }
