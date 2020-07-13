@@ -442,7 +442,8 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
 }
 
 void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
-                    Collision const &collision) {
+                    Collision const &collision,
+                    std::string const &outFileName) {
   if (not collision) {
     SPDLOG_LOGGER_WARN(logger, "Can not make debug model from no collision");
     return;
@@ -505,5 +506,5 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
         MeshClipper::Triangle{partialPrint.m_edges, edgeIndicesABC});
   }
 
-  partialPrint.writeBinaryStl("linc.stl");
+  partialPrint.writeBinaryStl(outFileName);
 }

@@ -118,4 +118,4 @@ struct Collision {
                                     bool hullIt = true);
 
 void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
-                    Collision const &collision);
+                    Collision const &collision, std::string const &outFileName);

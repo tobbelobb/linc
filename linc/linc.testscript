@@ -10,7 +10,12 @@
 : The $0 will expand to the executable name
 $* &linc.log 2>>"EOE" != 0
 Usage:
-$0 <3d-model> <params> [layer-height \(mm\)]
+$0 <3d-model> <params> [layer-height \(mm\)] [out-file-name]
+
+If you provide no layer-height, it defaults to 1.0.
+If you provide a layer-height and an out-file-name,
+  a debug-stl with that name will be created upon
+  collision detection.
 EOE
 
 : Non-existent-file

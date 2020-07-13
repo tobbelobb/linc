@@ -11,9 +11,14 @@
 auto main(int argc, char *argv[]) -> int {
 
   // Parse the arguments...
-  if (not(argc == 3 or argc == 4)) {
+  if (not(argc == 3 or argc == 4 or argc == 5)) {
     std::cerr << "Usage:\n"
-              << *argv << " <3d-model> <params> [layer-height (mm)]\n";
+              << *argv
+              << " <3d-model> <params> [layer-height (mm)] [out-file-name]\n";
+    std::cerr
+        << "\nIf you provide no layer-height, it defaults to 1.0.\nIf you "
+           "provide a layer-height and an out-file-name,\n  a debug-stl with "
+           "that name will be created upon\n  collision detection.\n";
     return -1;
   }
   gsl::span<char *> const args(argv, static_cast<unsigned int>(argc));
@@ -27,6 +32,7 @@ auto main(int argc, char *argv[]) -> int {
               << '\n';
     return -1;
   }
+  std::string const outFileName = (argc > 4) ? gsl::at(args, 4) : "";
 
   Stl const stl{modelFileName};
   if (not stl.m_initialized) {
@@ -44,7 +50,9 @@ auto main(int argc, char *argv[]) -> int {
   Collision const found{willCollide(mesh, pivots, layerHeight)};
   if (found.m_isCollision) {
     std::cout << "Collision detected at z=" << found.m_height << '\n';
-    makeDebugModel(mesh, pivots, found);
+    if (outFileName != "") {
+      makeDebugModel(mesh, pivots, found, outFileName);
+    }
     return 1;
   }
 
