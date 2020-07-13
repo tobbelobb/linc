@@ -128,7 +128,7 @@ Mesh::Mesh(Stl const &stl) {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
-  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
+  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%t] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
   SPDLOG_LOGGER_DEBUG(logger, "Building Mesh from {} facets",
                       stl.m_facets.size());

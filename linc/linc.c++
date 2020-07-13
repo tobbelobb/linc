@@ -216,6 +216,8 @@ static auto findCollision(std::vector<Millimeter> const &heights,
                           std::stop_token &st) -> bool {
   for (auto const h : heights) {
     if (st.stop_requested()) {
+      SPDLOG_LOGGER_DEBUG(
+          logger, "Another thread already found a collision. Returning.");
       return false;
     }
     MeshClipper partialPrint{mesh};
@@ -363,18 +365,40 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
 
   // Create some worker threads
   auto const numThreads = std::thread::hardware_concurrency();
+  // And some futures, that lets us check on their progress and result
   std::vector<std::future<bool>> futures;
   std::vector<std::jthread> threads{};
 
   for (size_t i{0}; i < numThreads; ++i) {
-    // done.emplace_back(false);
     // Which heights should this thread check?
+    // Give each thread a separate interval (a, b] to check
+    // Evenly split segments from the top (highest value, which is b)
+    // and downwards
+    auto const b =
+        stopAnalysisAt + (startAnalysisAt - stopAnalysisAt) *
+                             (static_cast<Millimeter>(numThreads - i) /
+                              static_cast<Millimeter>(numThreads));
+    auto const a =
+        stopAnalysisAt + (startAnalysisAt - stopAnalysisAt) *
+                             (static_cast<Millimeter>(numThreads - i - 1) /
+                              static_cast<Millimeter>(numThreads));
+    auto const intervalLength = b - a;
+
     std::vector<Millimeter> heights{};
-    for (Millimeter h{startAnalysisAt -
-                      static_cast<Millimeter>(i) * layerHeight};
-         h > stopAnalysisAt;              /* NOLINT */
-         h -= layerHeight * numThreads) { /* NOLINT */
-      heights.emplace_back(h);
+    // Each thread should check its top layer first
+    heights.emplace_back(b);
+    // Then it should go on to binary search through its segment.
+    // Small comment: If layerHeight is 1.0, our smallest searched segment
+    // will be of length (0.5, 1.0]. But that's ok, it's more important to
+    // find an eventual collision fast, than to be fast at confirming no
+    // collision
+    for (double denominator{2.0};
+         (2.0 * intervalLength / denominator) > layerHeight;
+         denominator *= 2.0) {
+      for (double numerator{denominator - 1.0}; numerator > 0.0;
+           numerator -= 2.0) {
+        heights.emplace_back(a + intervalLength * numerator / denominator);
+      }
     }
 
     std::packaged_task<bool(std::stop_token st)> task(

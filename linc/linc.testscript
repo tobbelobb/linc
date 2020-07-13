@@ -253,3 +253,15 @@ $* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" &linc.l
 $* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" -0.1 &linc.log 2>>EOE != 0
 Negative layer height is not allowed: -0.1
 EOE
+
+: Big-benchy-almost-collision
+: Analysis detects no collision
+:
+: We use layer height 20 here to save some time.
+: To be absolutely sure we don't have line collisions, run
+: with layer height 1
+$* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-example" 20 &linc.log > 'No collision detected'
+
+: Big-benchy-collision
+: Analysis detects no collision
+$* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" &linc.log > 'Collision detected' != 0

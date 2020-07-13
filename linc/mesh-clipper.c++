@@ -19,7 +19,7 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
-  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%s(%#)] [%!] [%l] %v");
+  spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%t] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
   // Allocate some memory and fill with default data
   m_points.assign(mesh.m_vertices.size(), {Vertex::Zero(), 0.0_mm});
