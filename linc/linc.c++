@@ -246,7 +246,6 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       sortCcwInPlace(topVertices);
     }
 
-    // Build the cones and check for collision, one by one
     for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
       Vertex const &effectorPivot{pivots.effector.at(anchorIndex)};
       Vertex const anchorToEffector{effectorPivot - anchorPivot};
@@ -308,7 +307,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
                 SPDLOG_LOGGER_INFO(logger, "Found collision! Between {} and {}",
                                    Triangle{partialPrintTriangle},
                                    Triangle{coneTriangle});
-                return {true, h};
+                return {true, h, coneTriangle, effectorPivot};
               }
           }
         }
@@ -440,4 +439,71 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     }
   }
   return {false};
+}
+
+void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
+                    Collision const &collision) {
+  if (not collision) {
+    SPDLOG_LOGGER_WARN(logger, "Can not make debug model from no collision");
+    return;
+  }
+  SPDLOG_LOGGER_DEBUG(logger, "Making debug model");
+
+  MeshClipper partialPrint{mesh};
+  partialPrint.softClip(collision.m_height);
+  // Add the intersecting cone triangle to partialPrint
+  std::array<std::size_t, 3> cornerIndices{INVALID_INDEX, INVALID_INDEX,
+                                           INVALID_INDEX};
+  for (size_t i{0}; i < 3; ++i) {
+    cornerIndices.at(i) = partialPrint.m_points.size();
+    partialPrint.m_points.emplace_back(collision.m_coneTriangle.m_corners[i]);
+  }
+  std::array<std::size_t, 4> const edgeIndices{
+      partialPrint.m_edges.size(), partialPrint.m_edges.size() + 1,
+      partialPrint.m_edges.size() + 2, INVALID_INDEX};
+  partialPrint.m_edges.emplace_back(MeshClipper::Edge{
+      partialPrint.m_points, {cornerIndices[0], cornerIndices[1]}});
+  partialPrint.m_edges.emplace_back(MeshClipper::Edge{
+      partialPrint.m_points, {cornerIndices[1], cornerIndices[2]}});
+  partialPrint.m_edges.emplace_back(MeshClipper::Edge{
+      partialPrint.m_points, {cornerIndices[2], cornerIndices[0]}});
+
+  partialPrint.m_triangles.emplace_back(
+      MeshClipper::Triangle{partialPrint.m_edges, edgeIndices});
+
+  auto const effectorPosition =
+      *std::max_element(
+          collision.m_coneTriangle.m_corners.begin(),
+          collision.m_coneTriangle.m_corners.end(),
+          [](Vertex const &v0, Vertex const &v1) { return v0.z() < v1.z(); }) -
+      collision.m_effectorPivot;
+
+  // Add effector into partialPrint
+  size_t const effectorPositionIndex{partialPrint.m_points.size()};
+  partialPrint.m_points.emplace_back(effectorPosition);
+  std::array<std::size_t, Pivots::COLS> effectorPivotIndices{INVALID_INDEX};
+  for (size_t i{0}; i < Pivots::COLS; ++i) {
+    effectorPivotIndices.at(i) = partialPrint.m_points.size();
+    partialPrint.m_points.emplace_back(effectorPosition +
+                                       pivots.effector.at(i));
+  }
+
+  for (std::size_t i{0}; i < Pivots::COLS; i += 2) {
+    std::array<std::size_t, 4> const edgeIndicesABC{
+        partialPrint.m_edges.size(), partialPrint.m_edges.size() + 1,
+        partialPrint.m_edges.size() + 2, INVALID_INDEX};
+    partialPrint.m_edges.emplace_back(
+        MeshClipper::Edge{partialPrint.m_points,
+                          {effectorPositionIndex, effectorPivotIndices.at(i)}});
+    partialPrint.m_edges.emplace_back(MeshClipper::Edge{
+        partialPrint.m_points,
+        {effectorPositionIndex, effectorPivotIndices.at(i + 1)}});
+    partialPrint.m_edges.emplace_back(MeshClipper::Edge{
+        partialPrint.m_points,
+        {effectorPivotIndices.at(i), effectorPivotIndices.at(i + 1)}});
+    partialPrint.m_triangles.emplace_back(
+        MeshClipper::Triangle{partialPrint.m_edges, edgeIndicesABC});
+  }
+
+  partialPrint.writeBinaryStl("linc.stl");
 }

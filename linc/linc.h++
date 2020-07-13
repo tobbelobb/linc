@@ -19,6 +19,10 @@ struct Triangle {
     return edge0.cross(edge1).normalized();
   }
 
+  Triangle()
+      : m_corners({Vertex::Zero(), Vertex::Zero(), Vertex::Zero()}),
+        m_normal(Normal::Zero()) {}
+
   Triangle(std::array<Vertex, 3> const &corners)
       : m_corners(corners), m_normal(computeNormal(corners)) {}
 
@@ -94,10 +98,16 @@ void sortCcwInPlace(std::vector<Vertex> &v);
 struct Collision {
   bool const m_isCollision;
   Millimeter m_height;
+  Triangle const m_coneTriangle;
+  Vertex const m_effectorPivot;
 
-  Collision(bool isCollision) : m_isCollision(isCollision), m_height(0.0) {}
-  Collision(bool isCollision, Millimeter const height)
-      : m_isCollision(isCollision), m_height(height) {}
+  Collision(bool isCollision)
+      : m_isCollision(isCollision), m_height(0.0), m_coneTriangle(),
+        m_effectorPivot(Vertex::Zero()) {}
+  Collision(bool isCollision, Millimeter const height, Triangle const &triangle,
+            Vertex const &effectorPivot)
+      : m_isCollision(isCollision), m_height(height), m_coneTriangle(triangle),
+        m_effectorPivot(effectorPivot) {}
 
   bool operator!() { return not m_isCollision; }
 
@@ -106,3 +116,6 @@ struct Collision {
 
 [[nodiscard]] Collision willCollide(Mesh const &, Pivots const &, Millimeter,
                                     bool hullIt = true);
+
+void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
+                    Collision const &collision);

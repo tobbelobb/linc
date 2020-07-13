@@ -136,8 +136,7 @@ public:
     };
 
     std::vector<Edge> &m_edges;
-    // A triangle might briefly need to keep track of
-    // four corners during a cut operation
+    // TODO: Remove the fourth edge. It's unused
     std::array<size_t, 4> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                         INVALID_INDEX, INVALID_INDEX};
     Normal m_normal = Normal::Zero();

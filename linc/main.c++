@@ -44,6 +44,7 @@ auto main(int argc, char *argv[]) -> int {
   Collision const found{willCollide(mesh, pivots, layerHeight)};
   if (found.m_isCollision) {
     std::cout << "Collision detected at z=" << found.m_height << '\n';
+    makeDebugModel(mesh, pivots, found);
     return 1;
   }
 
