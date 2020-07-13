@@ -91,5 +91,18 @@ template <> struct fmt::formatter<Triangle> {
 // Disregards z and constructs hull as if all vertices were at z=0
 void sortCcwInPlace(std::vector<Vertex> &v);
 
-[[nodiscard]] bool willCollide(Mesh const &, Pivots const &, Millimeter,
-                               bool hullIt = true);
+struct Collision {
+  bool const m_isCollision;
+  Millimeter m_height;
+
+  Collision(bool isCollision) : m_isCollision(isCollision), m_height(0.0) {}
+  Collision(bool isCollision, Millimeter const height)
+      : m_isCollision(isCollision), m_height(height) {}
+
+  bool operator!() { return not m_isCollision; }
+
+  operator bool() const { return m_isCollision; }
+};
+
+[[nodiscard]] Collision willCollide(Mesh const &, Pivots const &, Millimeter,
+                                    bool hullIt = true);

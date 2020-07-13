@@ -247,7 +247,9 @@ $* "$src_base/test-models/cube-470.ascii.stl" "$src_base/params-example" &linc.l
 
 : Cube-input-collision
 : Analysis detects no collision
-$* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" &linc.log > 'Collision detected' != 0
+:
+: Regex expects one, two, or three characters after z=
+$* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" &linc.log >~'/Collision detected at z=..?.?/' != 0
 
 : Negative-layer-height
 $* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" -0.1 &linc.log 2>>EOE != 0
@@ -264,4 +266,6 @@ $* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-
 
 : Big-benchy-collision
 : Analysis detects no collision
-$* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" &linc.log > 'Collision detected' != 0
+:
+: Regex expects one, two, or three characters after z=
+$* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" &linc.log >~'/Collision detected at z=..?.?/' != 0

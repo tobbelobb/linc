@@ -213,12 +213,12 @@ static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
 
 static auto findCollision(std::vector<Millimeter> const &heights,
                           Mesh const &mesh, Pivots const &pivots, bool hullIt,
-                          std::stop_token &st) -> bool {
+                          std::stop_token &st) -> Collision {
   for (auto const h : heights) {
     if (st.stop_requested()) {
       SPDLOG_LOGGER_DEBUG(
           logger, "Another thread already found a collision. Returning.");
-      return false;
+      return {false};
     }
     MeshClipper partialPrint{mesh};
     partialPrint.softClip(h);
@@ -288,11 +288,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       for (auto &point : partialPrint.m_points) {
         if (point.m_visible) {
           Vertex const fromFarthestToPoint = point.m_vertex - farthest;
-          if (fromFarthestToPoint.dot(normal) >= 0.0) {
-            point.m_checkIt = true;
-          } else {
-            point.m_checkIt = false;
-          }
+          point.m_checkIt = (fromFarthestToPoint.dot(normal) >= 0.0);
         }
       }
 
@@ -312,28 +308,28 @@ static auto findCollision(std::vector<Millimeter> const &heights,
                 SPDLOG_LOGGER_INFO(logger, "Found collision! Between {} and {}",
                                    Triangle{partialPrintTriangle},
                                    Triangle{coneTriangle});
-                return true;
+                return {true, h};
               }
           }
         }
       }
     }
   }
-  return false;
+  return {false};
 }
 
 auto willCollide(Mesh const &mesh, Pivots const &pivots,
-                 Millimeter const layerHeight, bool hullIt) -> bool {
+                 Millimeter const maxLayerHeight, bool hullIt) -> Collision {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
 
   constexpr Millimeter SMALL_LAYER_HEIGHT{1.0};
-  if (layerHeight < SMALL_LAYER_HEIGHT) {
+  if (maxLayerHeight < SMALL_LAYER_HEIGHT) {
     SPDLOG_LOGGER_WARN(logger,
                        "Layer height {} is very small. Execution might take "
                        "a very long time",
-                       layerHeight);
+                       maxLayerHeight);
   }
 
   Millimeter const minHeight = mesh.minHeight();
@@ -352,21 +348,17 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     SPDLOG_LOGGER_INFO(
         logger,
         "Special case: Mesh entirely below anchors. Collision impossible.");
-    return false;
+    return {false};
   }
 
   Millimeter const startAnalysisAt = topHeight;
   Millimeter const stopAnalysisAt =
       std::max(minHeight, std::max(lowestAnchorZ, 0.0));
 
-  // clang-format might complain that h-=layerHeight will accumulate an error.
-  // We don't care here, since an extra iteration more or less when we're
-  // getting close to the bottom of the print doesn't matter
-
   // Create some worker threads
   auto const numThreads = std::thread::hardware_concurrency();
   // And some futures, that lets us check on their progress and result
-  std::vector<std::future<bool>> futures;
+  std::vector<std::future<Collision>> futures;
   std::vector<std::jthread> threads{};
 
   for (size_t i{0}; i < numThreads; ++i) {
@@ -388,20 +380,20 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     // Each thread should check its top layer first
     heights.emplace_back(b);
     // Then it should go on to binary search through its segment.
-    // Small comment: If layerHeight is 1.0, our smallest searched segment
+    // Small comment: If maxLayerHeight is 1.0, our smallest searched segment
     // will be of length (0.5, 1.0]. But that's ok, it's more important to
     // find an eventual collision fast, than to be fast at confirming no
     // collision
-    for (double denominator{2.0};
-         (2.0 * intervalLength / denominator) > layerHeight;
-         denominator *= 2.0) {
-      for (double numerator{denominator - 1.0}; numerator > 0.0;
-           numerator -= 2.0) {
+    for (double denominator{2.0};                                /* NOLINT */
+         (2.0 * intervalLength / denominator) > maxLayerHeight;  /* NOLINT */
+         denominator *= 2.0) {                                   /* NOLINT */
+      for (double numerator{denominator - 1.0}; numerator > 0.0; /* NOLINT */
+           numerator -= 2.0) {                                   /* NOLINT */
         heights.emplace_back(a + intervalLength * numerator / denominator);
       }
     }
 
-    std::packaged_task<bool(std::stop_token st)> task(
+    std::packaged_task<Collision(std::stop_token st)> task(
         [heights, &mesh, &pivots, hullIt](std::stop_token st) {
           return findCollision(heights, mesh, pivots, hullIt, st);
         });
@@ -411,15 +403,16 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
 
   using namespace std::chrono_literals;
   while (std::any_of(futures.begin(), futures.end(),
-                     [](std::future<bool> const &future) {
+                     [](std::future<Collision> const &future) {
                        return future.valid() and
                               future.wait_for(0ms) != std::future_status::ready;
                      })) {
     for (auto &future : futures) {
       if (future.valid() and
           future.wait_for(0ms) == std::future_status::ready) {
-        if (future.get() == true) {
-          return true;
+        Collision const found{future.get()};
+        if (found.m_isCollision) {
+          return found;
         }
       }
     }
@@ -427,8 +420,9 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
         futures.at(0).wait_for(50ms) == std::future_status::ready) {
       // This if statement saves us 50 ms for every unit test that
       // is run on a simple model
-      if (futures.at(0).get() == true) {
-        return true;
+      Collision const found{futures.at(0).get()};
+      if (found.m_isCollision) {
+        return found;
       }
     } else {
       // If thread 0 didn't find anything, sleep a while before
@@ -437,7 +431,13 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     }
   }
 
-  return std::any_of(futures.begin(), futures.end(), [](std::future<bool> &f) {
-    return f.valid() and f.get();
-  });
+  for (auto &future : futures) {
+    if (future.valid()) {
+      Collision const found{future.get()};
+      if (found.m_isCollision) {
+        return found;
+      }
+    }
+  }
+  return {false};
 }
