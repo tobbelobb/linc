@@ -48,10 +48,11 @@ auto main(int argc, char *argv[]) -> int {
   Pivots pivots{paramsFileName};
 
   Collision const found{willCollide(mesh, pivots, layerHeight)};
-  if (found.m_isCollision) {
+  if (found) {
     std::cout << "Collision detected at z=" << found.m_height << '\n';
-    if (outFileName != "") {
+    if (not outFileName.empty()) {
       makeDebugModel(mesh, pivots, found, outFileName);
+      std::cout << "Wrote " << outFileName << '\n';
     }
     return 1;
   }

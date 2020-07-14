@@ -409,7 +409,7 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     for (auto &future : futures) {
       if (future.valid() and
           future.wait_for(0ms) == std::future_status::ready) {
-        Collision const found{future.get()};
+        Collision found{future.get()};
         if (found.m_isCollision) {
           return found;
         }
@@ -419,7 +419,7 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
         futures.at(0).wait_for(50ms) == std::future_status::ready) {
       // This if statement saves us 50 ms for every unit test that
       // is run on a simple model
-      Collision const found{futures.at(0).get()};
+      Collision found{futures.at(0).get()};
       if (found.m_isCollision) {
         return found;
       }
@@ -432,7 +432,7 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
 
   for (auto &future : futures) {
     if (future.valid()) {
-      Collision const found{future.get()};
+      Collision found{future.get()};
       if (found.m_isCollision) {
         return found;
       }
@@ -457,7 +457,8 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
                                            INVALID_INDEX};
   for (size_t i{0}; i < 3; ++i) {
     cornerIndices.at(i) = partialPrint.m_points.size();
-    partialPrint.m_points.emplace_back(collision.m_coneTriangle.m_corners[i]);
+    partialPrint.m_points.emplace_back(
+        collision.m_coneTriangle.m_corners.at(i));
   }
   std::array<std::size_t, 4> const edgeIndices{
       partialPrint.m_edges.size(), partialPrint.m_edges.size() + 1,
