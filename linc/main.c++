@@ -27,9 +27,10 @@ auto main(int argc, char *argv[]) -> int {
                    "until a collision is detected in one of the layers.");
   args.addArgument(
       {"-o"}, &outFileName,
-      "A debug stl with this name is created upon collision detection. If no "
+      "A debug stl with this name is created upon collision detection."
+      "This stl is meant for visual inspection in another program. If no "
       "-o file name is specified, no debug-stl is generated.");
-  args.addArgument({"-h", "--help"}, &printHelp, "Print this help");
+  args.addArgument({"-h", "--help"}, &printHelp, "Print this help.");
   constexpr int MAX_ARGC{7};
   constexpr int MIN_ARGC{3};
   printHelp = (argc < MIN_ARGC or argc > MAX_ARGC);

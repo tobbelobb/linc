@@ -15,9 +15,10 @@ $0 <3d-model> <params> [-l layer-height-max-in-mm] [-o out-file-name] [-h|--help
 -l          Defaults to 1.0. The analysis will cut each layer in half until
             all layers are thinner than this layer height, or until a collision
             is detected in one of the layers.
--o          A debug stl with this name is created upon collision detection.
-            If no -o file name is specified, no debug-stl is generated.
--h, --help  Print this help
+-o          A debug stl with this name is created upon collision detection.This
+            stl is meant for visual inspection in another program. If no
+            -o file name is specified, no debug-stl is generated.
+-h, --help  Print this help.
 EOE
 
 : Non-existent-file

@@ -50,7 +50,8 @@ void CommandLine::printHelp(std::ostream &os) const {
     std::size_t spacePos = 0;
     std::size_t lineWidth = 0;
     while (spacePos != std::string::npos) {
-      std::size_t nextspacePos = argument.mHelp.find_first_of(' ', spacePos + 1);
+      std::size_t nextspacePos =
+          argument.mHelp.find_first_of(' ', spacePos + 1);
       sstr << argument.mHelp.substr(spacePos, nextspacePos - spacePos);
       lineWidth += nextspacePos - spacePos;
       spacePos = nextspacePos;
