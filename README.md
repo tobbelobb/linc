@@ -120,6 +120,7 @@ to fully control how this project is built and managed.
 - The Spdlog library is MIT licensed, and can be found here: https://github.com/gabime/spdlog
 - The mesh clip algorithm and the triangle intersection test algorithm were both heavily inspired and informed by
 these pdfs: [ClipMesh.pd](https://www.geometrictools.com/Documentation/ClipMesh.pdf) and [MethodOfSeparatingAxes.pdf](https://www.geometrictools.com/Documentation/MethodOfSeparatingAxes.pdf), published by David Eberly, Geometric Tools, Redmond WA 98052, under a [Creative commons attribution v4 license](http://creativecommons.org/licenses/by/4.0/).
+ - Command line parsing is written by [Simon Schneegans](https://schneegans.github.io/about.html), and was published under a public domain license[here](https://schneegans.github.io/tutorials/2019/08/06/commandline).
 
 ### Thanks
 Andreas Kahler for suggesting [Bounding volume hierarchy](https://en.wikipedia.org/wiki/Bounding_volume_hierarchy).

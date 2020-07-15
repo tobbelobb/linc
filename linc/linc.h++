@@ -109,7 +109,7 @@ struct Collision {
       : m_isCollision(isCollision), m_height(height), m_coneTriangle(triangle),
         m_effectorPivot(effectorPivot) {}
 
-  bool operator!() { return not m_isCollision; }
+  bool operator!() const { return not m_isCollision; }
 
   operator bool() const { return m_isCollision; }
 };

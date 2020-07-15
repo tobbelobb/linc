@@ -8,14 +8,16 @@
 : will be expanded, and not taken literally.
 : The != 0 means test will fail if return code is 0
 : The $0 will expand to the executable name
-$* &linc.log 2>>"EOE" != 0
+$* &linc.log >>"EOE"
 Usage:
-$0 <3d-model> <params> [layer-height \(mm\)] [out-file-name]
+$0 <3d-model> <params> [-l layer-height-max-in-mm] [-o out-file-name] [-h|--help]
 
-If you provide no layer-height, it defaults to 1.0.
-If you provide a layer-height and an out-file-name,
-  a debug-stl with that name will be created upon
-  collision detection.
+-l          Defaults to 1.0. The analysis will cut each layer in half until
+            all layers are thinner than this layer height, or until a collision
+            is detected in one of the layers.
+-o          A debug stl with this name is created upon collision detection.
+            If no -o file name is specified, no debug-stl is generated.
+-h, --help  Print this help
 EOE
 
 : Non-existent-file
@@ -257,7 +259,7 @@ $* "$src_base/test-models/cube-470.ascii.stl" "$src_base/params-example" &linc.l
 $* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" &linc.log >~'/Collision detected at z=..?.?/' != 0
 
 : Negative-layer-height
-$* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" -0.1 &linc.log 2>>EOE != 0
+$* "$src_base/test-models/cube-471.ascii.stl" "$src_base/params-example" -l -0.1 &linc.log 2>>EOE != 0
 Negative layer height is not allowed: -0.1
 EOE
 
@@ -266,8 +268,8 @@ EOE
 :
 : We use layer height 20 here to save some time.
 : To be absolutely sure we don't have line collisions, run
-: with layer height 1
-$* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-example" 20 &linc.log > 'No collision detected'
+: with layer height 1 and wait, probably a few minutes
+$* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-example" -l 20 &linc.log > 'No collision detected'
 
 : Big-benchy-collision
 : Analysis detects no collision
