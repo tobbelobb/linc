@@ -75,7 +75,7 @@ auto main(int argc, char *argv[]) -> int {
     std::cerr << "Validation of " << paramsFileName << " failed\n";
     return -1;
   }
-  Pivots pivots{paramsFileName};
+  Pivots const pivots{paramsFileName};
 
   Collision const found{willCollide(mesh, pivots, layerHeightMax)};
   if (found) {
