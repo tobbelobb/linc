@@ -460,9 +460,9 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
     partialPrint.m_points.emplace_back(
         collision.m_coneTriangle.m_corners.at(i));
   }
-  std::array<std::size_t, 4> const edgeIndices{
-      partialPrint.m_edges.size(), partialPrint.m_edges.size() + 1,
-      partialPrint.m_edges.size() + 2, INVALID_INDEX};
+  std::array<std::size_t, 3> const edgeIndices{partialPrint.m_edges.size(),
+                                               partialPrint.m_edges.size() + 1,
+                                               partialPrint.m_edges.size() + 2};
   partialPrint.m_edges.emplace_back(MeshClipper::Edge{
       partialPrint.m_points, {cornerIndices[0], cornerIndices[1]}});
   partialPrint.m_edges.emplace_back(MeshClipper::Edge{
@@ -491,9 +491,9 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
   }
 
   for (std::size_t i{0}; i < Pivots::COLS; i += 2) {
-    std::array<std::size_t, 4> const edgeIndicesABC{
+    std::array<std::size_t, 3> const edgeIndicesABC{
         partialPrint.m_edges.size(), partialPrint.m_edges.size() + 1,
-        partialPrint.m_edges.size() + 2, INVALID_INDEX};
+        partialPrint.m_edges.size() + 2};
     partialPrint.m_edges.emplace_back(
         MeshClipper::Edge{partialPrint.m_points,
                           {effectorPositionIndex, effectorPivotIndices.at(i)}});

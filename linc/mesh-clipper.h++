@@ -136,9 +136,8 @@ public:
     };
 
     std::vector<Edge> &m_edges;
-    // TODO: Remove the fourth edge. It's unused
-    std::array<size_t, 4> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
-                                        INVALID_INDEX, INVALID_INDEX};
+    std::array<size_t, 3> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
+                                        INVALID_INDEX};
     Normal m_normal = Normal::Zero();
     bool m_visible = true;
     Integrity m_integrity{};
@@ -146,7 +145,6 @@ public:
     Edge &edge0() const { return m_edges[m_edgeIndices[0]]; }
     Edge &edge1() const { return m_edges[m_edgeIndices[1]]; }
     Edge &edge2() const { return m_edges[m_edgeIndices[2]]; }
-    Edge &edge3() const { return m_edges[m_edgeIndices[3]]; }
 
     Triangle &operator=(Triangle const &other) {
       m_edges = other.m_edges;
@@ -194,9 +192,6 @@ public:
       if (triangle.m_edgeIndices[2] != INVALID_INDEX) {
         os << ",\n " << triangle.edge2();
       }
-      if (triangle.m_edgeIndices[3] != INVALID_INDEX) {
-        os << ",\n  " << triangle.edge3();
-      }
       return os << '}';
     }
 
@@ -221,10 +216,6 @@ public:
         edge2().point0().m_occurs = 0;
         edge2().point1().m_occurs = 0;
       }
-      if (m_edgeIndices[3] != INVALID_INDEX) {
-        edge3().point0().m_occurs = 0;
-        edge3().point1().m_occurs = 0;
-      }
       if (m_edgeIndices[0] != INVALID_INDEX) {
         edge0().point0().m_occurs++;
         edge0().point1().m_occurs++;
@@ -236,10 +227,6 @@ public:
       if (m_edgeIndices[2] != INVALID_INDEX) {
         edge2().point0().m_occurs++;
         edge2().point1().m_occurs++;
-      }
-      if (m_edgeIndices[3] != INVALID_INDEX) {
-        edge3().point0().m_occurs++;
-        edge3().point1().m_occurs++;
       }
       if (m_edgeIndices[0] != INVALID_INDEX) {
         if (edge0().point0().m_occurs == 1) {
@@ -288,24 +275,6 @@ public:
             startPointIndex = edge2().m_pointIndices[1];
           } else {
             endPointIndex = edge2().m_pointIndices[1];
-          }
-        }
-      }
-      if (m_edgeIndices[3] != INVALID_INDEX) {
-        if (edge3().point0().m_occurs == 1) {
-          isOpen = true;
-          if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = edge3().m_pointIndices[0];
-          } else {
-            endPointIndex = edge3().m_pointIndices[0];
-          }
-        }
-        if (edge3().point1().m_occurs == 1) {
-          isOpen = true;
-          if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = edge3().m_pointIndices[1];
-          } else {
-            endPointIndex = edge3().m_pointIndices[1];
           }
         }
       }

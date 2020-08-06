@@ -35,11 +35,11 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
         Edge{m_points, meshEdge.m_vertexIndices, meshEdge.m_users});
   }
   for (auto const &meshTriangle : mesh.m_triangles) {
-    m_triangles.emplace_back(Triangle{
-        m_edges,
-        {meshTriangle.m_edgeIndices.at(0), meshTriangle.m_edgeIndices.at(1),
-         meshTriangle.m_edgeIndices.at(2), INVALID_INDEX},
-        meshTriangle.m_normal});
+    m_triangles.emplace_back(Triangle{m_edges,
+                                      {meshTriangle.m_edgeIndices.at(0),
+                                       meshTriangle.m_edgeIndices.at(1),
+                                       meshTriangle.m_edgeIndices.at(2)},
+                                      meshTriangle.m_normal});
   }
 }
 
@@ -271,7 +271,7 @@ void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex) {
   // The new triangle
   m_triangles.emplace_back(
       Triangle{m_edges,
-               {newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex, INVALID_INDEX},
+               {newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex},
                triangle.m_normal});
 }
 
