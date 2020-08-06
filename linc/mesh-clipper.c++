@@ -40,38 +40,6 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
                                meshTriangle.m_edgeIndices.at(2), INVALID_INDEX},
                               meshTriangle.m_normal};
   }
-  if (removeNonTriangularTriangles()) {
-    SPDLOG_LOGGER_DEBUG(logger, "Removed something");
-  }
-}
-
-auto MeshClipper::removeNonTriangularTriangles() -> bool {
-  // Make triangles with 1, 2, or 4 points invisible
-  size_t const visibleTrianglesBeforeClean = countVisibleTriangles();
-  for (auto &triangle : m_triangles) {
-    if (triangle.m_visible) {
-      std::set<Point> points{};
-      for (auto const &edgeIndex : triangle.m_edgeIndices) {
-        if (edgeIndex != INVALID_INDEX) {
-          points.insert(triangle.m_edges[edgeIndex].point0());
-          points.insert(triangle.m_edges[edgeIndex].point1());
-        }
-      }
-      if (points.size() != 3) {
-        triangle.m_visible = false;
-      }
-    }
-  }
-  size_t const visibleTrianglesAfterClean = countVisibleTriangles();
-  if (visibleTrianglesAfterClean != visibleTrianglesBeforeClean) {
-    SPDLOG_LOGGER_DEBUG(logger,
-                        "Made {} triangles invisible because they had"
-                        " 1, 2, or 4 corners.",
-                        visibleTrianglesBeforeClean -
-                            visibleTrianglesAfterClean);
-    return true;
-  }
-  return false;
 }
 
 void MeshClipper::setDistances(Millimeter const zCut) {
@@ -358,9 +326,6 @@ auto MeshClipper::softClip(Millimeter const zCut) -> double {
                       "after adjustTriangles().",
                       m_points.size(), m_edges.size(), m_triangles.size());
 
-  if (removeNonTriangularTriangles()) {
-    SPDLOG_LOGGER_DEBUG(logger, "Removed something");
-  }
   return oldSoftMaxHeight - zCut;
 }
 

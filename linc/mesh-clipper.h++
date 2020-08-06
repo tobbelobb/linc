@@ -344,7 +344,6 @@ public:
   void propagateInvisibilityToUsers(size_t edgeIndex, Edge const &edge);
   void close2EdgeOpenTriangle(size_t triangleIndex);
   void close3EdgeOpenTriangle(size_t triangleIndex);
-  bool removeNonTriangularTriangles();
   double softClip(Millimeter zCut);
 };
 
