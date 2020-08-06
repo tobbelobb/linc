@@ -21,24 +21,25 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
   }
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%t] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
-  // Allocate some memory and fill with default data
-  m_points.assign(mesh.m_vertices.size(), {Vertex::Zero(), 0.0_mm});
-  m_edges.assign(mesh.m_edges.size(), {m_points});
-  m_triangles.assign(mesh.m_triangles.size(), {m_edges});
+
+  m_points.reserve(mesh.m_vertices.size());
+  m_edges.reserve(mesh.m_edges.size());
+  m_triangles.reserve(mesh.m_triangles.size());
 
   // Copy over data from Mesh object
-  for (auto const &[i, vertex] : enumerate(mesh.m_vertices)) {
-    m_points[i] = Point{vertex};
+  for (auto const &vertex : mesh.m_vertices) {
+    m_points.emplace_back(Point{vertex});
   }
-  for (auto const &[i, meshEdge] : enumerate(mesh.m_edges)) {
-    m_edges[i] = Edge{m_points, meshEdge.m_vertexIndices, meshEdge.m_users};
+  for (auto const &meshEdge : mesh.m_edges) {
+    m_edges.emplace_back(
+        Edge{m_points, meshEdge.m_vertexIndices, meshEdge.m_users});
   }
-  for (auto const &[i, meshTriangle] : enumerate(mesh.m_triangles)) {
-    m_triangles[i] = Triangle{m_edges,
-                              {meshTriangle.m_edgeIndices.at(0),
-                               meshTriangle.m_edgeIndices.at(1),
-                               meshTriangle.m_edgeIndices.at(2), INVALID_INDEX},
-                              meshTriangle.m_normal};
+  for (auto const &meshTriangle : mesh.m_triangles) {
+    m_triangles.emplace_back(Triangle{
+        m_edges,
+        {meshTriangle.m_edgeIndices.at(0), meshTriangle.m_edgeIndices.at(1),
+         meshTriangle.m_edgeIndices.at(2), INVALID_INDEX},
+        meshTriangle.m_normal});
   }
 }
 
