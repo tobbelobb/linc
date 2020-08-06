@@ -125,7 +125,9 @@ static auto countBinaryFacets(FILE *fp) -> std::size_t {
 
   // Read the int following the header.  This should contain # of facets.
   uint32_t headerNumFacets = 0;
-  fread(&headerNumFacets, sizeof(uint32_t), 1, fp);
+  if (fread(&headerNumFacets, sizeof(uint32_t), 1, fp) != 1) {
+    SPDLOG_LOGGER_ERROR(logger, "fread failed");
+  }
   if (headerNumFacets != numberOfFacets) {
     SPDLOG_LOGGER_WARN(logger,
                        "Binary header says file contains {} facets, but file "
@@ -179,14 +181,20 @@ static auto countFacets(FILE *fp, Stl::Type const stlType) -> std::size_t {
 }
 
 static inline void skipWhitespace(FILE *fp) {
-  fscanf(fp, " "); // NOLINT
+  if (fscanf(fp, " ") == EOF) { // NOLINT
+    SPDLOG_LOGGER_ERROR(logger, "fscanf failed");
+  }
 }
 
 static void skipSolidEndsolid(FILE *fp) {
   SPDLOG_LOGGER_TRACE(logger, "(fp)", stlType);
 
-  fscanf(fp, " endsolid%*[^\n]\n"); // NOLINT
-  fscanf(fp, " solid%*[^\n]\n");    // NOLINT
+  if (fscanf(fp, " endsolid%*[^\n]\n") == EOF) { // NOLINT
+    SPDLOG_LOGGER_ERROR(logger, "fscanf failed");
+  }
+  if (fscanf(fp, " solid%*[^\n]\n") == EOF) { // NOLINT
+    SPDLOG_LOGGER_ERROR(logger, "fscanf failed");
+  }
   skipWhitespace(fp);
 }
 
@@ -195,7 +203,9 @@ static auto parseNormal(FILE *fp, Stl::Facet &facet) -> bool {
 
   constexpr auto BUF_SIZE{2048};
   std::array<char, BUF_SIZE> buf{'\0'};
-  fgets(buf.data(), BUF_SIZE - 1, fp);
+  if (fgets(buf.data(), BUF_SIZE - 1, fp) == nullptr) {
+    SPDLOG_LOGGER_ERROR(logger, "fgets failed");
+  }
   constexpr auto CHARS_PER_NUMBER{32};
   std::array<std::array<char, CHARS_PER_NUMBER>, 3> normal_buf{{'\0'}};
   int res_normal =
@@ -251,7 +261,9 @@ static auto parseEndloop(FILE *fp) -> bool {
   };
 
   std::array<char, BUF_SIZE> buf{'\0'};
-  fgets(buf.data(), buf.size(), fp);
+  if (fgets(buf.data(), buf.size(), fp) == nullptr) {
+    SPDLOG_LOGGER_ERROR(logger, "fgets failed");
+  }
   if (not endloopFound(buf)) {
     // Try to parse a fourth throwaway vertex
     if (parseShadowVertex(buf.data())) {
@@ -279,7 +291,9 @@ static auto parseEndFacet(FILE *fp) -> bool {
   constexpr auto CHARS_IN_ENDFACET{length("endfacet")};
   constexpr auto BUF_SIZE{2048}; // large buffer to parse whole line
   std::array<char, BUF_SIZE> buf{'\0'};
-  fgets(buf.data(), BUF_SIZE - 1, fp);
+  if (fgets(buf.data(), BUF_SIZE - 1, fp) == nullptr) {
+    SPDLOG_LOGGER_ERROR(logger, "fgets failed");
+  }
   return strncmp(buf.data(), "endfacet", CHARS_IN_ENDFACET) == 0 and
          std::isspace(buf[CHARS_IN_ENDFACET]) != 0;
 }
