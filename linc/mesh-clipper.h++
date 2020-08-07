@@ -132,7 +132,6 @@ public:
       bool isOpen = false;
       size_t startPointIndex = INVALID_INDEX;
       size_t endPointIndex = INVALID_INDEX;
-      size_t numEdges = 0;
     };
 
     std::vector<Edge> &m_edges;
@@ -278,10 +277,7 @@ public:
           }
         }
       }
-      auto const numEdges = static_cast<std::size_t>(std::count_if(
-          m_edgeIndices.begin(), m_edgeIndices.end(),
-          [](auto const index) { return index != INVALID_INDEX; }));
-      m_integrity = {isOpen, startPointIndex, endPointIndex, numEdges};
+      m_integrity = {isOpen, startPointIndex, endPointIndex};
     }
   };
 

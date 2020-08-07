@@ -22,9 +22,13 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%t] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
 
-  m_points.reserve(mesh.m_vertices.size());
-  m_edges.reserve(mesh.m_edges.size());
-  m_triangles.reserve(mesh.m_triangles.size());
+  // We will typically soft clip a MeshClipper object.
+  // This requires adding some new points, edges, and triangles.
+  // So reserve some place for them from the start to avoid
+  // dynamic mallocs later.
+  m_points.reserve(mesh.m_vertices.size() + mesh.m_vertices.size() / 10);
+  m_edges.reserve(mesh.m_edges.size() + mesh.m_edges.size() / 10);
+  m_triangles.reserve(mesh.m_triangles.size() + mesh.m_triangles.size() / 10);
 
   // Copy over data from Mesh object
   for (auto const &vertex : mesh.m_vertices) {
@@ -285,13 +289,17 @@ void MeshClipper::adjustTriangles() {
       triangle.updateIntegrity();
       if (triangle.m_integrity.isOpen) {
         // Add the new edge
-        if (triangle.m_integrity.numEdges == 2) {
+        auto const numEdges = static_cast<std::size_t>(std::count_if(
+            triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
+            [](auto const index) { return index != INVALID_INDEX; }));
+        if (numEdges == 2) {
           close2EdgeOpenTriangle(triangleIndex);
-        } else if (triangle.m_integrity.numEdges == 3) {
+        } else if (numEdges == 3) {
           close3EdgeOpenTriangle(triangleIndex);
         } else {
           SPDLOG_LOGGER_ERROR(
-              logger, "Cannot close 1- or 4-edge triangle with one new edge.");
+              logger,
+              "Cannot close 1-edge or 0-edge triangle with one new edge.");
         }
       }
     }
