@@ -260,18 +260,13 @@ auto main() -> int {
 
       // If we soft-clip at the top layer, 0 mm should disappear
       // And no points should be set invisible
-      // Again, 0.0 should be a compile time constant returned by the
-      // function, so it should be ok to compare with == here.
       double const softClippedAt10 = meshClipper.softClip(10.0);
-      compare(softClippedAt10, 0.0);
+      compare(softClippedAt10, 10.0);
       check(meshClipper.isAllPointsVisible());
 
       // If we soft-clip at the bottom there should be another special case
-      // giving us an unaltered maxHeight
-      // Even though some points are still visible, the remaining visible
-      // mesh has no height.
       double const softClippedAt0 = meshClipper.softClip(0.0);
-      compare(softClippedAt0, maxHeight);
+      compare(softClippedAt0, 0.0);
       // The four points at z=0.0 should not have been cut away
       auto const visiblePoints = meshClipper.countVisiblePoints();
       compare(visiblePoints, 4U);
@@ -445,7 +440,7 @@ auto main() -> int {
         // Clip should give exactly the new max height that we ask for.
         // No truncation errors allowed.
         compare(partialPrint.softMaxHeight(), newH);
-        std::vector<Vertex> topVertices = partialPrint.getTopVertices();
+        std::vector<Vertex> topVertices = partialPrint.getVerticesAt(newH);
         // Top and bottom cut of the cube should have 4 vertices
         // All in between should have 8
         if (h == 0 or h == 10) {
@@ -470,7 +465,8 @@ auto main() -> int {
       check(maxHeight > 48.0 - eps);
       check(48.0 + eps > maxHeight);
 
-      double const softClippedAt10 = meshClipper.softClip(1.0);
+      double const softClippedAt10 =
+          meshClipper.softMaxHeight() - meshClipper.softClip(1.0);
       compare(softClippedAt10, 47.0);
 
       // Check that we can write a binary stl and read it back again

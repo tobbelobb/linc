@@ -301,7 +301,7 @@ public:
   size_t countVisibleTriangles() const;
   bool isAllPointsVisible() const;
   void writeBinaryStl(std::string const &fileName) const;
-  std::vector<Vertex> getTopVertices() const;
+  std::vector<Vertex> getVerticesAt(Millimeter height) const;
   void setDistances(Millimeter zCut);
   void setPointsVisibility();
   void adjustEdges(Millimeter zCut);

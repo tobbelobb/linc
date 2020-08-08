@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_DEBUG /* NOLINT */
+#define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_INFO /* NOLINT */
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
@@ -227,7 +227,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
 
     // Extract convex hull of the top points
     // This involves removing points that are enclosed by other points
-    std::vector<Vertex> topVertices{partialPrint.getTopVertices()};
+    std::vector<Vertex> topVertices{partialPrint.getVerticesAt(h)};
     SPDLOG_LOGGER_DEBUG(logger, "Found {} top vertices", topVertices.size());
     if (topVertices.size() < 3) {
       SPDLOG_LOGGER_WARN(logger,

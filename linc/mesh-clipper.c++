@@ -306,22 +306,21 @@ void MeshClipper::adjustTriangles() {
   }
 }
 
-// Return how much was soft-clipped
+// Return new max height
 auto MeshClipper::softClip(Millimeter const zCut) -> double {
   SPDLOG_LOGGER_DEBUG(logger, "Soft clipping at z={}", zCut);
   setDistances(zCut);
-  double const oldSoftMaxHeight = softMaxHeight();
   setPointsVisibility();
   if (isAllPointsVisible()) {
     SPDLOG_LOGGER_INFO(logger, "Special case: All points visible.");
-    return 0.0;
+    return zCut;
   }
   if (not std::any_of(m_points.begin(), m_points.end(),
                       [zCut](Point const &point) {
                         return point.m_visible and point.z() < zCut;
                       })) {
     SPDLOG_LOGGER_INFO(logger, "Special case: No z-thickness left.");
-    return oldSoftMaxHeight;
+    return 0.0;
   }
 
   adjustEdges(zCut);
@@ -335,7 +334,7 @@ auto MeshClipper::softClip(Millimeter const zCut) -> double {
                       "after adjustTriangles().",
                       m_points.size(), m_edges.size(), m_triangles.size());
 
-  return oldSoftMaxHeight - zCut;
+  return zCut;
 }
 
 void MeshClipper::writeBinaryStl(std::string const &fileName) const {
@@ -388,8 +387,8 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
   myfile.close();
 }
 
-auto MeshClipper::getTopVertices() const -> std::vector<Vertex> {
-  double const height{softMaxHeight()};
+auto MeshClipper::getVerticesAt(Millimeter const height) const
+    -> std::vector<Vertex> {
   std::vector<Vertex> res{};
   for (auto const &point : m_points) {
     if (point.m_visible and (point.z() <= VertexConstants::eps + height) and
