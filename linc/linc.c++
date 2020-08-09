@@ -181,6 +181,7 @@ static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
                       std::vector<Vertex> const &topVertices) -> Mesh {
   // POINTS
   Mesh cone{anchorPivot};
+  cone.m_vertices.reserve(topVertices.size() + 1);
   for (auto const &topVertex : topVertices) {
     cone.m_vertices.emplace_back(topVertex + effectorPivot);
   }
@@ -188,6 +189,7 @@ static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
 
   // EDGES
   // Add star topology down to anchorPivot
+  cone.m_edges.reserve(topVertices.size() * 2);
   for (size_t pointIdx{1}; pointIdx < numPoints; ++pointIdx) {
     cone.m_edges.emplace_back(Mesh::Edge{cone.m_vertices, {0, pointIdx}});
   }
@@ -201,6 +203,7 @@ static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
   // TRIANGLES
   // There are numTopPoints top points (and thus star-topology-edges)
   // Right after star-topology edges comes as many ring edges
+  cone.m_triangles.reserve(topVertices.size());
   size_t const numTopVertices = topVertices.size();
   for (size_t starEdgeIdx{0}; starEdgeIdx < numTopVertices; ++starEdgeIdx) {
     size_t const ringEdgeIdx = starEdgeIdx + numTopVertices;
@@ -213,7 +216,7 @@ static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
 
 static auto findCollision(std::vector<Millimeter> const &heights,
                           Mesh const &mesh, Pivots const &pivots, bool hullIt,
-                          std::stop_token &st) -> Collision {
+                          std::stop_token st) -> Collision {
   for (auto const h : heights) {
     if (st.stop_requested()) {
       SPDLOG_LOGGER_DEBUG(
@@ -376,6 +379,8 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     auto const intervalLength = b - a;
 
     std::vector<Millimeter> heights{};
+    heights.reserve(static_cast<std::size_t>(
+        std::ceil(intervalLength / maxLayerHeight * 2)));
     // Each thread should check its top layer first
     heights.emplace_back(b);
     // Then it should go on to binary search through its segment.
