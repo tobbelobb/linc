@@ -265,12 +265,6 @@ public:
   std::vector<Edge> m_edges{};
   std::vector<Triangle> m_triangles{};
 
-  void clear() {
-    m_points.clear();
-    m_edges.clear();
-    m_triangles.clear();
-  }
-
   MeshClipper(Mesh const &mesh);
 
   double maxHeight() const;
