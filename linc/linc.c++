@@ -249,6 +249,8 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       sortCcwInPlace(topVertices);
     }
 
+    std::vector<bool> checkIts{};
+    checkIts.reserve(partialPrint.m_points.size());
     for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
       Vertex const &effectorPivot{pivots.effector.at(anchorIndex)};
       Vertex const anchorToEffector{effectorPivot - anchorPivot};
@@ -287,10 +289,10 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       // Note the guaranteed positive z-component of this normal.
 
       // Check if a visible point is above the checkit plane
-      for (auto &point : partialPrint.m_points) {
+      for (auto const &[i, point] : enumerate(partialPrint.m_points)) {
         if (point.m_visible) {
           Vertex const fromFarthestToPoint = point.m_vertex - farthest;
-          point.m_checkIt = (fromFarthestToPoint.dot(normal) >= 0.0);
+          checkIts[i] = (fromFarthestToPoint.dot(normal) >= 0.0);
         }
       }
 
@@ -300,10 +302,10 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       // collision
       for (auto const &partialPrintTriangle : partialPrint.m_triangles) {
         if (partialPrintTriangle.m_visible and
-            (partialPrintTriangle.edge0().point0().m_checkIt or
-             partialPrintTriangle.edge0().point1().m_checkIt or
-             partialPrintTriangle.edge1().point0().m_checkIt or
-             partialPrintTriangle.edge1().point1().m_checkIt)) {
+            (checkIts[partialPrintTriangle.edge0().m_pointIndices[0]] or
+             checkIts[partialPrintTriangle.edge0().m_pointIndices[1]] or
+             checkIts[partialPrintTriangle.edge1().m_pointIndices[0]] or
+             checkIts[partialPrintTriangle.edge1().m_pointIndices[1]])) {
           for (auto const &coneTriangle : cone.m_triangles) {
             if (intersect(partialPrintTriangle, coneTriangle))
               [[unlikely]] {

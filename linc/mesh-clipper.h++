@@ -17,7 +17,6 @@ public:
     Millimeter m_distance = 0.0;
     unsigned short m_occurs = 0;
     bool m_visible = true;
-    bool m_checkIt = true;
 
     Point(double x, double y, double z) : m_vertex(x, y, z) {}
     Point(Vertex vertex) : m_vertex(vertex) {}
