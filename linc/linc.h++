@@ -33,12 +33,7 @@ struct Triangle {
                     meshTriangle.edge1().vertex0() == m_corners[1])
                        ? meshTriangle.edge1().vertex1()
                        : meshTriangle.edge1().vertex0();
-
-    if (meshTriangle.m_normal.norm() == 0) {
-      m_normal = computeNormal(m_corners);
-    } else {
-      m_normal = meshTriangle.m_normal;
-    }
+    m_normal = computeNormal(m_corners);
   }
 
   Triangle(MeshClipper::Triangle const &meshTriangle) {
@@ -49,11 +44,7 @@ struct Triangle {
                        ? meshTriangle.edge1().point1().m_vertex
                        : meshTriangle.edge1().point0().m_vertex;
 
-    if (meshTriangle.m_normal.norm() == 0) {
-      m_normal = computeNormal(m_corners);
-    } else {
-      m_normal = meshTriangle.m_normal;
-    }
+    m_normal = computeNormal(m_corners);
   }
 };
 

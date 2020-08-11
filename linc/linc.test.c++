@@ -126,12 +126,6 @@ auto main() -> int {
         Vertex const &vertex = points[i].m_vertex;
         compare(corner, vertex);
       }
-
-      triangle.m_normal = Normal{20.0, 1.1, -2.0};
-      // The triangle constructor should not check if the normal make sense
-      // If it finds one, it should just use it
-      Triangle const t1{triangle};
-      compare(t1.m_normal, Normal{20.0, 1.1, -2.0});
     }
     {
       // Test Triangle constructor from Mesh types
@@ -144,10 +138,6 @@ auto main() -> int {
       Triangle const t0{triangle};
       compare(t0.m_normal, Normal{0, 0, 1});
       compare(t0.m_corners, vertices);
-
-      triangle.m_normal = Normal{20.0, 1.1, -2.0};
-      Triangle const t1{triangle};
-      compare(t1.m_normal, Normal{20.0, 1.1, -2.0});
     }
     // Triangle intersection detection
     {

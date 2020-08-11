@@ -58,21 +58,16 @@ public:
     std::vector<Edge> &m_edges;
     std::array<size_t, 3> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                         INVALID_INDEX};
-    Normal m_normal = Normal::Zero();
 
     Triangle() = delete;
     Triangle(std::vector<Edge> &edges, std::array<size_t, 3> edgeIndices)
         : m_edges(edges), m_edgeIndices(edgeIndices) {}
-    Triangle(std::vector<Edge> &edges, std::array<size_t, 3> edgeIndices,
-             Normal normal)
-        : m_edges(edges), m_edgeIndices(edgeIndices), m_normal(normal) {}
 
     Triangle(Triangle const &) = default;
 
     Triangle &operator=(Triangle const &other) {
       m_edges = other.m_edges;
       m_edgeIndices = other.m_edgeIndices;
-      m_normal = other.m_normal;
       return *this;
     }
 

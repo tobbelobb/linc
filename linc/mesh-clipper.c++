@@ -42,8 +42,7 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
     m_triangles.emplace_back(Triangle{m_edges,
                                       {meshTriangle.m_edgeIndices.at(0),
                                        meshTriangle.m_edgeIndices.at(1),
-                                       meshTriangle.m_edgeIndices.at(2)},
-                                      meshTriangle.m_normal});
+                                       meshTriangle.m_edgeIndices.at(2)}});
   }
 }
 
@@ -268,9 +267,7 @@ void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex,
 
   // The new triangle
   m_triangles.emplace_back(
-      Triangle{m_edges,
-               {newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex},
-               triangle.m_normal});
+      Triangle{m_edges, {newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
 }
 
 void MeshClipper::adjustTriangles() {
@@ -359,9 +356,9 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
         }
       }
       SmallFacet smallFacet{};
-      smallFacet.normal[0] = static_cast<float>(triangle.m_normal.x());
-      smallFacet.normal[1] = static_cast<float>(triangle.m_normal.y());
-      smallFacet.normal[2] = static_cast<float>(triangle.m_normal.z());
+      smallFacet.normal[0] = 0.0;
+      smallFacet.normal[1] = 0.0;
+      smallFacet.normal[2] = 0.0;
       size_t i{0};
       for (auto it{points.begin()}; it != points.end(); ++it, ++i) {
         smallFacet.vertices.at(i).at(0) =

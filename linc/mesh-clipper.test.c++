@@ -153,18 +153,12 @@ auto main() -> int {
       // Triangles
       compare(meshClipper.m_triangles.size(), 12U);
       std::vector<MeshClipper::Triangle> const expectedTriangles{
-          {expectedEdges, {0, 2, 6}, Normal::Zero()},
-          {expectedEdges, {0, 4, 7}, Normal::Zero()},
-          {expectedEdges, {1, 2, 8}, Normal::Zero()},
-          {expectedEdges, {1, 5, 9}, Normal::Zero()},
-          {expectedEdges, {3, 4, 13}, Normal::Zero()},
-          {expectedEdges, {3, 5, 14}, Normal::Zero()},
-          {expectedEdges, {6, 7, 10}, Normal::Zero()},
-          {expectedEdges, {8, 9, 11}, Normal::Zero()},
-          {expectedEdges, {10, 12, 16}, Normal::Zero()},
-          {expectedEdges, {11, 12, 17}, Normal::Zero()},
-          {expectedEdges, {13, 14, 15}, Normal::Zero()},
-          {expectedEdges, {15, 16, 17}, Normal::Zero()}};
+          {expectedEdges, {0, 2, 6}},    {expectedEdges, {0, 4, 7}},
+          {expectedEdges, {1, 2, 8}},    {expectedEdges, {1, 5, 9}},
+          {expectedEdges, {3, 4, 13}},   {expectedEdges, {3, 5, 14}},
+          {expectedEdges, {6, 7, 10}},   {expectedEdges, {8, 9, 11}},
+          {expectedEdges, {10, 12, 16}}, {expectedEdges, {11, 12, 17}},
+          {expectedEdges, {13, 14, 15}}, {expectedEdges, {15, 16, 17}}};
       compare(expectedTriangles.size(), meshClipper.m_triangles.size());
 
       for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
@@ -290,8 +284,7 @@ auto main() -> int {
       compare(meshClipper.m_triangles.size(), 2U);
       compare(meshClipper.countVisibleTriangles(), 2U);
       std::vector<MeshClipper::Triangle> expectedTriangles{
-          {expectedEdges, {0, 1, 4}, Normal::Zero(), true},
-          {expectedEdges, {2, 3, 4}, Normal::Zero(), true}};
+          {expectedEdges, {0, 1, 4}, true}, {expectedEdges, {2, 3, 4}, true}};
       compare(meshClipper.m_triangles, expectedTriangles);
       for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
         bool fullEquals =

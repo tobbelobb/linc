@@ -126,7 +126,6 @@ public:
     std::vector<Edge> &m_edges;
     std::array<size_t, 3> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                         INVALID_INDEX};
-    Normal m_normal = Normal::Zero();
     bool m_visible = true;
 
     Edge &edge0() const { return m_edges[m_edgeIndices[0]]; }
@@ -136,7 +135,6 @@ public:
     Triangle &operator=(Triangle const &other) {
       m_edges = other.m_edges;
       m_edgeIndices = other.m_edgeIndices;
-      m_normal = other.m_normal;
       m_visible = other.m_visible;
       return *this;
     }
@@ -183,8 +181,7 @@ public:
     }
 
     bool fullEquals(Triangle const &other) const {
-      return *this == other and m_normal == other.m_normal and
-             m_visible == other.m_visible;
+      return *this == other and m_visible == other.m_visible;
     }
 
     Opening getOpening() const {
