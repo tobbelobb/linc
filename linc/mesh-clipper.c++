@@ -46,36 +46,46 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
   }
 }
 
-void MeshClipper::setPointsVisibility(Millimeter const zCut) {
+auto MeshClipper::getPointsVisibility(Millimeter const zCut)
+    -> std::vector<bool> {
   double constexpr eps = 1e-4;
+  std::vector<bool> visible{};
+  visible.reserve(m_points.size() + m_points.size() / 10);
   for (auto &point : m_points) {
     double const distance = point.z() - zCut;
     if (abs(distance) > eps) {
-      point.m_visible = (distance <= 0.0);
+      visible.emplace_back(distance <= 0.0);
     } else {
       point.m_vertex.z() = zCut;
-      point.m_visible = true;
+      visible.emplace_back(true);
     }
   }
+  return visible;
 }
 
-auto MeshClipper::softMaxHeight() const -> double {
+auto MeshClipper::softMaxHeight(std::vector<bool> const &visible) const
+    -> double {
+  if (m_points.size() != visible.size()) {
+    return 0.0;
+  }
   if (m_points.empty()) {
     return 0.0;
   }
-  if (std::none_of(m_points.begin(), m_points.end(),
-                   [](Point const &p) { return p.m_visible; })) {
+  if (std::none_of(visible.begin(), visible.end(),
+                   [](bool const b) { return b; })) {
     return 0.0;
   }
   // At least one visible point exists. Find it.
-  auto it = m_points.begin();
-  while (not((*it).m_visible)) {
-    ++it;
+  auto itp = m_points.begin();
+  auto itv = visible.begin();
+  while (not(*itv)) {
+    ++itp;
+    ++itv;
   }
-  double max = (*it).z();
-  for (; it != m_points.end(); ++it) {
-    if ((*it).m_visible and (*it).z() > max) {
-      max = (*it).z();
+  double max = (*itp).z();
+  for (; itp != m_points.end(); ++itp, ++itv) {
+    if ((*itv) and (*itp).z() > max) {
+      max = (*itp).z();
     }
   }
   return max;
@@ -103,12 +113,6 @@ auto MeshClipper::minHeight() const -> double {
       .z();
 }
 
-auto MeshClipper::countVisiblePoints() const -> std::size_t {
-  return static_cast<std::size_t>(
-      std::count_if(m_points.begin(), m_points.end(),
-                    [](Point const &point) { return point.m_visible; }));
-}
-
 auto MeshClipper::countVisibleEdges() const -> std::size_t {
   return static_cast<std::size_t>(
       std::count_if(m_edges.begin(), m_edges.end(),
@@ -119,11 +123,6 @@ auto MeshClipper::countVisibleTriangles() const -> std::size_t {
   return static_cast<std::size_t>(std::count_if(
       m_triangles.begin(), m_triangles.end(),
       [](Triangle const &triangle) { return triangle.m_visible; }));
-}
-
-auto MeshClipper::isAllPointsVisible() const -> bool {
-  return std::all_of(m_points.begin(), m_points.end(),
-                     [](auto const &point) { return point.m_visible; });
 }
 
 // Go through edge's users and remove edge
@@ -158,17 +157,19 @@ static auto pointAlong(MeshClipper::Edge const &edge, double const t)
     -> MeshClipper::Point {
   Vertex const newVertex =
       (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
-  return {{newVertex.x(), newVertex.y(), newVertex.z()}, true};
+  return {{newVertex.x(), newVertex.y(), newVertex.z()}};
 }
 
-void MeshClipper::adjustEdges(Millimeter const zCut) {
+void MeshClipper::adjustEdges(Millimeter const zCut,
+                              std::vector<bool> &visible) {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting edges");
   std::size_t const numEdges = m_edges.size();
   for (std::size_t edgeIndex{0}; edgeIndex < numEdges; ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
     if (edge.m_visible) {
-      bool const visible0 = edge.point0().m_visible;
-      bool const visible1 = edge.point1().m_visible;
+
+      bool const visible0 = visible.at(edge.m_pointIndices[0]);
+      bool const visible1 = visible.at(edge.m_pointIndices[1]);
       if (not visible0 and not visible1) {
         // Edge is entirely above cutting plane
         edge.m_visible = false;
@@ -183,6 +184,7 @@ void MeshClipper::adjustEdges(Millimeter const zCut) {
 
         std::size_t const newPointIndex = m_points.size();
         m_points.emplace_back(newPoint);
+        visible.emplace_back(true);
 
         if (distance0 > 0.0) {
           edge.m_pointIndices[0] = newPointIndex;
@@ -297,23 +299,27 @@ void MeshClipper::adjustTriangles() {
   }
 }
 
-// Return new max height
-auto MeshClipper::softClip(Millimeter const zCut) -> double {
+// Returns vector saying which points are visible
+auto MeshClipper::softClip(Millimeter const zCut) -> std::vector<bool> {
   SPDLOG_LOGGER_DEBUG(logger, "Soft clipping at z={}", zCut);
-  setPointsVisibility(zCut);
-  if (isAllPointsVisible()) {
+
+  std::vector<bool> visible{getPointsVisibility(zCut)};
+  assert(visible.size() == m_points.size());
+  if (std::all_of(visible.begin(), visible.end(),
+                  [](bool const b) { return b; })) {
     SPDLOG_LOGGER_INFO(logger, "Special case: All points visible.");
-    return zCut;
+    return visible;
   }
-  if (not std::any_of(m_points.begin(), m_points.end(),
-                      [zCut](Point const &point) {
-                        return point.m_visible and point.z() < zCut;
-                      })) {
+  if (std::none_of(m_points.begin(), m_points.end(),
+                   [zCut](Point const &point) { return point.z() < zCut; })) {
     SPDLOG_LOGGER_INFO(logger, "Special case: No z-thickness left.");
-    return 0.0;
+    for (auto &triangle : m_triangles) {
+      triangle.m_visible = false;
+    }
+    return visible;
   }
 
-  adjustEdges(zCut);
+  adjustEdges(zCut, visible);
   SPDLOG_LOGGER_DEBUG(
       logger,
       "There exists {} points, {} edges, and {} triangles after adjustEdges().",
@@ -324,7 +330,7 @@ auto MeshClipper::softClip(Millimeter const zCut) -> double {
                       "after adjustTriangles().",
                       m_points.size(), m_edges.size(), m_triangles.size());
 
-  return zCut;
+  return visible;
 }
 
 void MeshClipper::writeBinaryStl(std::string const &fileName) const {
@@ -381,7 +387,7 @@ auto MeshClipper::getVerticesAt(Millimeter const height) const
     -> std::vector<Vertex> {
   std::vector<Vertex> res{};
   for (auto const &point : m_points) {
-    if (point.m_visible and (point.z() <= VertexConstants::eps + height) and
+    if ((point.z() <= VertexConstants::eps + height) and
         (height - VertexConstants::eps <= point.z())) {
       res.emplace_back(point.m_vertex);
     }

@@ -224,9 +224,13 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       return {false};
     }
     MeshClipper partialPrint{mesh};
-    partialPrint.softClip(h);
+    auto visible{partialPrint.softClip(h)};
+    if (visible.empty()) {
+      SPDLOG_LOGGER_WARN(logger, "No points are visible");
+      continue;
+    }
     SPDLOG_LOGGER_DEBUG(logger, "New soft max height after clip is {}",
-                        partialPrint.softMaxHeight());
+                        partialPrint.softMaxHeight(visible));
 
     // Extract convex hull of the top points
     // This involves removing points that are enclosed by other points
@@ -290,7 +294,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
 
       // Check if a visible point is above the checkit plane
       for (auto const &[i, point] : enumerate(partialPrint.m_points)) {
-        if (point.m_visible) {
+        if (visible[i]) {
           Vertex const fromFarthestToPoint = point.m_vertex - farthest;
           checkIts[i] = (fromFarthestToPoint.dot(normal) >= 0.0);
         }

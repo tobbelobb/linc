@@ -19,12 +19,6 @@ auto main() -> int {
       constexpr double eps2{eps + 1e-16};
       MeshClipper::Point const pointEps2{Vertex{eps2, eps, eps}};
       check(point != pointEps2);
-
-      // Only the vertex should affect equality
-      MeshClipper::Point const invisible{Vertex{0, 0, 0}, false};
-      compare(point, invisible);
-      MeshClipper::Point const visible{Vertex{0, 0, 0}, true};
-      compare(point, visible);
     }
     {
       // test operator< and operator== for MeshClipper::Edge
@@ -100,14 +94,14 @@ auto main() -> int {
       compare(meshClipper.m_points.size(), 8U);
       // clang-format off
       std::vector<MeshClipper::Point> expectedPoints{
-          {{-5, -5,  0}, true},
-          {{-5, -5, 10}, true},
-          {{-5,  5,  0}, true},
-          {{-5,  5, 10}, true},
-          {{ 5, -5,  0}, true},
-          {{ 5, -5, 10}, true},
-          {{ 5,  5,  0}, true},
-          {{ 5,  5, 10}, true}};
+          {{-5, -5,  0}},
+          {{-5, -5, 10}},
+          {{-5,  5,  0}},
+          {{-5,  5, 10}},
+          {{ 5, -5,  0}},
+          {{ 5, -5, 10}},
+          {{ 5,  5,  0}},
+          {{ 5,  5, 10}}};
       // clang-format on
       std::sort(expectedPoints.begin(), expectedPoints.end());
       compare(meshClipper.m_points, expectedPoints);
@@ -187,7 +181,7 @@ auto main() -> int {
       check(48.0 + 0.01 > maxHeight);
     }
     {
-      // Test setDistances and setPointsVisibility
+      // Test getPointsVisibility
       MeshClipper meshClipper{
           Mesh{Stl{getPath("test-models/tetrahedron.ascii.stl")}}};
 
@@ -196,23 +190,23 @@ auto main() -> int {
       compare(meshClipper.m_points.at(2).z(), 0.0_mm);
       compare(meshClipper.m_points.at(3).z(), 0.0_mm);
 
-      meshClipper.setPointsVisibility(0.5_mm);
-      compare(meshClipper.m_points.at(0).m_visible, true);
-      compare(meshClipper.m_points.at(1).m_visible, false);
-      compare(meshClipper.m_points.at(2).m_visible, true);
-      compare(meshClipper.m_points.at(3).m_visible, true);
+      auto const ret05 = meshClipper.getPointsVisibility(0.5_mm);
+      compare(ret05.at(0), true);
+      compare(ret05.at(1), false);
+      compare(ret05.at(2), true);
+      compare(ret05.at(3), true);
 
-      meshClipper.setPointsVisibility(-0.5_mm);
-      compare(meshClipper.m_points.at(0).m_visible, false);
-      compare(meshClipper.m_points.at(1).m_visible, false);
-      compare(meshClipper.m_points.at(2).m_visible, false);
-      compare(meshClipper.m_points.at(3).m_visible, false);
+      auto const ret_05 = meshClipper.getPointsVisibility(-0.5_mm);
+      compare(ret_05.at(0), false);
+      compare(ret_05.at(1), false);
+      compare(ret_05.at(2), false);
+      compare(ret_05.at(3), false);
 
-      meshClipper.setPointsVisibility(1.5_mm);
-      compare(meshClipper.m_points.at(0).m_visible, true);
-      compare(meshClipper.m_points.at(1).m_visible, true);
-      compare(meshClipper.m_points.at(2).m_visible, true);
-      compare(meshClipper.m_points.at(3).m_visible, true);
+      auto const ret15 = meshClipper.getPointsVisibility(1.5_mm);
+      compare(ret15.at(0), true);
+      compare(ret15.at(1), true);
+      compare(ret15.at(2), true);
+      compare(ret15.at(3), true);
     }
     {
       MeshClipper meshClipper{
@@ -229,34 +223,32 @@ auto main() -> int {
 
       // If we soft-clip at the top layer, 0 mm should disappear
       // And no points should be set invisible
-      double const softClippedAt10 = meshClipper.softClip(10.0);
+      auto const visible10{meshClipper.softClip(10.0)};
+      compare(meshClipper.m_points.size(), visible10.size());
+      double const softClippedAt10 = meshClipper.softMaxHeight(visible10);
       compare(softClippedAt10, 10.0);
-      check(meshClipper.isAllPointsVisible());
+      check(std::all_of(visible10.begin(), visible10.end(),
+                        [](bool const b) { return b; }));
 
       // If we soft-clip at the bottom there should be another special case
-      double const softClippedAt0 = meshClipper.softClip(0.0);
+      auto const visible0{meshClipper.softClip(0.0)};
+      double const softClippedAt0 = meshClipper.softMaxHeight(visible0);
       compare(softClippedAt0, 0.0);
       // The four points at z=0.0 should not have been cut away
-      auto const visiblePoints = meshClipper.countVisiblePoints();
+      auto const visiblePoints =
+          std::count(visible0.begin(), visible0.end(), true);
       compare(visiblePoints, 4U);
-
-      // The value 0.0 is hard coded into the model's bottom layer,
-      // and we should get it back here unaltered, as a special case
-      // within the softClip function, so that we may compare doubles
-      // using operator==
-      double const softHeightLeft = meshClipper.softMaxHeight();
-      compare(softHeightLeft, 0.0);
     }
     {
       MeshClipper meshClipper{
           Mesh{Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}}};
-      double const softClippedAt5 = meshClipper.softClip(5.0);
+      auto const visible5{meshClipper.softClip(5.0)};
+      double const softClippedAt5 = meshClipper.softMaxHeight(visible5);
       compare(softClippedAt5, 5.0);
-      compare(meshClipper.softMaxHeight(), 5.0);
 
       // POINTS correctness
       compare(meshClipper.m_points.size(), 5U);
-      compare(meshClipper.countVisiblePoints(), 4U);
+      compare(std::count(visible5.begin(), visible5.end(), true), 4U);
       std::vector<MeshClipper::Point> expectedPoints{
           {0, -5, 0}, {0, 0, 10}, {0, 5, 0}, {0, -2.5, 5}, {0, 2.5, 5}};
       compare(meshClipper.m_points, expectedPoints);
@@ -301,47 +293,41 @@ auto main() -> int {
           Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
       compare(meshClipper.maxHeight(), 10.0);
 
-      double const softClippedAt5 = meshClipper.softClip(5.0);
+      auto const visible5 = meshClipper.softClip(5.0);
+      double const softClippedAt5 = meshClipper.softMaxHeight(visible5);
       double constexpr eps = 1e-6;
       check(softClippedAt5 < 5.0 + eps);
       check(softClippedAt5 > 5.0 - eps);
 
-      double const softHeightLeft = meshClipper.softMaxHeight();
-      check(softHeightLeft < 5.0 + eps);
-      check(softHeightLeft > 5.0 - eps);
-
       // POINT correctness
       compare(meshClipper.m_points.size(), 16U);
-      compare(meshClipper.countVisiblePoints(), 12U);
+      compare(std::count(visible5.begin(), visible5.end(), true), 12U);
       // clang-format off
       std::vector<MeshClipper::Point> expectedPoints{
-        {{-5, -5,  0}, true},
-        {{-5, -5, 10}, false},
-        {{-5,  5,  0}, true},
-        {{-5,  5, 10}, false},
-        {{ 5, -5,  0}, true},
-        {{ 5, -5, 10}, false},
-        {{ 5,  5,  0}, true},
-        {{ 5,  5, 10}, false},
-        {{-5, -5,  5}, true},
-        {{-5,  0,  5}, true},
-        {{ 0, -5,  5}, true},
-        {{-5,  5,  5}, true},
-        {{ 0,  5,  5}, true},
-        {{ 5, -5,  5}, true},
-        {{ 5,  0,  5}, true},
-        {{ 5,  5,  5}, true}};
+        {{-5, -5,  0}},
+        {{-5, -5, 10}},
+        {{-5,  5,  0}},
+        {{-5,  5, 10}},
+        {{ 5, -5,  0}},
+        {{ 5, -5, 10}},
+        {{ 5,  5,  0}},
+        {{ 5,  5, 10}},
+        {{-5, -5,  5}},
+        {{-5,  0,  5}},
+        {{ 0, -5,  5}},
+        {{-5,  5,  5}},
+        {{ 0,  5,  5}},
+        {{ 5, -5,  5}},
+        {{ 5,  0,  5}},
+        {{ 5,  5,  5}}};
       // clang-format on
+      std::vector<bool> expectedVisible{true, false, true, false, true, false,
+                                        true, false, true, true,  true, true,
+                                        true, true,  true, true};
       compare(meshClipper.m_points, expectedPoints);
-      for (auto const &[i, expectedPoint] : enumerate(expectedPoints)) {
-        bool const fullEquals =
-            expectedPoint.m_vertex == meshClipper.m_points[i].m_vertex and
-            expectedPoint.m_visible == meshClipper.m_points[i].m_visible;
-        if (not fullEquals) {
-          std::cerr << "Index " << i << " Expected " << expectedPoint << " got "
-                    << meshClipper.m_points[i] << '\n';
-        }
-        check(fullEquals);
+      compare(visible5.size(), expectedVisible.size());
+      for (std::size_t i{0}; i < visible5.size(); ++i) {
+        compare(visible5[i], expectedVisible[i]);
       }
 
       // EDGE correctness
@@ -404,10 +390,10 @@ auto main() -> int {
       for (size_t h{0}; h <= 10; ++h) {
         MeshClipper partialPrint{mesh};
         auto const newH{static_cast<double>(h)};
-        partialPrint.softClip(newH);
+        auto const visibleH = partialPrint.softClip(newH);
         // Clip should give exactly the new max height that we ask for.
         // No truncation errors allowed.
-        compare(partialPrint.softMaxHeight(), newH);
+        compare(partialPrint.softMaxHeight(visibleH), newH);
         std::vector<Vertex> topVertices = partialPrint.getVerticesAt(newH);
         // Top and bottom cut of the cube should have 4 vertices
         // All in between should have 8
@@ -433,9 +419,10 @@ auto main() -> int {
       check(maxHeight > 48.0 - eps);
       check(48.0 + eps > maxHeight);
 
-      double const softClippedAt10 =
-          meshClipper.softMaxHeight() - meshClipper.softClip(1.0);
-      compare(softClippedAt10, 47.0);
+      auto const visible1 = meshClipper.softClip(1.0);
+      double const softClippedAt1 =
+          maxHeight - meshClipper.softMaxHeight(visible1);
+      compare(softClippedAt1, 47.0);
 
       // Check that we can write a binary stl and read it back again
       auto const clippedBenchyPath{
@@ -449,7 +436,9 @@ auto main() -> int {
       // the data is read back in. What we can check is that new vertices,
       // edges, and triangles were invented, or printed although despite being
       // invisible
-      check(meshClipper2.m_points.size() <= meshClipper.countVisiblePoints());
+      check(meshClipper2.m_points.size() <=
+            static_cast<std::size_t>(
+                std::count(visible1.begin(), visible1.end(), true)));
       check(meshClipper2.m_edges.size() <= meshClipper.countVisibleEdges());
       check(meshClipper2.m_triangles.size() <=
             meshClipper.countVisibleTriangles());

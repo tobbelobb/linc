@@ -14,11 +14,9 @@ class MeshClipper {
 public:
   struct Point {
     Vertex m_vertex;
-    bool m_visible = true;
 
     Point(double x, double y, double z) : m_vertex(x, y, z) {}
     Point(Vertex vertex) : m_vertex(vertex) {}
-    Point(Vertex vertex, bool visible) : m_vertex(vertex), m_visible(visible) {}
 
     auto x() const { return m_vertex.x(); }
     auto y() const { return m_vertex.y(); }
@@ -268,23 +266,21 @@ public:
   MeshClipper(Mesh const &mesh);
 
   double maxHeight() const;
-  double softMaxHeight() const;
+  double softMaxHeight(std::vector<bool> const &visible) const;
   double minHeight() const;
-  size_t countVisiblePoints() const;
   size_t countVisibleEdges() const;
   size_t countVisibleTriangles() const;
-  bool isAllPointsVisible() const;
   void writeBinaryStl(std::string const &fileName) const;
   std::vector<Vertex> getVerticesAt(Millimeter height) const;
-  void setPointsVisibility(Millimeter zCut);
-  void adjustEdges(Millimeter zCut);
+  std::vector<bool> getPointsVisibility(Millimeter zCut);
+  void adjustEdges(Millimeter zCut, std::vector<bool> &visible);
   void adjustTriangles();
   void propagateInvisibilityToUsers(size_t edgeIndex, Edge const &edge);
   void close2EdgeOpenTriangle(size_t triangleIndex,
                               Triangle::Opening const &opening);
   void close3EdgeOpenTriangle(size_t triangleIndex,
                               Triangle::Opening const &opening);
-  double softClip(Millimeter zCut);
+  std::vector<bool> softClip(Millimeter zCut);
 };
 
 inline auto operator<<(std::ostream &os,
