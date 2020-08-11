@@ -110,8 +110,8 @@ auto main() -> int {
     }
     {
       // Test Triangle constructor from MeshClipper types
-      std::vector<MeshClipper::Point> points{
-          {{-2, 0, 0}, {0, -1, 0}, {0, 1, 0}}};
+      std::vector<Vertex> points{
+          {Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
       std::vector<MeshClipper::Edge> edges{
           {points, {0, 1}}, {points, {1, 2}}, {points, {2, 0}}};
       MeshClipper::Triangle triangle{edges, {0, 1, 2}};
@@ -123,7 +123,7 @@ auto main() -> int {
       // can find, so edge0's 0'th vertex, then edge0's 1'st vertex, then
       // edge1's 0'th or 1'st vertex in that order.
       for (auto const &[i, corner] : enumerate(t0.m_corners)) {
-        Vertex const &vertex = points[i].m_vertex;
+        Vertex const &vertex = points[i];
         compare(corner, vertex);
       }
     }

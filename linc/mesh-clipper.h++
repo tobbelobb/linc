@@ -12,37 +12,14 @@ using EdgePointIndices = std::array<size_t, 2>;
 
 class MeshClipper {
 public:
-  struct Point {
-    Vertex m_vertex;
-
-    Point(double x, double y, double z) : m_vertex(x, y, z) {}
-    Point(Vertex vertex) : m_vertex(vertex) {}
-
-    auto x() const { return m_vertex.x(); }
-    auto y() const { return m_vertex.y(); }
-    auto z() const { return m_vertex.z(); }
-
-    bool operator<(Point const &other) const {
-      return this->m_vertex < other.m_vertex;
-    }
-    bool operator==(Point const &other) const {
-      return not(this->m_vertex < other.m_vertex) and
-             not(other.m_vertex < this->m_vertex);
-    };
-
-    friend std::ostream &operator<<(std::ostream &os, Point const &point) {
-      return os << point.m_vertex;
-    }
-  };
-
   struct Edge {
-    std::vector<Point> &m_points;
+    std::vector<Vertex> &m_points;
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
     std::vector<size_t> m_users{};
     bool m_visible = true;
 
-    Point &point0() const { return m_points[m_pointIndices[0]]; }
-    Point &point1() const { return m_points[m_pointIndices[1]]; }
+    Vertex &point0() const { return m_points[m_pointIndices[0]]; }
+    Vertex &point1() const { return m_points[m_pointIndices[1]]; }
 
     Edge &operator=(Edge const &other) {
       m_points = other.m_points;
@@ -53,13 +30,13 @@ public:
     }
 
     Edge(MeshClipper::Edge const &other) = default;
-    Edge(std::vector<Point> &points) : m_points(points) {}
-    Edge(std::vector<Point> &points, EdgePointIndices pointIndices)
+    Edge(std::vector<Vertex> &points) : m_points(points) {}
+    Edge(std::vector<Vertex> &points, EdgePointIndices pointIndices)
         : m_points(points), m_pointIndices(pointIndices) {}
-    Edge(std::vector<Point> &points, EdgePointIndices pointIndices,
+    Edge(std::vector<Vertex> &points, EdgePointIndices pointIndices,
          std::vector<size_t> users)
         : m_points(points), m_pointIndices(pointIndices), m_users(users) {}
-    Edge(std::vector<Point> &points, EdgePointIndices pointIndices,
+    Edge(std::vector<Vertex> &points, EdgePointIndices pointIndices,
          std::vector<size_t> users, bool visible)
         : m_points(points), m_pointIndices(pointIndices), m_users(users),
           m_visible(visible) {}
@@ -97,8 +74,8 @@ public:
     bool operator!=(Edge const &other) const { return not(*this == other); }
 
     friend std::ostream &operator<<(std::ostream &os, Edge const &edge) {
-      Point const &p0 = edge.point0();
-      Point const &p1 = edge.point1();
+      Vertex const &p0 = edge.point0();
+      Vertex const &p1 = edge.point1();
       os << '{' << p0 << " (" << std::setiosflags(std::ios::right)
          << std::setw(3) << std::setfill(' ') << edge.m_pointIndices[0]
          << ") --- " << p1 << " (" << std::setw(3) << edge.m_pointIndices[1]
@@ -259,7 +236,7 @@ public:
     }
   };
 
-  std::vector<Point> m_points{};
+  std::vector<Vertex> m_points{};
   std::vector<Edge> m_edges{};
   std::vector<Triangle> m_triangles{};
 
@@ -282,20 +259,6 @@ public:
                               Triangle::Opening const &opening);
   std::vector<bool> softClip(Millimeter zCut);
 };
-
-inline auto operator<<(std::ostream &os,
-                       std::vector<MeshClipper::Point> const &points)
-    -> std::ostream & {
-
-  std::string delim{""};
-  os << "\n{";
-  for (auto const &point : points) {
-    os << delim << point;
-    delim = ",\n ";
-  }
-  os << '}';
-  return os;
-}
 
 inline auto operator<<(std::ostream &os,
                        std::vector<MeshClipper::Edge> const &edges)

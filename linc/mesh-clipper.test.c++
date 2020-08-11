@@ -10,46 +10,42 @@ auto main() -> int {
   try {
     {
       // Check Point construction and comparison works as expected
-      MeshClipper::Point const point{Vertex{0, 0, 0}};
-      MeshClipper::Point const &itself{point};
+      Vertex const point{Vertex{0, 0, 0}};
+      Vertex const &itself{point};
       compare(point, itself);
       constexpr auto eps = VertexConstants::eps;
-      MeshClipper::Point const pointEps{Vertex{eps, eps, eps}};
+      Vertex const pointEps{Vertex{eps, eps, eps}};
       compare(point, pointEps);
       constexpr double eps2{eps + 1e-16};
-      MeshClipper::Point const pointEps2{Vertex{eps2, eps, eps}};
+      Vertex const pointEps2{Vertex{eps2, eps, eps}};
       check(point != pointEps2);
     }
     {
       // test operator< and operator== for MeshClipper::Edge
-      std::vector<MeshClipper::Point> examplePoints{
-          MeshClipper::Point{{0, 0, 0}}, MeshClipper::Point{{1, 0, 0}}};
+      std::vector<Vertex> examplePoints{Vertex{{0, 0, 0}}, Vertex{{1, 0, 0}}};
       MeshClipper::Edge const forwards{examplePoints, {0, 1}};
       MeshClipper::Edge const backwards{examplePoints, {1, 0}};
       compare(forwards, backwards);
       check(not(forwards != backwards));
 
       // Basing the edge off of another points list should not affect equality
-      std::vector<MeshClipper::Point> examplePoints2{
-          MeshClipper::Point{{1, 0, 0}}, MeshClipper::Point{{0, 0, 0}}};
+      std::vector<Vertex> examplePoints2{Vertex{{1, 0, 0}}, Vertex{{0, 0, 0}}};
       MeshClipper::Edge const forwards2{examplePoints2, {0, 1}};
       compare(forwards, forwards2);
 
       // Limit of inequality should be between eps and eps2
       constexpr auto eps = VertexConstants::eps;
       constexpr double eps2{eps + 1e-16};
-      std::vector<MeshClipper::Point> examplePointsEps2{
-          MeshClipper::Point{{1 + eps2, 0, 0}}, MeshClipper::Point{{0, 0, 0}}};
+      std::vector<Vertex> examplePointsEps2{Vertex{{1 + eps2, 0, 0}},
+                                            Vertex{{0, 0, 0}}};
       MeshClipper::Edge biggerEdge{examplePointsEps2, {0, 1}};
       check(forwards != biggerEdge);
       check(forwards < biggerEdge);
     }
     {
       // Test operator== for MeshClipper::Triangle
-      std::vector<MeshClipper::Point> examplePoints{
-          {0, 0, 0}, {0, 1, 0}, {1, 0, 0}};
-      std::vector<MeshClipper::Point> examplePoints2{
-          {0, 0, 0}, {0, 1, 0}, {1, 0, 0}};
+      std::vector<Vertex> examplePoints{{0, 0, 0}, {0, 1, 0}, {1, 0, 0}};
+      std::vector<Vertex> examplePoints2{{0, 0, 0}, {0, 1, 0}, {1, 0, 0}};
       std::vector<MeshClipper::Edge> exampleEdges{{examplePoints, {0, 1}},
                                                   {examplePoints, {1, 2}},
                                                   {examplePoints, {2, 0}}};
@@ -67,9 +63,9 @@ auto main() -> int {
 
       constexpr auto eps = VertexConstants::eps;
       constexpr double eps2{eps + 1e-16};
-      std::vector<MeshClipper::Point> examplePointsEps{
+      std::vector<Vertex> examplePointsEps{
           {eps, eps, eps}, {eps, 1, eps}, {1, eps, eps}};
-      std::vector<MeshClipper::Point> examplePointsEps2{
+      std::vector<Vertex> examplePointsEps2{
           {eps2, eps2, eps2}, {eps2, 1, eps2}, {1, eps2, eps2}};
       std::vector<MeshClipper::Edge> exampleEdgesEps{
           {examplePointsEps, {0, 1}},
@@ -93,15 +89,15 @@ auto main() -> int {
       // Points
       compare(meshClipper.m_points.size(), 8U);
       // clang-format off
-      std::vector<MeshClipper::Point> expectedPoints{
-          {{-5, -5,  0}},
-          {{-5, -5, 10}},
-          {{-5,  5,  0}},
-          {{-5,  5, 10}},
-          {{ 5, -5,  0}},
-          {{ 5, -5, 10}},
-          {{ 5,  5,  0}},
-          {{ 5,  5, 10}}};
+      std::vector<Vertex> expectedPoints{
+          {Vertex{-5, -5,  0}},
+          {Vertex{-5, -5, 10}},
+          {Vertex{-5,  5,  0}},
+          {Vertex{-5,  5, 10}},
+          {Vertex{ 5, -5,  0}},
+          {Vertex{ 5, -5, 10}},
+          {Vertex{ 5,  5,  0}},
+          {Vertex{ 5,  5, 10}}};
       // clang-format on
       std::sort(expectedPoints.begin(), expectedPoints.end());
       compare(meshClipper.m_points, expectedPoints);
@@ -249,7 +245,7 @@ auto main() -> int {
       // POINTS correctness
       compare(meshClipper.m_points.size(), 5U);
       compare(std::count(visible5.begin(), visible5.end(), true), 4U);
-      std::vector<MeshClipper::Point> expectedPoints{
+      std::vector<Vertex> expectedPoints{
           {0, -5, 0}, {0, 0, 10}, {0, 5, 0}, {0, -2.5, 5}, {0, 2.5, 5}};
       compare(meshClipper.m_points, expectedPoints);
 
@@ -303,23 +299,23 @@ auto main() -> int {
       compare(meshClipper.m_points.size(), 16U);
       compare(std::count(visible5.begin(), visible5.end(), true), 12U);
       // clang-format off
-      std::vector<MeshClipper::Point> expectedPoints{
-        {{-5, -5,  0}},
-        {{-5, -5, 10}},
-        {{-5,  5,  0}},
-        {{-5,  5, 10}},
-        {{ 5, -5,  0}},
-        {{ 5, -5, 10}},
-        {{ 5,  5,  0}},
-        {{ 5,  5, 10}},
-        {{-5, -5,  5}},
-        {{-5,  0,  5}},
-        {{ 0, -5,  5}},
-        {{-5,  5,  5}},
-        {{ 0,  5,  5}},
-        {{ 5, -5,  5}},
-        {{ 5,  0,  5}},
-        {{ 5,  5,  5}}};
+      std::vector<Vertex> expectedPoints{
+        {Vertex{-5, -5,  0}},
+        {Vertex{-5, -5, 10}},
+        {Vertex{-5,  5,  0}},
+        {Vertex{-5,  5, 10}},
+        {Vertex{ 5, -5,  0}},
+        {Vertex{ 5, -5, 10}},
+        {Vertex{ 5,  5,  0}},
+        {Vertex{ 5,  5, 10}},
+        {Vertex{-5, -5,  5}},
+        {Vertex{-5,  0,  5}},
+        {Vertex{ 0, -5,  5}},
+        {Vertex{-5,  5,  5}},
+        {Vertex{ 0,  5,  5}},
+        {Vertex{ 5, -5,  5}},
+        {Vertex{ 5,  0,  5}},
+        {Vertex{ 5,  5,  5}}};
       // clang-format on
       std::vector<bool> expectedVisible{true, false, true, false, true, false,
                                         true, false, true, true,  true, true,

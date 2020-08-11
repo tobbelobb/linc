@@ -32,7 +32,7 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
 
   // Copy over data from Mesh object
   for (auto const &vertex : mesh.m_vertices) {
-    m_points.emplace_back(Point{vertex});
+    m_points.emplace_back(vertex);
   }
   for (auto const &meshEdge : mesh.m_edges) {
     m_edges.emplace_back(
@@ -56,7 +56,7 @@ auto MeshClipper::getPointsVisibility(Millimeter const zCut)
     if (abs(distance) > eps) {
       visible.emplace_back(distance <= 0.0);
     } else {
-      point.m_vertex.z() = zCut;
+      point.z() = zCut;
       visible.emplace_back(true);
     }
   }
@@ -96,7 +96,7 @@ auto MeshClipper::maxHeight() const -> double {
     return 0.0;
   }
   return (*std::max_element(m_points.begin(), m_points.end(),
-                            [](Point const &point0, Point const &point1) {
+                            [](Vertex const &point0, Vertex const &point1) {
                               return point0.z() < point1.z();
                             }))
       .z();
@@ -107,7 +107,7 @@ auto MeshClipper::minHeight() const -> double {
     return 0.0;
   }
   return (*std::min_element(m_points.begin(), m_points.end(),
-                            [](Point const &point0, Point const &point1) {
+                            [](Vertex const &point0, Vertex const &point1) {
                               return point0.z() < point1.z();
                             }))
       .z();
@@ -154,10 +154,8 @@ void MeshClipper::propagateInvisibilityToUsers(size_t const edgeIndex,
 // t = 1 gives back point1
 // 0 < t < 1 gives back a point in between
 static auto pointAlong(MeshClipper::Edge const &edge, double const t)
-    -> MeshClipper::Point {
-  Vertex const newVertex =
-      (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
-  return {{newVertex.x(), newVertex.y(), newVertex.z()}};
+    -> Vertex {
+  return (1 - t) * edge.point0() + t * edge.point1();
 }
 
 void MeshClipper::adjustEdges(Millimeter const zCut,
@@ -179,8 +177,8 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
         double const distance0 = edge.point0().z() - zCut;
         double const distance1 = edge.point1().z() - zCut;
 
-        Point newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
-        newPoint.m_vertex.z() = zCut; // Hedge against truncation errors
+        Vertex newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
+        newPoint.z() = zCut; // Hedge against truncation errors
 
         std::size_t const newPointIndex = m_points.size();
         m_points.emplace_back(newPoint);
@@ -311,7 +309,7 @@ auto MeshClipper::softClip(Millimeter const zCut) -> std::vector<bool> {
     return visible;
   }
   if (std::none_of(m_points.begin(), m_points.end(),
-                   [zCut](Point const &point) { return point.z() < zCut; })) {
+                   [zCut](Vertex const &point) { return point.z() < zCut; })) {
     SPDLOG_LOGGER_INFO(logger, "Special case: No z-thickness left.");
     for (auto &triangle : m_triangles) {
       triangle.m_visible = false;
@@ -354,7 +352,7 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
   for (auto const &triangle : m_triangles) {
     if (triangle.m_visible) {
       // Only write visible triangles
-      std::set<Point> points{};
+      std::set<Vertex> points{};
       for (auto const &edgeIndex : triangle.m_edgeIndices) {
         if (edgeIndex != INVALID_INDEX) {
           points.insert(triangle.m_edges[edgeIndex].point0());
@@ -367,12 +365,9 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
       smallFacet.normal[2] = 0.0;
       size_t i{0};
       for (auto it{points.begin()}; it != points.end(); ++it, ++i) {
-        smallFacet.vertices.at(i).at(0) =
-            static_cast<float>((*it).m_vertex.x());
-        smallFacet.vertices.at(i).at(1) =
-            static_cast<float>((*it).m_vertex.y());
-        smallFacet.vertices.at(i).at(2) =
-            static_cast<float>((*it).m_vertex.z());
+        smallFacet.vertices.at(i).at(0) = static_cast<float>((*it).x());
+        smallFacet.vertices.at(i).at(1) = static_cast<float>((*it).y());
+        smallFacet.vertices.at(i).at(2) = static_cast<float>((*it).z());
       }
       std::array<char, SIZEOF_STL_FACET> stlFacetBytes{'\0'};
       std::memcpy(stlFacetBytes.data(), &smallFacet, SIZEOF_STL_FACET);
@@ -389,7 +384,7 @@ auto MeshClipper::getVerticesAt(Millimeter const height) const
   for (auto const &point : m_points) {
     if ((point.z() <= VertexConstants::eps + height) and
         (height - VertexConstants::eps <= point.z())) {
-      res.emplace_back(point.m_vertex);
+      res.emplace_back(point);
     }
   }
   return res;
