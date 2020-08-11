@@ -199,13 +199,13 @@ void MeshClipper::adjustEdges(Millimeter const zCut) {
   }
 }
 
-void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex) {
+void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex,
+                                         Triangle::Opening const &opening) {
   Triangle &triangle = m_triangles[triangleIndex];
 
   std::size_t const newEdgeIndex = m_edges.size();
   m_edges.emplace_back(Edge{m_points,
-                            {triangle.m_integrity.startPointIndex,
-                             triangle.m_integrity.endPointIndex},
+                            {opening.startPointIndex, opening.endPointIndex},
                             {triangleIndex}});
   auto *const emptySpot =
       std::find(triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
@@ -216,7 +216,8 @@ void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex) {
   triangle.m_edgeIndices.at(insertEdgeIndexAt) = newEdgeIndex;
 }
 
-void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex) {
+void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex,
+                                         Triangle::Opening const &opening) {
   Triangle &triangle = m_triangles[triangleIndex];
 
   // We will add one triangle
@@ -239,13 +240,12 @@ void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex) {
   // That edge's other end defines the crossPointIndex
   for (auto &edgeIndex : triangle.m_edgeIndices) {
     if (edgeIndex != INVALID_INDEX) {
-      if (m_edges[edgeIndex].m_pointIndices[0] ==
-          triangle.m_integrity.endPointIndex) {
+      if (m_edges[edgeIndex].m_pointIndices[0] == opening.endPointIndex) {
         crossPointIndex = m_edges[edgeIndex].m_pointIndices[1];
         betweenEdgeIndex = edgeIndex;
         edgeIndex = newNewEdgeIndex;
       } else if (m_edges[edgeIndex].m_pointIndices[1] ==
-                 triangle.m_integrity.endPointIndex) {
+                 opening.endPointIndex) {
         crossPointIndex = m_edges[edgeIndex].m_pointIndices[0];
         betweenEdgeIndex = edgeIndex;
         edgeIndex = newNewEdgeIndex;
@@ -263,14 +263,12 @@ void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex) {
 
   // The newEdge
   m_edges.emplace_back(Edge{m_points,
-                            {triangle.m_integrity.startPointIndex,
-                             triangle.m_integrity.endPointIndex},
+                            {opening.startPointIndex, opening.endPointIndex},
                             {newTriangleIndex}});
   // The newNewEdge
-  m_edges.emplace_back(
-      Edge{m_points,
-           {triangle.m_integrity.startPointIndex, crossPointIndex},
-           {triangleIndex, newTriangleIndex}});
+  m_edges.emplace_back(Edge{m_points,
+                            {opening.startPointIndex, crossPointIndex},
+                            {triangleIndex, newTriangleIndex}});
 
   // The new triangle
   m_triangles.emplace_back(
@@ -286,16 +284,16 @@ void MeshClipper::adjustTriangles() {
        ++triangleIndex) {
     Triangle &triangle = m_triangles[triangleIndex];
     if (triangle.m_visible) {
-      triangle.updateIntegrity();
-      if (triangle.m_integrity.isOpen) {
+      Triangle::Opening const opening = triangle.getOpening();
+      if (opening.endPointIndex != INVALID_INDEX) {
         // Add the new edge
         auto const numEdges = static_cast<std::size_t>(std::count_if(
             triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
             [](auto const index) { return index != INVALID_INDEX; }));
         if (numEdges == 2) {
-          close2EdgeOpenTriangle(triangleIndex);
+          close2EdgeOpenTriangle(triangleIndex, opening);
         } else if (numEdges == 3) {
-          close3EdgeOpenTriangle(triangleIndex);
+          close3EdgeOpenTriangle(triangleIndex, opening);
         } else {
           SPDLOG_LOGGER_ERROR(
               logger,

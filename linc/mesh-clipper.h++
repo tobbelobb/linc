@@ -122,8 +122,7 @@ public:
   };
 
   struct Triangle {
-    struct Integrity {
-      bool isOpen = false;
+    struct Opening {
       size_t startPointIndex = INVALID_INDEX;
       size_t endPointIndex = INVALID_INDEX;
     };
@@ -133,7 +132,6 @@ public:
                                         INVALID_INDEX};
     Normal m_normal = Normal::Zero();
     bool m_visible = true;
-    Integrity m_integrity{};
 
     Edge &edge0() const { return m_edges[m_edgeIndices[0]]; }
     Edge &edge1() const { return m_edges[m_edgeIndices[1]]; }
@@ -193,7 +191,7 @@ public:
              m_visible == other.m_visible;
     }
 
-    void updateIntegrity() {
+    Opening getOpening() const {
       size_t startPointIndex = INVALID_INDEX;
       size_t endPointIndex = INVALID_INDEX;
       std::array<std::size_t, 6> indices{INVALID_INDEX};
@@ -266,9 +264,7 @@ public:
           }
         }
       }
-      m_integrity = {startPointIndex != INVALID_INDEX and
-                         endPointIndex != INVALID_INDEX,
-                     startPointIndex, endPointIndex};
+      return {startPointIndex, endPointIndex};
     }
   };
 
@@ -298,8 +294,10 @@ public:
   void adjustEdges(Millimeter zCut);
   void adjustTriangles();
   void propagateInvisibilityToUsers(size_t edgeIndex, Edge const &edge);
-  void close2EdgeOpenTriangle(size_t triangleIndex);
-  void close3EdgeOpenTriangle(size_t triangleIndex);
+  void close2EdgeOpenTriangle(size_t triangleIndex,
+                              Triangle::Opening const &opening);
+  void close3EdgeOpenTriangle(size_t triangleIndex,
+                              Triangle::Opening const &opening);
   double softClip(Millimeter zCut);
 };
 
