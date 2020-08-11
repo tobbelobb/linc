@@ -224,7 +224,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       return {false};
     }
     MeshClipper partialPrint{mesh};
-    auto visible{partialPrint.softClip(h)};
+    auto const visible{partialPrint.softClip(h)};
     if (visible.empty()) {
       SPDLOG_LOGGER_WARN(logger, "No points are visible");
       continue;

@@ -318,12 +318,12 @@ auto MeshClipper::softClip(Millimeter const zCut) -> std::vector<bool> {
   }
 
   adjustEdges(zCut, visible);
-  SPDLOG_LOGGER_DEBUG(
+  SPDLOG_LOGGER_TRACE(
       logger,
       "There exists {} points, {} edges, and {} triangles after adjustEdges().",
       m_points.size(), m_edges.size(), m_triangles.size());
   adjustTriangles();
-  SPDLOG_LOGGER_DEBUG(logger,
+  SPDLOG_LOGGER_TRACE(logger,
                       "There exists {} points, {} edges, and {} triangles "
                       "after adjustTriangles().",
                       m_points.size(), m_edges.size(), m_triangles.size());
