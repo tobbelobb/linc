@@ -14,15 +14,11 @@ class MeshClipper {
 public:
   struct Point {
     Vertex m_vertex;
-    Millimeter m_distance = 0.0;
     bool m_visible = true;
 
     Point(double x, double y, double z) : m_vertex(x, y, z) {}
     Point(Vertex vertex) : m_vertex(vertex) {}
-    Point(Vertex vertex, Millimeter distance)
-        : m_vertex(vertex), m_distance(distance) {}
-    Point(Vertex vertex, Millimeter distance, bool visible)
-        : m_vertex(vertex), m_distance(distance), m_visible(visible) {}
+    Point(Vertex vertex, bool visible) : m_vertex(vertex), m_visible(visible) {}
 
     auto x() const { return m_vertex.x(); }
     auto y() const { return m_vertex.y(); }
@@ -289,8 +285,7 @@ public:
   bool isAllPointsVisible() const;
   void writeBinaryStl(std::string const &fileName) const;
   std::vector<Vertex> getVerticesAt(Millimeter height) const;
-  void setDistances(Millimeter zCut);
-  void setPointsVisibility();
+  void setPointsVisibility(Millimeter zCut);
   void adjustEdges(Millimeter zCut);
   void adjustTriangles();
   void propagateInvisibilityToUsers(size_t edgeIndex, Edge const &edge);

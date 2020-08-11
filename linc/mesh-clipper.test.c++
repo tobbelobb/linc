@@ -21,20 +21,10 @@ auto main() -> int {
       check(point != pointEps2);
 
       // Only the vertex should affect equality
-      MeshClipper::Point const withDistance{Vertex{0, 0, 0}, 1.0};
-      compare(point, withDistance);
-      MeshClipper::Point const zeroDistance{Vertex{0, 0, 0}, 0.0};
-      compare(point, zeroDistance);
-      MeshClipper::Point const zeroDistanceOccurs{Vertex{0, 0, 0}, 0.0};
-      compare(point, zeroDistanceOccurs);
-      MeshClipper::Point const zeroDistanceZeroOccurs{Vertex{0, 0, 0}, 0.0};
-      compare(point, zeroDistanceZeroOccurs);
-      MeshClipper::Point const zeroDistanceZeroOccursInvisible{Vertex{0, 0, 0},
-                                                               0.0, false};
-      compare(point, zeroDistanceZeroOccursInvisible);
-      MeshClipper::Point const zeroDistanceZeroOccursVisible{Vertex{0, 0, 0},
-                                                             0.0, true};
-      compare(point, zeroDistanceZeroOccursVisible);
+      MeshClipper::Point const invisible{Vertex{0, 0, 0}, false};
+      compare(point, invisible);
+      MeshClipper::Point const visible{Vertex{0, 0, 0}, true};
+      compare(point, visible);
     }
     {
       // test operator< and operator== for MeshClipper::Edge
@@ -110,14 +100,14 @@ auto main() -> int {
       compare(meshClipper.m_points.size(), 8U);
       // clang-format off
       std::vector<MeshClipper::Point> expectedPoints{
-          {{-5, -5,  0}, 0.0_mm, true},
-          {{-5, -5, 10}, 0.0_mm, true},
-          {{-5,  5,  0}, 0.0_mm, true},
-          {{-5,  5, 10}, 0.0_mm, true},
-          {{ 5, -5,  0}, 0.0_mm, true},
-          {{ 5, -5, 10}, 0.0_mm, true},
-          {{ 5,  5,  0}, 0.0_mm, true},
-          {{ 5,  5, 10}, 0.0_mm, true}};
+          {{-5, -5,  0}, true},
+          {{-5, -5, 10}, true},
+          {{-5,  5,  0}, true},
+          {{-5,  5, 10}, true},
+          {{ 5, -5,  0}, true},
+          {{ 5, -5, 10}, true},
+          {{ 5,  5,  0}, true},
+          {{ 5,  5, 10}, true}};
       // clang-format on
       std::sort(expectedPoints.begin(), expectedPoints.end());
       compare(meshClipper.m_points, expectedPoints);
@@ -212,34 +202,19 @@ auto main() -> int {
       compare(meshClipper.m_points.at(2).z(), 0.0_mm);
       compare(meshClipper.m_points.at(3).z(), 0.0_mm);
 
-      meshClipper.setDistances(0.5_mm);
-      compare(meshClipper.m_points.at(0).m_distance, -0.5_mm);
-      compare(meshClipper.m_points.at(1).m_distance, 0.5_mm);
-      compare(meshClipper.m_points.at(2).m_distance, -0.5_mm);
-      compare(meshClipper.m_points.at(3).m_distance, -0.5_mm);
-      meshClipper.setPointsVisibility();
+      meshClipper.setPointsVisibility(0.5_mm);
       compare(meshClipper.m_points.at(0).m_visible, true);
       compare(meshClipper.m_points.at(1).m_visible, false);
       compare(meshClipper.m_points.at(2).m_visible, true);
       compare(meshClipper.m_points.at(3).m_visible, true);
 
-      meshClipper.setDistances(-0.5_mm);
-      compare(meshClipper.m_points.at(0).m_distance, 0.5_mm);
-      compare(meshClipper.m_points.at(1).m_distance, 1.5_mm);
-      compare(meshClipper.m_points.at(2).m_distance, 0.5_mm);
-      compare(meshClipper.m_points.at(3).m_distance, 0.5_mm);
-      meshClipper.setPointsVisibility();
+      meshClipper.setPointsVisibility(-0.5_mm);
       compare(meshClipper.m_points.at(0).m_visible, false);
       compare(meshClipper.m_points.at(1).m_visible, false);
       compare(meshClipper.m_points.at(2).m_visible, false);
       compare(meshClipper.m_points.at(3).m_visible, false);
 
-      meshClipper.setDistances(1.5_mm);
-      compare(meshClipper.m_points.at(0).m_distance, -1.5_mm);
-      compare(meshClipper.m_points.at(1).m_distance, -0.5_mm);
-      compare(meshClipper.m_points.at(2).m_distance, -1.5_mm);
-      compare(meshClipper.m_points.at(3).m_distance, -1.5_mm);
-      meshClipper.setPointsVisibility();
+      meshClipper.setPointsVisibility(1.5_mm);
       compare(meshClipper.m_points.at(0).m_visible, true);
       compare(meshClipper.m_points.at(1).m_visible, true);
       compare(meshClipper.m_points.at(2).m_visible, true);
@@ -347,27 +322,27 @@ auto main() -> int {
       compare(meshClipper.countVisiblePoints(), 12U);
       // clang-format off
       std::vector<MeshClipper::Point> expectedPoints{
-        {{-5, -5,  0}, -5.0_mm, true},
-        {{-5, -5, 10},  5.0_mm, false},
-        {{-5,  5,  0}, -5.0_mm, true},
-        {{-5,  5, 10},  5.0_mm, false},
-        {{ 5, -5,  0}, -5.0_mm, true},
-        {{ 5, -5, 10},  5.0_mm, false},
-        {{ 5,  5,  0}, -5.0_mm, true},
-        {{ 5,  5, 10},  5.0_mm, false},
-        {{-5, -5,  5},  0.0_mm, true},
-        {{-5,  0,  5},  0.0_mm, true},
-        {{ 0, -5,  5},  0.0_mm, true},
-        {{-5,  5,  5},  0.0_mm, true},
-        {{ 0,  5,  5},  0.0_mm, true},
-        {{ 5, -5,  5},  0.0_mm, true},
-        {{ 5,  0,  5},  0.0_mm, true},
-        {{ 5,  5,  5},  0.0_mm, true}};
+        {{-5, -5,  0}, true},
+        {{-5, -5, 10}, false},
+        {{-5,  5,  0}, true},
+        {{-5,  5, 10}, false},
+        {{ 5, -5,  0}, true},
+        {{ 5, -5, 10}, false},
+        {{ 5,  5,  0}, true},
+        {{ 5,  5, 10}, false},
+        {{-5, -5,  5}, true},
+        {{-5,  0,  5}, true},
+        {{ 0, -5,  5}, true},
+        {{-5,  5,  5}, true},
+        {{ 0,  5,  5}, true},
+        {{ 5, -5,  5}, true},
+        {{ 5,  0,  5}, true},
+        {{ 5,  5,  5}, true}};
       // clang-format on
       compare(meshClipper.m_points, expectedPoints);
       for (auto const &[i, expectedPoint] : enumerate(expectedPoints)) {
         bool const fullEquals =
-            expectedPoint.m_distance == meshClipper.m_points[i].m_distance and
+            expectedPoint.m_vertex == meshClipper.m_points[i].m_vertex and
             expectedPoint.m_visible == meshClipper.m_points[i].m_visible;
         if (not fullEquals) {
           std::cerr << "Index " << i << " Expected " << expectedPoint << " got "

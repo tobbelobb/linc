@@ -47,22 +47,16 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
   }
 }
 
-void MeshClipper::setDistances(Millimeter const zCut) {
+void MeshClipper::setPointsVisibility(Millimeter const zCut) {
   double constexpr eps = 1e-4;
   for (auto &point : m_points) {
     double const distance = point.z() - zCut;
     if (abs(distance) > eps) {
-      point.m_distance = distance;
+      point.m_visible = (distance <= 0.0);
     } else {
       point.m_vertex.z() = zCut;
-      point.m_distance = 0.0;
+      point.m_visible = true;
     }
-  }
-}
-
-void MeshClipper::setPointsVisibility() {
-  for (auto &point : m_points) {
-    point.m_visible = (point.m_distance <= 0.0);
   }
 }
 
@@ -165,7 +159,7 @@ static auto pointAlong(MeshClipper::Edge const &edge, double const t)
     -> MeshClipper::Point {
   Vertex const newVertex =
       (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
-  return {{newVertex.x(), newVertex.y(), newVertex.z()}, 0.0, true};
+  return {{newVertex.x(), newVertex.y(), newVertex.z()}, true};
 }
 
 void MeshClipper::adjustEdges(Millimeter const zCut) {
@@ -174,15 +168,17 @@ void MeshClipper::adjustEdges(Millimeter const zCut) {
   for (std::size_t edgeIndex{0}; edgeIndex < numEdges; ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
     if (edge.m_visible) {
-      double const distance0 = edge.point0().m_distance;
-      double const distance1 = edge.point1().m_distance;
-      if (distance0 >= 0.0 and distance1 >= 0.0) {
+      bool const visible0 = edge.point0().m_visible;
+      bool const visible1 = edge.point1().m_visible;
+      if (not visible0 and not visible1) {
         // Edge is entirely above cutting plane
         edge.m_visible = false;
         propagateInvisibilityToUsers(edgeIndex, edge);
-      } else if ((distance0 > 0.0 and distance1 < 0.0) or
-                 (distance0 < 0.0 and distance1 > 0.0)) {
+      } else if (visible0 != visible1) {
         // Edge is split by the plane, we need a new point
+        double const distance0 = edge.point0().z() - zCut;
+        double const distance1 = edge.point1().z() - zCut;
+
         Point newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
         newPoint.m_vertex.z() = zCut; // Hedge against truncation errors
 
@@ -307,8 +303,7 @@ void MeshClipper::adjustTriangles() {
 // Return new max height
 auto MeshClipper::softClip(Millimeter const zCut) -> double {
   SPDLOG_LOGGER_DEBUG(logger, "Soft clipping at z={}", zCut);
-  setDistances(zCut);
-  setPointsVisibility();
+  setPointsVisibility(zCut);
   if (isAllPointsVisible()) {
     SPDLOG_LOGGER_INFO(logger, "Special case: All points visible.");
     return zCut;
