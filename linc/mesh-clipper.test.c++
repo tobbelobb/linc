@@ -25,15 +25,15 @@ auto main() -> int {
       compare(point, withDistance);
       MeshClipper::Point const zeroDistance{Vertex{0, 0, 0}, 0.0};
       compare(point, zeroDistance);
-      MeshClipper::Point const zeroDistanceOccurs{Vertex{0, 0, 0}, 0.0, 1};
+      MeshClipper::Point const zeroDistanceOccurs{Vertex{0, 0, 0}, 0.0};
       compare(point, zeroDistanceOccurs);
-      MeshClipper::Point const zeroDistanceZeroOccurs{Vertex{0, 0, 0}, 0.0, 0};
+      MeshClipper::Point const zeroDistanceZeroOccurs{Vertex{0, 0, 0}, 0.0};
       compare(point, zeroDistanceZeroOccurs);
       MeshClipper::Point const zeroDistanceZeroOccursInvisible{Vertex{0, 0, 0},
-                                                               0.0, 0, false};
+                                                               0.0, false};
       compare(point, zeroDistanceZeroOccursInvisible);
       MeshClipper::Point const zeroDistanceZeroOccursVisible{Vertex{0, 0, 0},
-                                                             0.0, 0, true};
+                                                             0.0, true};
       compare(point, zeroDistanceZeroOccursVisible);
     }
     {
@@ -110,14 +110,14 @@ auto main() -> int {
       compare(meshClipper.m_points.size(), 8U);
       // clang-format off
       std::vector<MeshClipper::Point> expectedPoints{
-          {{-5, -5,  0}, 0.0_mm, 0, true},
-          {{-5, -5, 10}, 0.0_mm, 0, true},
-          {{-5,  5,  0}, 0.0_mm, 0, true},
-          {{-5,  5, 10}, 0.0_mm, 0, true},
-          {{ 5, -5,  0}, 0.0_mm, 0, true},
-          {{ 5, -5, 10}, 0.0_mm, 0, true},
-          {{ 5,  5,  0}, 0.0_mm, 0, true},
-          {{ 5,  5, 10}, 0.0_mm, 0, true}};
+          {{-5, -5,  0}, 0.0_mm, true},
+          {{-5, -5, 10}, 0.0_mm, true},
+          {{-5,  5,  0}, 0.0_mm, true},
+          {{-5,  5, 10}, 0.0_mm, true},
+          {{ 5, -5,  0}, 0.0_mm, true},
+          {{ 5, -5, 10}, 0.0_mm, true},
+          {{ 5,  5,  0}, 0.0_mm, true},
+          {{ 5,  5, 10}, 0.0_mm, true}};
       // clang-format on
       std::sort(expectedPoints.begin(), expectedPoints.end());
       compare(meshClipper.m_points, expectedPoints);
@@ -347,22 +347,22 @@ auto main() -> int {
       compare(meshClipper.countVisiblePoints(), 12U);
       // clang-format off
       std::vector<MeshClipper::Point> expectedPoints{
-        {{-5, -5,  0}, -5.0_mm, 0, true},
-        {{-5, -5, 10},  5.0_mm, 0, false},
-        {{-5,  5,  0}, -5.0_mm, 0, true},
-        {{-5,  5, 10},  5.0_mm, 0, false},
-        {{ 5, -5,  0}, -5.0_mm, 0, true},
-        {{ 5, -5, 10},  5.0_mm, 0, false},
-        {{ 5,  5,  0}, -5.0_mm, 0, true},
-        {{ 5,  5, 10},  5.0_mm, 0, false},
-        {{-5, -5,  5},  0.0_mm, 0, true},
-        {{-5,  0,  5},  0.0_mm, 0, true},
-        {{ 0, -5,  5},  0.0_mm, 0, true},
-        {{-5,  5,  5},  0.0_mm, 0, true},
-        {{ 0,  5,  5},  0.0_mm, 0, true},
-        {{ 5, -5,  5},  0.0_mm, 0, true},
-        {{ 5,  0,  5},  0.0_mm, 0, true},
-        {{ 5,  5,  5},  0.0_mm, 0, true}};
+        {{-5, -5,  0}, -5.0_mm, true},
+        {{-5, -5, 10},  5.0_mm, false},
+        {{-5,  5,  0}, -5.0_mm, true},
+        {{-5,  5, 10},  5.0_mm, false},
+        {{ 5, -5,  0}, -5.0_mm, true},
+        {{ 5, -5, 10},  5.0_mm, false},
+        {{ 5,  5,  0}, -5.0_mm, true},
+        {{ 5,  5, 10},  5.0_mm, false},
+        {{-5, -5,  5},  0.0_mm, true},
+        {{-5,  0,  5},  0.0_mm, true},
+        {{ 0, -5,  5},  0.0_mm, true},
+        {{-5,  5,  5},  0.0_mm, true},
+        {{ 0,  5,  5},  0.0_mm, true},
+        {{ 5, -5,  5},  0.0_mm, true},
+        {{ 5,  0,  5},  0.0_mm, true},
+        {{ 5,  5,  5},  0.0_mm, true}};
       // clang-format on
       compare(meshClipper.m_points, expectedPoints);
       for (auto const &[i, expectedPoint] : enumerate(expectedPoints)) {

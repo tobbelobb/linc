@@ -165,7 +165,7 @@ static auto pointAlong(MeshClipper::Edge const &edge, double const t)
     -> MeshClipper::Point {
   Vertex const newVertex =
       (1 - t) * edge.point0().m_vertex + t * edge.point1().m_vertex;
-  return {{newVertex.x(), newVertex.y(), newVertex.z()}, 0.0, 0, true};
+  return {{newVertex.x(), newVertex.y(), newVertex.z()}, 0.0, true};
 }
 
 void MeshClipper::adjustEdges(Millimeter const zCut) {

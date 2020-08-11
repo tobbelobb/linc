@@ -15,19 +15,14 @@ public:
   struct Point {
     Vertex m_vertex;
     Millimeter m_distance = 0.0;
-    unsigned short m_occurs = 0;
     bool m_visible = true;
 
     Point(double x, double y, double z) : m_vertex(x, y, z) {}
     Point(Vertex vertex) : m_vertex(vertex) {}
     Point(Vertex vertex, Millimeter distance)
         : m_vertex(vertex), m_distance(distance) {}
-    Point(Vertex vertex, Millimeter distance, unsigned short occurs)
-        : m_vertex(vertex), m_distance(distance), m_occurs(occurs) {}
-    Point(Vertex vertex, Millimeter distance, unsigned short occurs,
-          bool visible)
-        : m_vertex(vertex), m_distance(distance), m_occurs(occurs),
-          m_visible(visible) {}
+    Point(Vertex vertex, Millimeter distance, bool visible)
+        : m_vertex(vertex), m_distance(distance), m_visible(visible) {}
 
     auto x() const { return m_vertex.x(); }
     auto y() const { return m_vertex.y(); }
@@ -199,84 +194,81 @@ public:
     }
 
     void updateIntegrity() {
-      bool isOpen = false;
       size_t startPointIndex = INVALID_INDEX;
       size_t endPointIndex = INVALID_INDEX;
+      std::array<std::size_t, 6> indices{INVALID_INDEX};
       if (m_edgeIndices[0] != INVALID_INDEX) {
-        edge0().point0().m_occurs = 0;
-        edge0().point1().m_occurs = 0;
+        indices[0] = edge0().m_pointIndices[0];
+        indices[1] = edge0().m_pointIndices[1];
       }
       if (m_edgeIndices[1] != INVALID_INDEX) {
-        edge1().point0().m_occurs = 0;
-        edge1().point1().m_occurs = 0;
+        indices[2] = edge1().m_pointIndices[0];
+        indices[3] = edge1().m_pointIndices[1];
       }
       if (m_edgeIndices[2] != INVALID_INDEX) {
-        edge2().point0().m_occurs = 0;
-        edge2().point1().m_occurs = 0;
+        indices[4] = edge2().m_pointIndices[0];
+        indices[5] = edge2().m_pointIndices[1];
       }
+
       if (m_edgeIndices[0] != INVALID_INDEX) {
-        edge0().point0().m_occurs++;
-        edge0().point1().m_occurs++;
-      }
-      if (m_edgeIndices[1] != INVALID_INDEX) {
-        edge1().point0().m_occurs++;
-        edge1().point1().m_occurs++;
-      }
-      if (m_edgeIndices[2] != INVALID_INDEX) {
-        edge2().point0().m_occurs++;
-        edge2().point1().m_occurs++;
-      }
-      if (m_edgeIndices[0] != INVALID_INDEX) {
-        if (edge0().point0().m_occurs == 1) {
-          isOpen = true;
-          startPointIndex = edge0().m_pointIndices[0];
+        if (indices[0] != indices[1] and indices[0] != indices[2] and
+            indices[0] != indices[3] and indices[0] != indices[4] and
+            indices[0] != indices[5]) {
+          startPointIndex = indices[0];
         }
-        if (edge0().point1().m_occurs == 1) {
-          isOpen = true;
+        if (indices[1] != indices[0] and indices[1] != indices[2] and
+            indices[1] != indices[3] and indices[1] != indices[4] and
+            indices[1] != indices[5]) {
           if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = edge0().m_pointIndices[1];
+            startPointIndex = indices[1];
           } else {
-            endPointIndex = edge0().m_pointIndices[1];
+            endPointIndex = indices[1];
           }
         }
       }
       if (m_edgeIndices[1] != INVALID_INDEX) {
-        if (edge1().point0().m_occurs == 1) {
-          isOpen = true;
+        if (indices[2] != indices[0] and indices[2] != indices[1] and
+            indices[2] != indices[3] and indices[2] != indices[4] and
+            indices[2] != indices[5]) {
           if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = edge1().m_pointIndices[0];
+            startPointIndex = indices[2];
           } else {
-            endPointIndex = edge1().m_pointIndices[0];
+            endPointIndex = indices[2];
           }
         }
-        if (edge1().point1().m_occurs == 1) {
-          isOpen = true;
+        if (indices[3] != indices[0] and indices[3] != indices[1] and
+            indices[3] != indices[2] and indices[3] != indices[4] and
+            indices[3] != indices[5]) {
           if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = edge1().m_pointIndices[1];
+            startPointIndex = indices[3];
           } else {
-            endPointIndex = edge1().m_pointIndices[1];
+            endPointIndex = indices[3];
           }
         }
       }
       if (m_edgeIndices[2] != INVALID_INDEX) {
-        if (edge2().point0().m_occurs == 1) {
-          isOpen = true;
+        if (indices[4] != indices[0] and indices[4] != indices[1] and
+            indices[4] != indices[2] and indices[4] != indices[3] and
+            indices[4] != indices[5]) {
           if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = edge2().m_pointIndices[0];
+            startPointIndex = indices[4];
           } else {
-            endPointIndex = edge2().m_pointIndices[0];
+            endPointIndex = indices[4];
           }
         }
-        if (edge2().point1().m_occurs == 1) {
-          isOpen = true;
+        if (indices[5] != indices[0] and indices[5] != indices[1] and
+            indices[5] != indices[2] and indices[5] != indices[3] and
+            indices[5] != indices[4]) {
           if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = edge2().m_pointIndices[1];
+            startPointIndex = indices[5];
           } else {
-            endPointIndex = edge2().m_pointIndices[1];
+            endPointIndex = indices[5];
           }
         }
       }
-      m_integrity = {isOpen, startPointIndex, endPointIndex};
+      m_integrity = {startPointIndex != INVALID_INDEX and
+                         endPointIndex != INVALID_INDEX,
+                     startPointIndex, endPointIndex};
     }
   };
 
