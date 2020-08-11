@@ -11,20 +11,10 @@
 
 struct Triangle {
   std::array<Vertex, 3> m_corners;
-  Normal m_normal;
 
-  Normal computeNormal(std::array<Vertex, 3> const &corners) const {
-    Vertex const edge0 = corners[0] - corners[1];
-    Vertex const edge1 = corners[0] - corners[2];
-    return edge0.cross(edge1).normalized();
-  }
+  Triangle() : m_corners({Vertex::Zero(), Vertex::Zero(), Vertex::Zero()}) {}
 
-  Triangle()
-      : m_corners({Vertex::Zero(), Vertex::Zero(), Vertex::Zero()}),
-        m_normal(Normal::Zero()) {}
-
-  Triangle(std::array<Vertex, 3> const &corners)
-      : m_corners(corners), m_normal(computeNormal(corners)) {}
+  Triangle(std::array<Vertex, 3> const &corners) : m_corners(corners) {}
 
   Triangle(Mesh::Triangle const &meshTriangle) {
     m_corners[0] = meshTriangle.edge0().vertex0();
@@ -33,7 +23,6 @@ struct Triangle {
                     meshTriangle.edge1().vertex0() == m_corners[1])
                        ? meshTriangle.edge1().vertex1()
                        : meshTriangle.edge1().vertex0();
-    m_normal = computeNormal(m_corners);
   }
 
   Triangle(MeshClipper::Triangle const &meshTriangle) {
@@ -43,8 +32,12 @@ struct Triangle {
                     meshTriangle.edge1().point0().m_vertex == m_corners[1])
                        ? meshTriangle.edge1().point1().m_vertex
                        : meshTriangle.edge1().point0().m_vertex;
+  }
 
-    m_normal = computeNormal(m_corners);
+  Normal getNormal() const {
+    Vertex const edge0 = m_corners[0] - m_corners[1];
+    Vertex const edge1 = m_corners[0] - m_corners[2];
+    return edge0.cross(edge1).normalized();
   }
 };
 

@@ -118,16 +118,16 @@ static auto whichSide(Triangle const &triangle0,
 
 auto intersect(Triangle const &triangle0, Triangle const &triangle1) -> bool {
   for (auto const &point : triangle0.m_corners) {
-    Side const side =
-        whichSide(triangle1, triangle0.m_normal, point, VertexConstants::eps);
+    Side const side = whichSide(triangle1, triangle0.getNormal(), point,
+                                VertexConstants::eps);
     if (side != Side::BOTH) {
       // Found an axis that completely separates the triangles
       return false;
     }
   }
   for (auto const &point : triangle1.m_corners) {
-    Side const side =
-        whichSide(triangle0, triangle1.m_normal, point, VertexConstants::eps);
+    Side const side = whichSide(triangle0, triangle1.getNormal(), point,
+                                VertexConstants::eps);
     if (side != Side::BOTH) {
       // Found an axis that completely separates the triangles
       return false;
