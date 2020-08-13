@@ -44,36 +44,36 @@ static void fanSort(std::vector<Vertex> &fan) {
 }
 
 // Graham Scan Algorithm
-auto hullAndSortCcw(std::vector<Vertex> const &vertices)
-    -> std::vector<Vertex> {
-  auto fan{vertices};
-  if (fan.size() < 3) {
-    return fan;
+auto hullAndSortCcw(std::vector<Vertex> &vertices) -> std::vector<Vertex> {
+
+  if (vertices.size() < 3) {
+    return vertices;
   }
-  fanSort(fan);
+  fanSort(vertices);
 
-  std::vector<Vertex> ret;
-  ret.reserve(fan.size());
-  ret.emplace_back(fan[0]);
-  ret.emplace_back(fan[1]);
+  std::vector<Vertex> ret{};
+  ret.reserve(vertices.size());
+  ret.emplace_back(vertices[0]);
+  ret.emplace_back(vertices[1]);
 
-  for (size_t k{2}; k < fan.size(); ++k) {
-    if (isLeft(ret[ret.size() - 2], ret.back(), fan[k])) {
-      // Enclosed no previous elements with new line to fan[k]
-      ret.emplace_back(fan[k]);
+  for (size_t k{2}; k < vertices.size(); ++k) {
+    if (isLeft(ret[ret.size() - 2], ret.back(), vertices[k])) {
+      // Enclosed no previous elements with new line to vertices[k]
+      ret.emplace_back(vertices[k]);
     } else {
-      // Enclosed one or more previous elements with new line to fan[k]
-      while (ret.size() >= 3 and not isLeft(ret.at(ret.size() - 3),
-                                            ret.at(ret.size() - 2), fan[k])) {
+      // Enclosed one or more previous elements with new line to vertices[k]
+      while (ret.size() >= 3 and
+             not isLeft(ret.at(ret.size() - 3), ret.at(ret.size() - 2),
+                        vertices[k])) {
         ret.pop_back();
       }
-      ret.back() = fan[k];
+      ret.back() = vertices[k];
     }
   }
   return ret;
 }
 
-enum class Side { ABOVE, BELOW, BOTH };
+enum class Side { ABOVE_OR_BELOW, BOTH };
 
 static auto whichSide(Triangle const &triangle,
                       Normal const &separationDirection, Vertex const &point,
@@ -91,7 +91,7 @@ static auto whichSide(Triangle const &triangle,
       return Side::BOTH;
     }
   }
-  return isAbove ? Side::ABOVE : Side::BELOW;
+  return Side::ABOVE_OR_BELOW;
 }
 
 static auto whichSide(Triangle const &triangle0,
@@ -113,7 +113,7 @@ static auto whichSide(Triangle const &triangle0,
       }
     }
   }
-  return isAbove ? Side::ABOVE : Side::BELOW;
+  return Side::ABOVE_OR_BELOW;
 }
 
 auto intersect(Triangle const &triangle0, Triangle const &triangle1) -> bool {
@@ -253,8 +253,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       sortCcwInPlace(topVertices);
     }
 
-    std::vector<bool> checkIts{};
-    checkIts.reserve(partialPrint.m_points.size());
+    std::vector<bool> checkIts(partialPrint.m_points.size(), true);
     for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
       Vertex const &effectorPivot{pivots.effector.at(anchorIndex)};
       Vertex const anchorToEffector{effectorPivot - anchorPivot};
@@ -294,10 +293,8 @@ static auto findCollision(std::vector<Millimeter> const &heights,
 
       // Check if a visible point is above the checkit plane
       for (auto const &[i, point] : enumerate(partialPrint.m_points)) {
-        if (visible[i]) {
-          Vertex const fromFarthestToPoint = point - farthest;
-          checkIts[i] = (fromFarthestToPoint.dot(normal) >= 0.0);
-        }
+        Vertex const fromFarthestToPoint = point - farthest;
+        checkIts[i] = (fromFarthestToPoint.dot(normal) >= 0.0);
       }
 
       // Check for collision

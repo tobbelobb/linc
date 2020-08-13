@@ -77,7 +77,7 @@ template <> struct fmt::formatter<Triangle> {
 };
 
 // Disregards z and constructs hull as if all vertices were at z=0
-[[nodiscard]] std::vector<Vertex> hullAndSortCcw(std::vector<Vertex> const &);
+[[nodiscard]] std::vector<Vertex> hullAndSortCcw(std::vector<Vertex> &);
 [[nodiscard]] bool intersect(Triangle const &, Triangle const &);
 
 // Sorts vertices in counterClockwise order around mean point

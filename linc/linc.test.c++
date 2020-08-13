@@ -16,7 +16,7 @@ auto main() -> int {
       compare(sortedCcw, vertices);
     }
     {
-      std::vector<Vertex> const vertices{
+      std::vector<Vertex> vertices{
           {1, -2, 0}, {-2, -0.1, 0}, {1, 2, 0}, {-0.1, -0.1, 0}};
       std::vector<Vertex> const hullOfThem{
           {-2, -0.1, 0}, {1, -2, 0}, {1, 2, 0}};
@@ -51,7 +51,7 @@ auto main() -> int {
       // reliably sorted out
       double const minusIn = std::nexttoward(-1.0, 0.0);
       double const plusIn = std::nexttoward(1.0, 0.0);
-      std::vector<Vertex> const vertices{
+      std::vector<Vertex> vertices{
           {-1, -1, 0},        {1, -1, 0},         {1, 1, 0},
           {-1, 1, 0},         {-0.9, minusIn, 0}, {-0.8, minusIn, 0},
           {-0.7, minusIn, 0}, {plusIn, -0.9, 0},  {plusIn, -0.8, 0},
@@ -67,7 +67,7 @@ auto main() -> int {
     }
     {
       // clang-format off
-      std::vector<Vertex> const vertices{
+      std::vector<Vertex> vertices{
         {-8.4133226949427389, -2.4653934331841514,  37.002063751220703},
         {-8.4124251995815591, -8.1294532317023762,  37.002063751220703},
         {-8.3626040412103464,  8.165689337317211,   37.002063751220703},
