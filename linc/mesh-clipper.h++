@@ -16,7 +16,6 @@ public:
     std::vector<Vertex> &m_points;
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
     std::vector<size_t> m_users{};
-    bool m_visible = true;
 
     Vertex &point0() const { return m_points[m_pointIndices[0]]; }
     Vertex &point1() const { return m_points[m_pointIndices[1]]; }
@@ -25,7 +24,6 @@ public:
       m_points = other.m_points;
       m_pointIndices = other.m_pointIndices;
       m_users = other.m_users;
-      m_visible = other.m_visible;
       return *this;
     }
 
@@ -36,10 +34,6 @@ public:
     Edge(std::vector<Vertex> &points, EdgePointIndices pointIndices,
          std::vector<size_t> users)
         : m_points(points), m_pointIndices(pointIndices), m_users(users) {}
-    Edge(std::vector<Vertex> &points, EdgePointIndices pointIndices,
-         std::vector<size_t> users, bool visible)
-        : m_points(points), m_pointIndices(pointIndices), m_users(users),
-          m_visible(visible) {}
 
     bool operator<(Edge const &other) const {
       auto const &[lhsPointLow, lhsPointHigh] =
@@ -67,8 +61,7 @@ public:
     }
 
     bool fullEquals(Edge const &other) const {
-      return *this == other and m_users == other.m_users and
-             m_visible == other.m_visible;
+      return *this == other and m_users == other.m_users;
     }
 
     bool operator!=(Edge const &other) const { return not(*this == other); }
@@ -88,7 +81,7 @@ public:
         os << delim << std::setw(3) << user;
         delim = ",";
       }
-      return os << ") " << (edge.m_visible ? "  Visible" : "Invisible") << '}';
+      return os << ") }";
     }
   };
 
@@ -245,12 +238,11 @@ public:
   double maxHeight() const;
   double softMaxHeight(std::vector<bool> const &visible) const;
   double minHeight() const;
-  size_t countVisibleEdges() const;
   size_t countVisibleTriangles() const;
   void writeBinaryStl(std::string const &fileName) const;
   std::vector<Vertex> getVerticesAt(Millimeter height) const;
   std::vector<bool> getPointsVisibility(Millimeter zCut);
-  void adjustEdges(Millimeter zCut, std::vector<bool> &visible);
+  void adjustEdges(Millimeter zCut, std::vector<bool> &pointVisibility);
   void adjustTriangles();
   void propagateInvisibilityToUsers(size_t edgeIndex, Edge const &edge);
   void close2EdgeOpenTriangle(size_t triangleIndex,

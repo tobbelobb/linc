@@ -105,7 +105,6 @@ auto main() -> int {
       // Edges
       compare(meshClipper.m_edges.size(), 18U);
       // The short vector of m_users is expected to be equal and sorted
-      // And m_visible is expected to be correct
       // For an edge to be fullyEqual another edge
       std::vector<MeshClipper::Edge> expectedEdges{
           {expectedPoints, {0, 1}, {0, 1}},   // 0
@@ -251,13 +250,12 @@ auto main() -> int {
 
       // EDGES correctness
       compare(meshClipper.m_edges.size(), 5U);
-      compare(meshClipper.countVisibleEdges(), 5U);
       std::vector<MeshClipper::Edge> expectedEdges{
-          {expectedPoints, {0, 3}, {0}, true},
-          {expectedPoints, {0, 2}, {0}, true},
-          {expectedPoints, {2, 4}, {1}, true},
-          {expectedPoints, {3, 4}, {1}, true},
-          {expectedPoints, {2, 3}, {0, 1}, true}};
+          {expectedPoints, {0, 3}, {0}},
+          {expectedPoints, {0, 2}, {0}},
+          {expectedPoints, {2, 4}, {1}},
+          {expectedPoints, {3, 4}, {1}},
+          {expectedPoints, {2, 3}, {0, 1}}};
       compare(meshClipper.m_edges, expectedEdges);
       for (auto const &[i, expectedEdge] : enumerate(expectedEdges)) {
         bool fullEquals = expectedEdge.fullEquals(meshClipper.m_edges[i]);
@@ -328,39 +326,38 @@ auto main() -> int {
 
       // EDGE correctness
       compare(meshClipper.m_edges.size(), 30U);
-      compare(meshClipper.countVisibleEdges(), 25U);
       // clang-format off
       std::vector<MeshClipper::Edge> expectedEdges{
-          {expectedPoints, { 0,  8}, { 0,  1},  true},
-          {expectedPoints, { 0,  2}, { 2,  3},  true},
-          {expectedPoints, { 0,  9}, { 0,  2},  true},
-          {expectedPoints, { 0,  4}, { 4,  5},  true},
-          {expectedPoints, {10,  0}, { 1,  4},  true},
-          {expectedPoints, { 6,  0}, { 3,  5},  true},
-          {expectedPoints, { 3,  1}, { 0,  6}, false},
-          {expectedPoints, { 5,  1}, { 1,  6}, false},
-          {expectedPoints, {11,  2}, {12,  7},  true},
-          {expectedPoints, { 2,  6}, { 3,  7},  true},
-          {expectedPoints, { 3,  5}, { 6,  8}, false},
-          {expectedPoints, {12,  6}, {14,  9},  true},
-          {expectedPoints, { 7,  3}, { 8,  9}, false},
-          {expectedPoints, {13,  4}, {13, 10},  true},
-          {expectedPoints, { 4,  6}, { 5, 10},  true},
-          {expectedPoints, { 6, 14}, {15, 11},  true},
-          {expectedPoints, { 7,  5}, { 8, 11}, false},
-          {expectedPoints, {15,  6}, { 9, 11},  true},
-          {expectedPoints, { 8,  9}, {     0},  true},
-          {expectedPoints, { 8, 10}, {     1},  true},
-          {expectedPoints, { 9, 11}, {    12},  true},
-          {expectedPoints, { 9,  2}, { 2, 12},  true},
-          {expectedPoints, {10, 13}, {    13},  true},
-          {expectedPoints, {10,  4}, { 4, 13},  true},
-          {expectedPoints, {11, 12}, {    14},  true},
-          {expectedPoints, {11,  6}, { 7, 14},  true},
-          {expectedPoints, {12, 15}, {     9},  true},
-          {expectedPoints, {13, 14}, {    15},  true},
-          {expectedPoints, {13,  6}, {10, 15},  true},
-          {expectedPoints, {14, 15}, {    11},  true}};
+          {expectedPoints, { 0,  8}, { 0,  1}},
+          {expectedPoints, { 0,  2}, { 2,  3}},
+          {expectedPoints, { 0,  9}, { 0,  2}},
+          {expectedPoints, { 0,  4}, { 4,  5}},
+          {expectedPoints, {10,  0}, { 1,  4}},
+          {expectedPoints, { 6,  0}, { 3,  5}},
+          {expectedPoints, { 3,  1}, { 0,  6}},
+          {expectedPoints, { 5,  1}, { 1,  6}},
+          {expectedPoints, {11,  2}, {12,  7}},
+          {expectedPoints, { 2,  6}, { 3,  7}},
+          {expectedPoints, { 3,  5}, { 6,  8}},
+          {expectedPoints, {12,  6}, {14,  9}},
+          {expectedPoints, { 7,  3}, { 8,  9}},
+          {expectedPoints, {13,  4}, {13, 10}},
+          {expectedPoints, { 4,  6}, { 5, 10}},
+          {expectedPoints, { 6, 14}, {15, 11}},
+          {expectedPoints, { 7,  5}, { 8, 11}},
+          {expectedPoints, {15,  6}, { 9, 11}},
+          {expectedPoints, { 8,  9}, {     0}},
+          {expectedPoints, { 8, 10}, {     1}},
+          {expectedPoints, { 9, 11}, {    12}},
+          {expectedPoints, { 9,  2}, { 2, 12}},
+          {expectedPoints, {10, 13}, {    13}},
+          {expectedPoints, {10,  4}, { 4, 13}},
+          {expectedPoints, {11, 12}, {    14}},
+          {expectedPoints, {11,  6}, { 7, 14}},
+          {expectedPoints, {12, 15}, {     9}},
+          {expectedPoints, {13, 14}, {    15}},
+          {expectedPoints, {13,  6}, {10, 15}},
+          {expectedPoints, {14, 15}, {    11}}};
       // clang-format on
       compare(meshClipper.m_edges, expectedEdges);
       for (auto const &[i, expectedEdge] : enumerate(expectedEdges)) {
@@ -435,7 +432,6 @@ auto main() -> int {
       check(meshClipper2.m_points.size() <=
             static_cast<std::size_t>(
                 std::count(visible1.begin(), visible1.end(), true)));
-      check(meshClipper2.m_edges.size() <= meshClipper.countVisibleEdges());
       check(meshClipper2.m_triangles.size() <=
             meshClipper.countVisibleTriangles());
     }

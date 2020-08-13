@@ -113,12 +113,6 @@ auto MeshClipper::minHeight() const -> double {
       .z();
 }
 
-auto MeshClipper::countVisibleEdges() const -> std::size_t {
-  return static_cast<std::size_t>(
-      std::count_if(m_edges.begin(), m_edges.end(),
-                    [](Edge const &edge) { return edge.m_visible; }));
-}
-
 auto MeshClipper::countVisibleTriangles() const -> std::size_t {
   return static_cast<std::size_t>(std::count_if(
       m_triangles.begin(), m_triangles.end(),
@@ -159,36 +153,32 @@ static auto pointAlong(MeshClipper::Edge const &edge, double const t)
 }
 
 void MeshClipper::adjustEdges(Millimeter const zCut,
-                              std::vector<bool> &visible) {
+                              std::vector<bool> &pointVisibility) {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting edges");
   std::size_t const numEdges = m_edges.size();
   for (std::size_t edgeIndex{0}; edgeIndex < numEdges; ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
-    if (edge.m_visible) {
+    bool const visible0 = pointVisibility.at(edge.m_pointIndices[0]);
+    bool const visible1 = pointVisibility.at(edge.m_pointIndices[1]);
+    if (not visible0 and not visible1) {
+      // Edge is entirely above cutting plane
+      propagateInvisibilityToUsers(edgeIndex, edge);
+    } else if (visible0 != visible1) {
+      // Edge is split by the plane, we need a new point
+      double const distance0 = edge.point0().z() - zCut;
+      double const distance1 = edge.point1().z() - zCut;
 
-      bool const visible0 = visible.at(edge.m_pointIndices[0]);
-      bool const visible1 = visible.at(edge.m_pointIndices[1]);
-      if (not visible0 and not visible1) {
-        // Edge is entirely above cutting plane
-        edge.m_visible = false;
-        propagateInvisibilityToUsers(edgeIndex, edge);
-      } else if (visible0 != visible1) {
-        // Edge is split by the plane, we need a new point
-        double const distance0 = edge.point0().z() - zCut;
-        double const distance1 = edge.point1().z() - zCut;
+      Vertex newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
+      newPoint.z() = zCut; // Hedge against truncation errors
 
-        Vertex newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
-        newPoint.z() = zCut; // Hedge against truncation errors
+      std::size_t const newPointIndex = m_points.size();
+      m_points.emplace_back(newPoint);
+      pointVisibility.emplace_back(true);
 
-        std::size_t const newPointIndex = m_points.size();
-        m_points.emplace_back(newPoint);
-        visible.emplace_back(true);
-
-        if (distance0 > 0.0) {
-          edge.m_pointIndices[0] = newPointIndex;
-        } else {
-          edge.m_pointIndices[1] = newPointIndex;
-        }
+      if (distance0 > 0.0) {
+        edge.m_pointIndices[0] = newPointIndex;
+      } else {
+        edge.m_pointIndices[1] = newPointIndex;
       }
     }
   }
