@@ -116,7 +116,7 @@ auto main() -> int {
       MeshClipper::Triangle triangle{edges, {0, 1, 2}};
 
       Triangle const t0{triangle, points};
-      compare(t0.getNormal(), Normal{0, 0, 1});
+      compare(Normal{t0.getNormalDirection().normalized()}, Normal{0, 0, 1});
       // This test is maybe a bit fragile.
       // The Triangle constructor should use the first three vertices that it
       // can find, so edge0's 0'th vertex, then edge0's 1'st vertex, then
@@ -135,7 +135,7 @@ auto main() -> int {
       Mesh::Triangle triangle{edges, {0, 1, 2}};
 
       Triangle const t0{triangle};
-      compare(t0.getNormal(), Normal{0, 0, 1});
+      compare(Normal{t0.getNormalDirection().normalized()}, Normal{0, 0, 1});
       compare(t0.m_corners, vertices);
     }
     // Triangle intersection detection
@@ -146,8 +146,9 @@ auto main() -> int {
       Triangle const t1{
           {Vertex{-1, -0.1, 1}, Vertex{-1, 0.1, -1}, Vertex{1, 0.1, 0}}};
 
-      compare(t0.getNormal(), Normal{0, 0, 1});
-      compare(t1.getNormal(), Normal{0.049690, -0.993808, -0.099381});
+      compare(Normal{t0.getNormalDirection().normalized()}, Normal{0, 0, 1});
+      compare(Normal{t1.getNormalDirection().normalized()},
+              Normal{0.049690, -0.993808, -0.099381});
 
       check(intersect(t0, t1));
     }
@@ -257,8 +258,9 @@ auto main() -> int {
       Triangle const t1{{Vertex{220.0, -1744.5, 15.9},
                          Vertex{354.0, -6.0, 398.0},
                          Vertex{86.0, -6.0, 398.0}}};
-      compare(t0.getNormal(), Normal{1, 0, 0});
-      compare(t1.getNormal(), Normal{0.0, -0.214664, 0.976688});
+      compare(Normal{t0.getNormalDirection().normalized()}, Normal{1, 0, 0});
+      compare(Normal{t1.getNormalDirection().normalized()},
+              Normal{0.0, -0.214664, 0.976688});
 
       check(not intersect(t0, t1));
     }

@@ -14,7 +14,6 @@ struct Triangle {
 
   Triangle() : m_corners({Vertex::Zero(), Vertex::Zero(), Vertex::Zero()}) {}
 
-  // TODO: Could this hold Vertex& instead?
   Triangle(std::array<Vertex, 3> const &corners) : m_corners(corners) {}
 
   Triangle(Mesh::Triangle const &meshTriangle) {
@@ -37,10 +36,8 @@ struct Triangle {
             : points[meshTriangle.edge1().m_pointIndices[0]];
   }
 
-  Normal getNormal() const {
-    Vertex const edge0 = m_corners[0] - m_corners[1];
-    Vertex const edge1 = m_corners[0] - m_corners[2];
-    return edge0.cross(edge1).normalized();
+  Normal getNormalDirection() const {
+    return (m_corners[0] - m_corners[1]).cross(m_corners[0] - m_corners[2]);
   }
 };
 

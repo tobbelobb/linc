@@ -301,6 +301,7 @@ auto MeshClipper::softClip(Millimeter const zCut) -> std::vector<bool> {
     for (auto &triangle : m_triangles) {
       triangle.m_visible = false;
     }
+    // There might still be visible points
     return visible;
   }
 

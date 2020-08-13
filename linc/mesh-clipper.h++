@@ -23,9 +23,10 @@ public:
     }
 
     Edge(MeshClipper::Edge const &other) = default;
-    Edge(EdgePointIndices pointIndices) : m_pointIndices(pointIndices) {}
+    Edge(EdgePointIndices pointIndices)
+        : m_pointIndices(std::move(pointIndices)) {}
     Edge(EdgePointIndices pointIndices, std::vector<size_t> users)
-        : m_pointIndices(pointIndices), m_users(users) {}
+        : m_pointIndices(std::move(pointIndices)), m_users(std::move(users)) {}
 
     friend std::ostream &operator<<(std::ostream &os,
                                     MeshClipper::Edge const &edge) {
@@ -239,10 +240,23 @@ inline bool operator<(MeshClipper::Triangle const &lhs,
   return false;
 }
 
-// TODO: compare indices instead of Vertex values...
 inline bool operator==(MeshClipper::Triangle const &lhs,
                        MeshClipper::Triangle const &rhs) {
-  return not(lhs < rhs) and not(lhs < rhs);
+  return (lhs.m_edgeIndices[0] == rhs.m_edgeIndices[0] and
+          ((lhs.m_edgeIndices[1] == rhs.m_edgeIndices[1] and
+            lhs.m_edgeIndices[2] == rhs.m_edgeIndices[2]) or
+           (lhs.m_edgeIndices[1] == rhs.m_edgeIndices[2] and
+            lhs.m_edgeIndices[2] == rhs.m_edgeIndices[1]))) or
+         (lhs.m_edgeIndices[0] == rhs.m_edgeIndices[1] and
+          ((lhs.m_edgeIndices[1] == rhs.m_edgeIndices[0] and
+            lhs.m_edgeIndices[2] == rhs.m_edgeIndices[2]) or
+           (lhs.m_edgeIndices[1] == rhs.m_edgeIndices[2] and
+            lhs.m_edgeIndices[2] == rhs.m_edgeIndices[0]))) or
+         (lhs.m_edgeIndices[0] == rhs.m_edgeIndices[2] and
+          ((lhs.m_edgeIndices[1] == rhs.m_edgeIndices[1] and
+            lhs.m_edgeIndices[2] == rhs.m_edgeIndices[0]) or
+           (lhs.m_edgeIndices[1] == rhs.m_edgeIndices[0] and
+            lhs.m_edgeIndices[2] == rhs.m_edgeIndices[1])));
 }
 
 inline bool operator!=(MeshClipper::Triangle const &lhs,
