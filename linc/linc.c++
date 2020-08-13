@@ -306,18 +306,28 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       // collision
       for (auto const &partialPrintTriangle : partialPrint.m_triangles) {
         if (partialPrintTriangle.m_visible and
-            (checkIts[partialPrintTriangle.edge0().m_pointIndices[0]] or
-             checkIts[partialPrintTriangle.edge0().m_pointIndices[1]] or
-             checkIts[partialPrintTriangle.edge1().m_pointIndices[0]] or
-             checkIts[partialPrintTriangle.edge1().m_pointIndices[1]])) {
+            (checkIts[partialPrint
+                          .m_edges[partialPrintTriangle.m_edgeIndices[0]]
+                          .m_pointIndices[0]] or
+             checkIts[partialPrint
+                          .m_edges[partialPrintTriangle.m_edgeIndices[0]]
+                          .m_pointIndices[1]] or
+             checkIts[partialPrint
+                          .m_edges[partialPrintTriangle.m_edgeIndices[1]]
+                          .m_pointIndices[0]] or
+             checkIts[partialPrint
+                          .m_edges[partialPrintTriangle.m_edgeIndices[1]]
+                          .m_pointIndices[1]])) {
           for (auto const &coneTriangle : cone.m_triangles) {
-            if (intersect({partialPrintTriangle, partialPrint.m_points},
+            if (intersect({partialPrintTriangle, partialPrint.m_points,
+                           partialPrint.m_edges},
                           coneTriangle))
               [[unlikely]] {
-                SPDLOG_LOGGER_INFO(
-                    logger, "Found collision! Between {} and {}",
-                    Triangle{partialPrintTriangle, partialPrint.m_points},
-                    Triangle{coneTriangle});
+                SPDLOG_LOGGER_INFO(logger, "Found collision! Between {} and {}",
+                                   Triangle{partialPrintTriangle,
+                                            partialPrint.m_points,
+                                            partialPrint.m_edges},
+                                   Triangle{coneTriangle});
                 return {true, h, coneTriangle, effectorPivot};
               }
           }
@@ -483,8 +493,7 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
   partialPrint.m_edges.emplace_back(
       MeshClipper::Edge{{cornerIndices[2], cornerIndices[0]}});
 
-  partialPrint.m_triangles.emplace_back(
-      MeshClipper::Triangle{partialPrint.m_edges, edgeIndices});
+  partialPrint.m_triangles.emplace_back(MeshClipper::Triangle{edgeIndices});
 
   auto const effectorPosition =
       *std::max_element(
@@ -514,7 +523,7 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
     partialPrint.m_edges.emplace_back(MeshClipper::Edge{
         {effectorPivotIndices.at(i), effectorPivotIndices.at(i + 1)}});
     partialPrint.m_triangles.emplace_back(
-        MeshClipper::Triangle{partialPrint.m_edges, edgeIndicesABC});
+        MeshClipper::Triangle{edgeIndicesABC});
   }
 
   partialPrint.writeBinaryStl(outFileName);

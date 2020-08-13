@@ -26,14 +26,19 @@ struct Triangle {
   }
 
   Triangle(MeshClipper::Triangle const &meshTriangle,
-           std::vector<Vertex> const &points) {
-    m_corners[0] = points[meshTriangle.edge0().m_pointIndices[0]];
-    m_corners[1] = points[meshTriangle.edge0().m_pointIndices[1]];
+           std::vector<Vertex> const &points,
+           std::vector<MeshClipper::Edge> const &edges) {
+    m_corners[0] =
+        points[edges[meshTriangle.m_edgeIndices[0]].m_pointIndices[0]];
+    m_corners[1] =
+        points[edges[meshTriangle.m_edgeIndices[0]].m_pointIndices[1]];
     m_corners[2] =
-        (points[meshTriangle.edge1().m_pointIndices[0]] == m_corners[0] or
-         points[meshTriangle.edge1().m_pointIndices[0]] == m_corners[1])
-            ? points[meshTriangle.edge1().m_pointIndices[1]]
-            : points[meshTriangle.edge1().m_pointIndices[0]];
+        (points[edges[meshTriangle.m_edgeIndices[1]].m_pointIndices[0]] ==
+             m_corners[0] or
+         points[edges[meshTriangle.m_edgeIndices[1]].m_pointIndices[0]] ==
+             m_corners[1])
+            ? points[edges[meshTriangle.m_edgeIndices[1]].m_pointIndices[1]]
+            : points[edges[meshTriangle.m_edgeIndices[1]].m_pointIndices[0]];
   }
 
   Normal getNormalDirection() const {

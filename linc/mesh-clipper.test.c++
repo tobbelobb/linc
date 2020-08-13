@@ -35,12 +35,12 @@ auto main() -> int {
       std::vector<MeshClipper::Edge> exampleEdges2{
           {{0, 1}}, {{1, 2}}, {{2, 0}}};
 
-      MeshClipper::Triangle triangle{exampleEdges, {0, 1, 2}};
+      MeshClipper::Triangle triangle{{0, 1, 2}};
       MeshClipper::Triangle const &itself = triangle;
       compare(triangle, itself);
 
       // Equality should not depend on order of edges
-      MeshClipper::Triangle triangle2{exampleEdges2, {1, 0, 2}};
+      MeshClipper::Triangle triangle2{{1, 0, 2}};
       compare(triangle, triangle2);
     }
     {
@@ -102,12 +102,9 @@ auto main() -> int {
       // Triangles
       compare(meshClipper.m_triangles.size(), 12U);
       std::vector<MeshClipper::Triangle> const expectedTriangles{
-          {expectedEdges, {0, 2, 6}},    {expectedEdges, {0, 4, 7}},
-          {expectedEdges, {1, 2, 8}},    {expectedEdges, {1, 5, 9}},
-          {expectedEdges, {3, 4, 13}},   {expectedEdges, {3, 5, 14}},
-          {expectedEdges, {6, 7, 10}},   {expectedEdges, {8, 9, 11}},
-          {expectedEdges, {10, 12, 16}}, {expectedEdges, {11, 12, 17}},
-          {expectedEdges, {13, 14, 15}}, {expectedEdges, {15, 16, 17}}};
+          {{0, 2, 6}},    {{0, 4, 7}},    {{1, 2, 8}},    {{1, 5, 9}},
+          {{3, 4, 13}},   {{3, 5, 14}},   {{6, 7, 10}},   {{8, 9, 11}},
+          {{10, 12, 16}}, {{11, 12, 17}}, {{13, 14, 15}}, {{15, 16, 17}}};
       compare(expectedTriangles.size(), meshClipper.m_triangles.size());
 
       for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
@@ -230,8 +227,8 @@ auto main() -> int {
       // TRIANGLE correctness
       compare(meshClipper.m_triangles.size(), 2U);
       compare(meshClipper.countVisibleTriangles(), 2U);
-      std::vector<MeshClipper::Triangle> expectedTriangles{
-          {expectedEdges, {0, 1, 4}, true}, {expectedEdges, {2, 3, 4}, true}};
+      std::vector<MeshClipper::Triangle> expectedTriangles{{{0, 1, 4}, true},
+                                                           {{2, 3, 4}, true}};
       compare(meshClipper.m_triangles, expectedTriangles);
       for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
         bool visibleEquals =

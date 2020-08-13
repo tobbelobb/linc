@@ -46,22 +46,12 @@ public:
   };
 
   struct Triangle {
-    struct Opening {
-      size_t startPointIndex = INVALID_INDEX;
-      size_t endPointIndex = INVALID_INDEX;
-    };
 
-    std::vector<Edge> &m_edges;
     std::array<size_t, 3> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                         INVALID_INDEX};
     bool m_visible = true;
 
-    Edge &edge0() const { return m_edges[m_edgeIndices[0]]; }
-    Edge &edge1() const { return m_edges[m_edgeIndices[1]]; }
-    Edge &edge2() const { return m_edges[m_edgeIndices[2]]; }
-
     Triangle &operator=(Triangle const &other) {
-      m_edges = other.m_edges;
       m_edgeIndices = other.m_edgeIndices;
       m_visible = other.m_visible;
       return *this;
@@ -70,93 +60,16 @@ public:
     friend std::ostream &operator<<(std::ostream &os,
                                     Triangle const &triangle) {
       os << '{';
-      if (triangle.m_edgeIndices[0] != INVALID_INDEX) {
-        os << triangle.edge0();
-      }
-      if (triangle.m_edgeIndices[1] != INVALID_INDEX) {
-        os << ",\n " << triangle.edge1();
-      }
-      if (triangle.m_edgeIndices[2] != INVALID_INDEX) {
-        os << ",\n " << triangle.edge2();
-      }
+      os << triangle.m_edgeIndices[0];
+      os << ", " << triangle.m_edgeIndices[1];
+      os << ", " << triangle.m_edgeIndices[2];
       return os << '}';
     }
+  };
 
-    Opening getOpening() const {
-      size_t startPointIndex = INVALID_INDEX;
-      size_t endPointIndex = INVALID_INDEX;
-      std::array<std::size_t, 6> indices{INVALID_INDEX};
-      if (m_edgeIndices[0] != INVALID_INDEX) {
-        indices[0] = edge0().m_pointIndices[0];
-        indices[1] = edge0().m_pointIndices[1];
-      }
-      if (m_edgeIndices[1] != INVALID_INDEX) {
-        indices[2] = edge1().m_pointIndices[0];
-        indices[3] = edge1().m_pointIndices[1];
-      }
-      if (m_edgeIndices[2] != INVALID_INDEX) {
-        indices[4] = edge2().m_pointIndices[0];
-        indices[5] = edge2().m_pointIndices[1];
-      }
-
-      if (m_edgeIndices[0] != INVALID_INDEX) {
-        if (indices[0] != indices[1] and indices[0] != indices[2] and
-            indices[0] != indices[3] and indices[0] != indices[4] and
-            indices[0] != indices[5]) {
-          startPointIndex = indices[0];
-        }
-        if (indices[1] != indices[0] and indices[1] != indices[2] and
-            indices[1] != indices[3] and indices[1] != indices[4] and
-            indices[1] != indices[5]) {
-          if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = indices[1];
-          } else {
-            endPointIndex = indices[1];
-          }
-        }
-      }
-      if (m_edgeIndices[1] != INVALID_INDEX) {
-        if (indices[2] != indices[0] and indices[2] != indices[1] and
-            indices[2] != indices[3] and indices[2] != indices[4] and
-            indices[2] != indices[5]) {
-          if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = indices[2];
-          } else {
-            endPointIndex = indices[2];
-          }
-        }
-        if (indices[3] != indices[0] and indices[3] != indices[1] and
-            indices[3] != indices[2] and indices[3] != indices[4] and
-            indices[3] != indices[5]) {
-          if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = indices[3];
-          } else {
-            endPointIndex = indices[3];
-          }
-        }
-      }
-      if (m_edgeIndices[2] != INVALID_INDEX) {
-        if (indices[4] != indices[0] and indices[4] != indices[1] and
-            indices[4] != indices[2] and indices[4] != indices[3] and
-            indices[4] != indices[5]) {
-          if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = indices[4];
-          } else {
-            endPointIndex = indices[4];
-          }
-        }
-        if (indices[5] != indices[0] and indices[5] != indices[1] and
-            indices[5] != indices[2] and indices[5] != indices[3] and
-            indices[5] != indices[4]) {
-          if (startPointIndex == INVALID_INDEX) {
-            startPointIndex = indices[5];
-          } else {
-            endPointIndex = indices[5];
-          }
-        }
-      }
-      return {startPointIndex, endPointIndex};
-    }
+  struct Opening {
+    size_t startPointIndex = INVALID_INDEX;
+    size_t endPointIndex = INVALID_INDEX;
   };
 
   std::vector<Vertex> m_points{};
@@ -179,11 +92,10 @@ public:
   void adjustTriangles();
   void propagateInvisibilityToUsers(size_t edgeIndex, Edge const &edge);
   Vertex pointAlong(Edge const &edge, double t) const;
-  void close2EdgeOpenTriangle(size_t triangleIndex,
-                              Triangle::Opening const &opening);
-  void close3EdgeOpenTriangle(size_t triangleIndex,
-                              Triangle::Opening const &opening);
+  void close2EdgeOpenTriangle(size_t triangleIndex, Opening const &opening);
+  void close3EdgeOpenTriangle(size_t triangleIndex, Opening const &opening);
   std::vector<bool> softClip(Millimeter zCut);
+  Opening getOpening(MeshClipper::Triangle const &triangle) const;
 };
 
 inline bool operator<(MeshClipper::Edge const &lhs,
@@ -223,8 +135,10 @@ inline bool operator!=(MeshClipper::Edge const &lhs,
 
 inline bool operator<(MeshClipper::Triangle const &lhs,
                       MeshClipper::Triangle const &rhs) {
-  std::set<MeshClipper::Edge> lhsEdges{lhs.edge0(), lhs.edge1(), lhs.edge2()};
-  std::set<MeshClipper::Edge> rhsEdges{rhs.edge0(), rhs.edge1(), rhs.edge2()};
+  std::set<std::size_t> lhsEdges{lhs.m_edgeIndices[0], lhs.m_edgeIndices[1],
+                                 lhs.m_edgeIndices[2]};
+  std::set<std::size_t> rhsEdges{rhs.m_edgeIndices[0], rhs.m_edgeIndices[1],
+                                 rhs.m_edgeIndices[2]};
   auto lhsIt = lhsEdges.begin();
   auto rhsIt = rhsEdges.begin();
   while (lhsIt != lhsEdges.end() and rhsIt != rhsEdges.end()) {

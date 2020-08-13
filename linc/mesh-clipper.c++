@@ -38,8 +38,7 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
     m_edges.emplace_back(Edge{meshEdge.m_vertexIndices, meshEdge.m_users});
   }
   for (auto const &meshTriangle : mesh.m_triangles) {
-    m_triangles.emplace_back(Triangle{m_edges,
-                                      {meshTriangle.m_edgeIndices.at(0),
+    m_triangles.emplace_back(Triangle{{meshTriangle.m_edgeIndices.at(0),
                                        meshTriangle.m_edgeIndices.at(1),
                                        meshTriangle.m_edgeIndices.at(2)}});
   }
@@ -185,7 +184,7 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
 }
 
 void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex,
-                                         Triangle::Opening const &opening) {
+                                         Opening const &opening) {
   Triangle &triangle = m_triangles[triangleIndex];
 
   std::size_t const newEdgeIndex = m_edges.size();
@@ -201,7 +200,7 @@ void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex,
 }
 
 void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex,
-                                         Triangle::Opening const &opening) {
+                                         Opening const &opening) {
   Triangle &triangle = m_triangles[triangleIndex];
 
   // We will add one triangle
@@ -254,7 +253,7 @@ void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex,
 
   // The new triangle
   m_triangles.emplace_back(
-      Triangle{m_edges, {newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
+      Triangle{{newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
 }
 
 void MeshClipper::adjustTriangles() {
@@ -264,7 +263,7 @@ void MeshClipper::adjustTriangles() {
        ++triangleIndex) {
     Triangle &triangle = m_triangles[triangleIndex];
     if (triangle.m_visible) {
-      Triangle::Opening const opening = triangle.getOpening();
+      Opening const opening = getOpening(triangle);
       if (opening.endPointIndex != INVALID_INDEX) {
         // Add the new edge
         auto const numEdges = static_cast<std::size_t>(std::count_if(
@@ -343,10 +342,8 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
       std::set<Vertex> points{};
       for (auto const &edgeIndex : triangle.m_edgeIndices) {
         if (edgeIndex != INVALID_INDEX) {
-          points.insert(
-              m_points[triangle.m_edges[edgeIndex].m_pointIndices[0]]);
-          points.insert(
-              m_points[triangle.m_edges[edgeIndex].m_pointIndices[1]]);
+          points.insert(m_points[m_edges[edgeIndex].m_pointIndices[0]]);
+          points.insert(m_points[m_edges[edgeIndex].m_pointIndices[1]]);
         }
       }
       SmallFacet smallFacet{};
@@ -378,4 +375,81 @@ auto MeshClipper::getVerticesAt(Millimeter const height) const
     }
   }
   return res;
+}
+
+auto MeshClipper::getOpening(MeshClipper::Triangle const &triangle) const
+    -> MeshClipper::Opening {
+  std::size_t startPointIndex = INVALID_INDEX;
+  std::size_t endPointIndex = INVALID_INDEX;
+  std::array<std::size_t, 6> indices{INVALID_INDEX};
+  if (triangle.m_edgeIndices[0] != INVALID_INDEX) {
+    indices[0] = m_edges[triangle.m_edgeIndices[0]].m_pointIndices[0];
+    indices[1] = m_edges[triangle.m_edgeIndices[0]].m_pointIndices[1];
+  }
+  if (triangle.m_edgeIndices[1] != INVALID_INDEX) {
+    indices[2] = m_edges[triangle.m_edgeIndices[1]].m_pointIndices[0];
+    indices[3] = m_edges[triangle.m_edgeIndices[1]].m_pointIndices[1];
+  }
+  if (triangle.m_edgeIndices[2] != INVALID_INDEX) {
+    indices[4] = m_edges[triangle.m_edgeIndices[2]].m_pointIndices[0];
+    indices[5] = m_edges[triangle.m_edgeIndices[2]].m_pointIndices[1];
+  }
+
+  if (triangle.m_edgeIndices[0] != INVALID_INDEX) {
+    if (indices[0] != indices[1] and indices[0] != indices[2] and
+        indices[0] != indices[3] and indices[0] != indices[4] and
+        indices[0] != indices[5]) {
+      startPointIndex = indices[0];
+    }
+    if (indices[1] != indices[0] and indices[1] != indices[2] and
+        indices[1] != indices[3] and indices[1] != indices[4] and
+        indices[1] != indices[5]) {
+      if (startPointIndex == INVALID_INDEX) {
+        startPointIndex = indices[1];
+      } else {
+        endPointIndex = indices[1];
+      }
+    }
+  }
+  if (triangle.m_edgeIndices[1] != INVALID_INDEX) {
+    if (indices[2] != indices[0] and indices[2] != indices[1] and
+        indices[2] != indices[3] and indices[2] != indices[4] and
+        indices[2] != indices[5]) {
+      if (startPointIndex == INVALID_INDEX) {
+        startPointIndex = indices[2];
+      } else {
+        endPointIndex = indices[2];
+      }
+    }
+    if (indices[3] != indices[0] and indices[3] != indices[1] and
+        indices[3] != indices[2] and indices[3] != indices[4] and
+        indices[3] != indices[5]) {
+      if (startPointIndex == INVALID_INDEX) {
+        startPointIndex = indices[3];
+      } else {
+        endPointIndex = indices[3];
+      }
+    }
+  }
+  if (triangle.m_edgeIndices[2] != INVALID_INDEX) {
+    if (indices[4] != indices[0] and indices[4] != indices[1] and
+        indices[4] != indices[2] and indices[4] != indices[3] and
+        indices[4] != indices[5]) {
+      if (startPointIndex == INVALID_INDEX) {
+        startPointIndex = indices[4];
+      } else {
+        endPointIndex = indices[4];
+      }
+    }
+    if (indices[5] != indices[0] and indices[5] != indices[1] and
+        indices[5] != indices[2] and indices[5] != indices[3] and
+        indices[5] != indices[4]) {
+      if (startPointIndex == INVALID_INDEX) {
+        startPointIndex = indices[5];
+      } else {
+        endPointIndex = indices[5];
+      }
+    }
+  }
+  return {startPointIndex, endPointIndex};
 }

@@ -113,9 +113,9 @@ auto main() -> int {
       std::vector<Vertex> points{
           {Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
       std::vector<MeshClipper::Edge> edges{{{0, 1}}, {{1, 2}}, {{2, 0}}};
-      MeshClipper::Triangle triangle{edges, {0, 1, 2}};
+      MeshClipper::Triangle triangle{{0, 1, 2}};
 
-      Triangle const t0{triangle, points};
+      Triangle const t0{triangle, points, edges};
       compare(Normal{t0.getNormalDirection().normalized()}, Normal{0, 0, 1});
       // This test is maybe a bit fragile.
       // The Triangle constructor should use the first three vertices that it
