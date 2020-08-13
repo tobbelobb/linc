@@ -14,6 +14,7 @@ struct Triangle {
 
   Triangle() : m_corners({Vertex::Zero(), Vertex::Zero(), Vertex::Zero()}) {}
 
+  // TODO: Could this hold Vertex& instead?
   Triangle(std::array<Vertex, 3> const &corners) : m_corners(corners) {}
 
   Triangle(Mesh::Triangle const &meshTriangle) {
@@ -25,13 +26,15 @@ struct Triangle {
                        : meshTriangle.edge1().vertex0();
   }
 
-  Triangle(MeshClipper::Triangle const &meshTriangle) {
-    m_corners[0] = meshTriangle.edge0().point0();
-    m_corners[1] = meshTriangle.edge0().point1();
-    m_corners[2] = (meshTriangle.edge1().point0() == m_corners[0] or
-                    meshTriangle.edge1().point0() == m_corners[1])
-                       ? meshTriangle.edge1().point1()
-                       : meshTriangle.edge1().point0();
+  Triangle(MeshClipper::Triangle const &meshTriangle,
+           std::vector<Vertex> const &points) {
+    m_corners[0] = points[meshTriangle.edge0().m_pointIndices[0]];
+    m_corners[1] = points[meshTriangle.edge0().m_pointIndices[1]];
+    m_corners[2] =
+        (points[meshTriangle.edge1().m_pointIndices[0]] == m_corners[0] or
+         points[meshTriangle.edge1().m_pointIndices[0]] == m_corners[1])
+            ? points[meshTriangle.edge1().m_pointIndices[1]]
+            : points[meshTriangle.edge1().m_pointIndices[0]];
   }
 
   Normal getNormal() const {

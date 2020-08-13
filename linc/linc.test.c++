@@ -112,11 +112,10 @@ auto main() -> int {
       // Test Triangle constructor from MeshClipper types
       std::vector<Vertex> points{
           {Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
-      std::vector<MeshClipper::Edge> edges{
-          {points, {0, 1}}, {points, {1, 2}}, {points, {2, 0}}};
+      std::vector<MeshClipper::Edge> edges{{{0, 1}}, {{1, 2}}, {{2, 0}}};
       MeshClipper::Triangle triangle{edges, {0, 1, 2}};
 
-      Triangle const t0{triangle};
+      Triangle const t0{triangle, points};
       compare(t0.getNormal(), Normal{0, 0, 1});
       // This test is maybe a bit fragile.
       // The Triangle constructor should use the first three vertices that it

@@ -311,11 +311,13 @@ static auto findCollision(std::vector<Millimeter> const &heights,
              checkIts[partialPrintTriangle.edge1().m_pointIndices[0]] or
              checkIts[partialPrintTriangle.edge1().m_pointIndices[1]])) {
           for (auto const &coneTriangle : cone.m_triangles) {
-            if (intersect(partialPrintTriangle, coneTriangle))
+            if (intersect({partialPrintTriangle, partialPrint.m_points},
+                          coneTriangle))
               [[unlikely]] {
-                SPDLOG_LOGGER_INFO(logger, "Found collision! Between {} and {}",
-                                   Triangle{partialPrintTriangle},
-                                   Triangle{coneTriangle});
+                SPDLOG_LOGGER_INFO(
+                    logger, "Found collision! Between {} and {}",
+                    Triangle{partialPrintTriangle, partialPrint.m_points},
+                    Triangle{coneTriangle});
                 return {true, h, coneTriangle, effectorPivot};
               }
           }
@@ -474,12 +476,12 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
   std::array<std::size_t, 3> const edgeIndices{partialPrint.m_edges.size(),
                                                partialPrint.m_edges.size() + 1,
                                                partialPrint.m_edges.size() + 2};
-  partialPrint.m_edges.emplace_back(MeshClipper::Edge{
-      partialPrint.m_points, {cornerIndices[0], cornerIndices[1]}});
-  partialPrint.m_edges.emplace_back(MeshClipper::Edge{
-      partialPrint.m_points, {cornerIndices[1], cornerIndices[2]}});
-  partialPrint.m_edges.emplace_back(MeshClipper::Edge{
-      partialPrint.m_points, {cornerIndices[2], cornerIndices[0]}});
+  partialPrint.m_edges.emplace_back(
+      MeshClipper::Edge{{cornerIndices[0], cornerIndices[1]}});
+  partialPrint.m_edges.emplace_back(
+      MeshClipper::Edge{{cornerIndices[1], cornerIndices[2]}});
+  partialPrint.m_edges.emplace_back(
+      MeshClipper::Edge{{cornerIndices[2], cornerIndices[0]}});
 
   partialPrint.m_triangles.emplace_back(
       MeshClipper::Triangle{partialPrint.m_edges, edgeIndices});
@@ -506,13 +508,10 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
         partialPrint.m_edges.size(), partialPrint.m_edges.size() + 1,
         partialPrint.m_edges.size() + 2};
     partialPrint.m_edges.emplace_back(
-        MeshClipper::Edge{partialPrint.m_points,
-                          {effectorPositionIndex, effectorPivotIndices.at(i)}});
+        MeshClipper::Edge{{effectorPositionIndex, effectorPivotIndices.at(i)}});
     partialPrint.m_edges.emplace_back(MeshClipper::Edge{
-        partialPrint.m_points,
         {effectorPositionIndex, effectorPivotIndices.at(i + 1)}});
     partialPrint.m_edges.emplace_back(MeshClipper::Edge{
-        partialPrint.m_points,
         {effectorPivotIndices.at(i), effectorPivotIndices.at(i + 1)}});
     partialPrint.m_triangles.emplace_back(
         MeshClipper::Triangle{partialPrint.m_edges, edgeIndicesABC});

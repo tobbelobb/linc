@@ -35,8 +35,7 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
     m_points.emplace_back(vertex);
   }
   for (auto const &meshEdge : mesh.m_edges) {
-    m_edges.emplace_back(
-        Edge{m_points, meshEdge.m_vertexIndices, meshEdge.m_users});
+    m_edges.emplace_back(Edge{meshEdge.m_vertexIndices, meshEdge.m_users});
   }
   for (auto const &meshTriangle : mesh.m_triangles) {
     m_triangles.emplace_back(Triangle{m_edges,
@@ -147,9 +146,10 @@ void MeshClipper::propagateInvisibilityToUsers(size_t const edgeIndex,
 // t = 0 gives back point0
 // t = 1 gives back point1
 // 0 < t < 1 gives back a point in between
-static auto pointAlong(MeshClipper::Edge const &edge, double const t)
-    -> Vertex {
-  return (1 - t) * edge.point0() + t * edge.point1();
+auto MeshClipper::pointAlong(MeshClipper::Edge const &edge,
+                             double const t) const -> Vertex {
+  return (1 - t) * m_points[edge.m_pointIndices[0]] +
+         t * m_points[edge.m_pointIndices[1]];
 }
 
 void MeshClipper::adjustEdges(Millimeter const zCut,
@@ -165,8 +165,8 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
       propagateInvisibilityToUsers(edgeIndex, edge);
     } else if (visible0 != visible1) {
       // Edge is split by the plane, we need a new point
-      double const distance0 = edge.point0().z() - zCut;
-      double const distance1 = edge.point1().z() - zCut;
+      double const distance0 = point0(edge).z() - zCut;
+      double const distance1 = point1(edge).z() - zCut;
 
       Vertex newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
       newPoint.z() = zCut; // Hedge against truncation errors
@@ -189,9 +189,8 @@ void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex,
   Triangle &triangle = m_triangles[triangleIndex];
 
   std::size_t const newEdgeIndex = m_edges.size();
-  m_edges.emplace_back(Edge{m_points,
-                            {opening.startPointIndex, opening.endPointIndex},
-                            {triangleIndex}});
+  m_edges.emplace_back(
+      Edge{{opening.startPointIndex, opening.endPointIndex}, {triangleIndex}});
   auto *const emptySpot =
       std::find(triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
                 INVALID_INDEX);
@@ -247,12 +246,10 @@ void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex,
   }
 
   // The newEdge
-  m_edges.emplace_back(Edge{m_points,
-                            {opening.startPointIndex, opening.endPointIndex},
+  m_edges.emplace_back(Edge{{opening.startPointIndex, opening.endPointIndex},
                             {newTriangleIndex}});
   // The newNewEdge
-  m_edges.emplace_back(Edge{m_points,
-                            {opening.startPointIndex, crossPointIndex},
+  m_edges.emplace_back(Edge{{opening.startPointIndex, crossPointIndex},
                             {triangleIndex, newTriangleIndex}});
 
   // The new triangle
@@ -345,8 +342,10 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
       std::set<Vertex> points{};
       for (auto const &edgeIndex : triangle.m_edgeIndices) {
         if (edgeIndex != INVALID_INDEX) {
-          points.insert(triangle.m_edges[edgeIndex].point0());
-          points.insert(triangle.m_edges[edgeIndex].point1());
+          points.insert(
+              m_points[triangle.m_edges[edgeIndex].m_pointIndices[0]]);
+          points.insert(
+              m_points[triangle.m_edges[edgeIndex].m_pointIndices[1]]);
         }
       }
       SmallFacet smallFacet{};

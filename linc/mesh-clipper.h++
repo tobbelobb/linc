@@ -13,66 +13,25 @@ using EdgePointIndices = std::array<size_t, 2>;
 class MeshClipper {
 public:
   struct Edge {
-    std::vector<Vertex> &m_points;
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
     std::vector<size_t> m_users{};
 
-    Vertex &point0() const { return m_points[m_pointIndices[0]]; }
-    Vertex &point1() const { return m_points[m_pointIndices[1]]; }
-
     Edge &operator=(Edge const &other) {
-      m_points = other.m_points;
       m_pointIndices = other.m_pointIndices;
       m_users = other.m_users;
       return *this;
     }
 
     Edge(MeshClipper::Edge const &other) = default;
-    Edge(std::vector<Vertex> &points) : m_points(points) {}
-    Edge(std::vector<Vertex> &points, EdgePointIndices pointIndices)
-        : m_points(points), m_pointIndices(pointIndices) {}
-    Edge(std::vector<Vertex> &points, EdgePointIndices pointIndices,
-         std::vector<size_t> users)
-        : m_points(points), m_pointIndices(pointIndices), m_users(users) {}
+    Edge(EdgePointIndices pointIndices) : m_pointIndices(pointIndices) {}
+    Edge(EdgePointIndices pointIndices, std::vector<size_t> users)
+        : m_pointIndices(pointIndices), m_users(users) {}
 
-    bool operator<(Edge const &other) const {
-      auto const &[lhsPointLow, lhsPointHigh] =
-          std::minmax(this->point0(), this->point1());
-      auto const &[rhsPointLow, rhsPointHigh] =
-          std::minmax(other.point0(), other.point1());
-
-      if (lhsPointLow < rhsPointLow) {
-        return true;
-      }
-      if (rhsPointLow < lhsPointLow) {
-        return false;
-      }
-      if (lhsPointHigh < rhsPointHigh) {
-        return true;
-      }
-      if (rhsPointHigh < lhsPointHigh) {
-        return false;
-      }
-      return false;
-    }
-
-    bool operator==(Edge const &other) const {
-      return not(*this < other) and not(other < *this);
-    }
-
-    bool fullEquals(Edge const &other) const {
-      return *this == other and m_users == other.m_users;
-    }
-
-    bool operator!=(Edge const &other) const { return not(*this == other); }
-
-    friend std::ostream &operator<<(std::ostream &os, Edge const &edge) {
-      Vertex const &p0 = edge.point0();
-      Vertex const &p1 = edge.point1();
-      os << '{' << p0 << " (" << std::setiosflags(std::ios::right)
-         << std::setw(3) << std::setfill(' ') << edge.m_pointIndices[0]
-         << ") --- " << p1 << " (" << std::setw(3) << edge.m_pointIndices[1]
-         << ") users: (";
+    friend std::ostream &operator<<(std::ostream &os,
+                                    MeshClipper::Edge const &edge) {
+      os << "{ " << std::setiosflags(std::ios::right) << std::setw(3)
+         << std::setfill(' ') << edge.m_pointIndices[0] << " (" << std::setw(3)
+         << edge.m_pointIndices[1] << ") users: (";
       std::string delim{""};
       if (edge.m_users.size() == 1) {
         delim = "    ";
@@ -107,32 +66,6 @@ public:
       return *this;
     }
 
-    bool operator<(Triangle const &other) const {
-      std::set<MeshClipper::Edge> lhsEdges{this->edge0(), this->edge1(),
-                                           this->edge2()};
-      std::set<MeshClipper::Edge> rhsEdges{other.edge0(), other.edge1(),
-                                           other.edge2()};
-      auto lhsIt = lhsEdges.begin();
-      auto rhsIt = rhsEdges.begin();
-      while (lhsIt != lhsEdges.end() and rhsIt != rhsEdges.end()) {
-        if (*lhsIt < *rhsIt) {
-          return true;
-        }
-        if (*rhsIt < *lhsIt) {
-          return false;
-        }
-        ++lhsIt;
-        ++rhsIt;
-      }
-      return false;
-    }
-
-    bool operator==(Triangle const &other) const {
-      return not(*this < other) and not(other < *this);
-    }
-
-    bool operator!=(Triangle const &other) const { return not(*this == other); }
-
     friend std::ostream &operator<<(std::ostream &os,
                                     Triangle const &triangle) {
       os << '{';
@@ -146,10 +79,6 @@ public:
         os << ",\n " << triangle.edge2();
       }
       return os << '}';
-    }
-
-    bool fullEquals(Triangle const &other) const {
-      return *this == other and m_visible == other.m_visible;
     }
 
     Opening getOpening() const {
@@ -235,6 +164,9 @@ public:
 
   MeshClipper(Mesh const &mesh);
 
+  Vertex &point0(Edge const &edge) { return m_points[edge.m_pointIndices[0]]; }
+  Vertex &point1(Edge const &edge) { return m_points[edge.m_pointIndices[1]]; }
+
   double maxHeight() const;
   double softMaxHeight(std::vector<bool> const &visible) const;
   double minHeight() const;
@@ -245,12 +177,78 @@ public:
   void adjustEdges(Millimeter zCut, std::vector<bool> &pointVisibility);
   void adjustTriangles();
   void propagateInvisibilityToUsers(size_t edgeIndex, Edge const &edge);
+  Vertex pointAlong(Edge const &edge, double t) const;
   void close2EdgeOpenTriangle(size_t triangleIndex,
                               Triangle::Opening const &opening);
   void close3EdgeOpenTriangle(size_t triangleIndex,
                               Triangle::Opening const &opening);
   std::vector<bool> softClip(Millimeter zCut);
 };
+
+inline bool operator<(MeshClipper::Edge const &lhs,
+                      MeshClipper::Edge const &rhs) {
+  auto const &[lhsPointLow, lhsPointHigh] =
+      std::minmax(lhs.m_pointIndices[0], lhs.m_pointIndices[1]);
+  auto const &[rhsPointLow, rhsPointHigh] =
+      std::minmax(rhs.m_pointIndices[0], rhs.m_pointIndices[1]);
+
+  if (lhsPointLow < rhsPointLow) {
+    return true;
+  }
+  if (rhsPointLow < lhsPointLow) {
+    return false;
+  }
+  if (lhsPointHigh < rhsPointHigh) {
+    return true;
+  }
+  if (rhsPointHigh < lhsPointHigh) {
+    return false;
+  }
+  return false;
+}
+
+inline bool operator==(MeshClipper::Edge const &lhs,
+                       MeshClipper::Edge const &rhs) {
+  return (lhs.m_pointIndices[0] == rhs.m_pointIndices[0] and
+          lhs.m_pointIndices[1] == rhs.m_pointIndices[1]) or
+         (lhs.m_pointIndices[1] == rhs.m_pointIndices[0] and
+          lhs.m_pointIndices[0] == rhs.m_pointIndices[1]);
+}
+
+inline bool operator!=(MeshClipper::Edge const &lhs,
+                       MeshClipper::Edge const &rhs) {
+  return not(lhs == rhs);
+}
+
+inline bool operator<(MeshClipper::Triangle const &lhs,
+                      MeshClipper::Triangle const &rhs) {
+  std::set<MeshClipper::Edge> lhsEdges{lhs.edge0(), lhs.edge1(), lhs.edge2()};
+  std::set<MeshClipper::Edge> rhsEdges{rhs.edge0(), rhs.edge1(), rhs.edge2()};
+  auto lhsIt = lhsEdges.begin();
+  auto rhsIt = rhsEdges.begin();
+  while (lhsIt != lhsEdges.end() and rhsIt != rhsEdges.end()) {
+    if (*lhsIt < *rhsIt) {
+      return true;
+    }
+    if (*rhsIt < *lhsIt) {
+      return false;
+    }
+    ++lhsIt;
+    ++rhsIt;
+  }
+  return false;
+}
+
+// TODO: compare indices instead of Vertex values...
+inline bool operator==(MeshClipper::Triangle const &lhs,
+                       MeshClipper::Triangle const &rhs) {
+  return not(lhs < rhs) and not(lhs < rhs);
+}
+
+inline bool operator!=(MeshClipper::Triangle const &lhs,
+                       MeshClipper::Triangle const &rhs) {
+  return not(lhs == rhs);
+}
 
 inline auto operator<<(std::ostream &os,
                        std::vector<MeshClipper::Edge> const &edges)
@@ -315,11 +313,7 @@ template <> struct fmt::formatter<MeshClipper::Edge> {
   template <typename FormatContext>
   auto format(const MeshClipper::Edge &edge, FormatContext &ctx) {
     // ctx.out() is an output iterator to write to.
-    return format_to(
-        ctx.out(),
-        "{{{:.1f} {:.1f} {:.1f} ({}) --- {:.1f} {:.1f} {:.1f} ({})}}",
-        edge.point0().x(), edge.point0().y(), edge.point0().z(),
-        edge.m_pointIndices[0], edge.point1().x(), edge.point1().y(),
-        edge.point1().z(), edge.m_pointIndices[1]);
+    return format_to(ctx.out(), "{{({}) --- ({})}}", edge.m_pointIndices[0],
+                     edge.m_pointIndices[1]);
   }
 };
