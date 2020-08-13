@@ -35,12 +35,12 @@ MeshClipper::MeshClipper(Mesh const &mesh) {
     m_points.emplace_back(vertex);
   }
   for (auto const &meshEdge : mesh.m_edges) {
-    m_edges.emplace_back(Edge{meshEdge.m_vertexIndices, meshEdge.m_users});
+    m_edges.emplace_back(meshEdge.m_vertexIndices, meshEdge.m_users);
   }
   for (auto const &meshTriangle : mesh.m_triangles) {
-    m_triangles.emplace_back(Triangle{{meshTriangle.m_edgeIndices.at(0),
-                                       meshTriangle.m_edgeIndices.at(1),
-                                       meshTriangle.m_edgeIndices.at(2)}});
+    m_triangles.emplace_back(std::array<size_t, 3>{
+        meshTriangle.m_edgeIndices.at(0), meshTriangle.m_edgeIndices.at(1),
+        meshTriangle.m_edgeIndices.at(2)});
   }
 }
 

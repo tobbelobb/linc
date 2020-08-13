@@ -51,6 +51,11 @@ public:
                                         INVALID_INDEX};
     bool m_visible = true;
 
+    Triangle(std::array<size_t, 3> edgeIndices)
+        : m_edgeIndices(std::move(edgeIndices)){};
+    Triangle(std::array<size_t, 3> edgeIndices, bool visible)
+        : m_edgeIndices(std::move(edgeIndices)), m_visible(visible){};
+
     Triangle &operator=(Triangle const &other) {
       m_edgeIndices = other.m_edgeIndices;
       m_visible = other.m_visible;
