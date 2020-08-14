@@ -8,25 +8,19 @@
 #include <linc/units.h++>
 #include <linc/vertex.h++>
 
-using EdgePointIndices = std::array<size_t, 2>;
+using EdgePointIndices = std::array<std::size_t, 2>;
 
 class MeshClipper {
 public:
   struct Edge {
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
-    std::vector<size_t> m_users{};
+    std::vector<std::size_t> m_users{};
 
     Edge &operator=(Edge const &other) {
       m_pointIndices = other.m_pointIndices;
       m_users = other.m_users;
       return *this;
     }
-
-    Edge(MeshClipper::Edge const &other) = default;
-    Edge(EdgePointIndices pointIndices)
-        : m_pointIndices(std::move(pointIndices)) {}
-    Edge(EdgePointIndices pointIndices, std::vector<size_t> users)
-        : m_pointIndices(std::move(pointIndices)), m_users(std::move(users)) {}
 
     friend std::ostream &operator<<(std::ostream &os,
                                     MeshClipper::Edge const &edge) {
@@ -46,15 +40,9 @@ public:
   };
 
   struct Triangle {
-
-    std::array<size_t, 3> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
-                                        INVALID_INDEX};
+    std::array<std::size_t, 3> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
+                                             INVALID_INDEX};
     bool m_visible = true;
-
-    Triangle(std::array<size_t, 3> edgeIndices)
-        : m_edgeIndices(std::move(edgeIndices)){};
-    Triangle(std::array<size_t, 3> edgeIndices, bool visible)
-        : m_edgeIndices(std::move(edgeIndices)), m_visible(visible){};
 
     Triangle &operator=(Triangle const &other) {
       m_edgeIndices = other.m_edgeIndices;
@@ -73,8 +61,8 @@ public:
   };
 
   struct Opening {
-    size_t startPointIndex = INVALID_INDEX;
-    size_t endPointIndex = INVALID_INDEX;
+    std::size_t startPointIndex = INVALID_INDEX;
+    std::size_t endPointIndex = INVALID_INDEX;
   };
 
   std::vector<Vertex> m_points{};
@@ -89,16 +77,18 @@ public:
   double maxHeight() const;
   double softMaxHeight(std::vector<bool> const &visible) const;
   double minHeight() const;
-  size_t countVisibleTriangles() const;
+  std::size_t countVisibleTriangles() const;
   void writeBinaryStl(std::string const &fileName) const;
   std::vector<Vertex> getVerticesAt(Millimeter height) const;
   std::vector<bool> getPointsVisibility(Millimeter zCut);
   void adjustEdges(Millimeter zCut, std::vector<bool> &pointVisibility);
   void adjustTriangles();
-  void propagateInvisibilityToUsers(size_t edgeIndex, Edge const &edge);
+  void propagateInvisibilityToUsers(std::size_t edgeIndex, Edge const &edge);
   Vertex pointAlong(Edge const &edge, double t) const;
-  void close2EdgeOpenTriangle(size_t triangleIndex, Opening const &opening);
-  void close3EdgeOpenTriangle(size_t triangleIndex, Opening const &opening);
+  void close2EdgeOpenTriangle(std::size_t triangleIndex,
+                              Opening const &opening);
+  void close3EdgeOpenTriangle(std::size_t triangleIndex,
+                              Opening const &opening);
   std::vector<bool> softClip(Millimeter zCut);
   Opening getOpening(MeshClipper::Triangle const &triangle) const;
 };

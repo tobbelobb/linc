@@ -60,7 +60,7 @@ public:
                                         INVALID_INDEX};
 
     Triangle() = delete;
-    Triangle(std::vector<Edge> &edges, std::array<size_t, 3> edgeIndices)
+    Triangle(std::vector<Edge> &edges, std::array<size_t, 3> const &edgeIndices)
         : m_edges(edges), m_edgeIndices(edgeIndices) {}
 
     Triangle(Triangle const &) = default;

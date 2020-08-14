@@ -183,7 +183,7 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
   }
 }
 
-void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex,
+void MeshClipper::close2EdgeOpenTriangle(std::size_t const triangleIndex,
                                          Opening const &opening) {
   Triangle &triangle = m_triangles[triangleIndex];
 
@@ -199,7 +199,7 @@ void MeshClipper::close2EdgeOpenTriangle(size_t const triangleIndex,
   triangle.m_edgeIndices.at(insertEdgeIndexAt) = newEdgeIndex;
 }
 
-void MeshClipper::close3EdgeOpenTriangle(size_t const triangleIndex,
+void MeshClipper::close3EdgeOpenTriangle(std::size_t const triangleIndex,
                                          Opening const &opening) {
   Triangle &triangle = m_triangles[triangleIndex];
 

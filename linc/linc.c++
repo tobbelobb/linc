@@ -191,14 +191,15 @@ static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
   // Add star topology down to anchorPivot
   cone.m_edges.reserve(topVertices.size() * 2);
   for (size_t pointIdx{1}; pointIdx < numPoints; ++pointIdx) {
-    cone.m_edges.emplace_back(Mesh::Edge{cone.m_vertices, {0, pointIdx}});
+    cone.m_edges.emplace_back(cone.m_vertices, EdgeVertexIndices{0, pointIdx});
   }
   // Add ring of edges through all top points
   for (size_t pointIdx{1}; pointIdx < numPoints - 1; ++pointIdx) {
-    cone.m_edges.emplace_back(
-        Mesh::Edge{cone.m_vertices, {pointIdx, pointIdx + 1}});
+    cone.m_edges.emplace_back(cone.m_vertices,
+                              EdgeVertexIndices{pointIdx, pointIdx + 1});
   }
-  cone.m_edges.emplace_back(Mesh::Edge{cone.m_vertices, {numPoints - 1, 0}});
+  cone.m_edges.emplace_back(cone.m_vertices,
+                            EdgeVertexIndices{numPoints - 1, 0});
 
   // TRIANGLES
   // There are numTopPoints top points (and thus star-topology-edges)
@@ -207,9 +208,10 @@ static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
   size_t const numTopVertices = topVertices.size();
   for (size_t starEdgeIdx{0}; starEdgeIdx < numTopVertices; ++starEdgeIdx) {
     size_t const ringEdgeIdx = starEdgeIdx + numTopVertices;
-    cone.m_triangles.emplace_back(Mesh::Triangle{
+    cone.m_triangles.emplace_back(
         cone.m_edges,
-        {starEdgeIdx, (starEdgeIdx + 1) % numTopVertices, ringEdgeIdx}});
+        std::array<size_t, 3>{starEdgeIdx, (starEdgeIdx + 1) % numTopVertices,
+                              ringEdgeIdx});
   }
   return cone;
 }
@@ -484,13 +486,13 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
                                                partialPrint.m_edges.size() + 1,
                                                partialPrint.m_edges.size() + 2};
   partialPrint.m_edges.emplace_back(
-      MeshClipper::Edge{{cornerIndices[0], cornerIndices[1]}});
+      EdgePointIndices{cornerIndices[0], cornerIndices[1]});
   partialPrint.m_edges.emplace_back(
-      MeshClipper::Edge{{cornerIndices[1], cornerIndices[2]}});
+      EdgePointIndices{cornerIndices[1], cornerIndices[2]});
   partialPrint.m_edges.emplace_back(
-      MeshClipper::Edge{{cornerIndices[2], cornerIndices[0]}});
+      EdgePointIndices{cornerIndices[2], cornerIndices[0]});
 
-  partialPrint.m_triangles.emplace_back(MeshClipper::Triangle{edgeIndices});
+  partialPrint.m_triangles.emplace_back(edgeIndices);
 
   auto const effectorPosition =
       *std::max_element(
@@ -514,13 +516,12 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
         partialPrint.m_edges.size(), partialPrint.m_edges.size() + 1,
         partialPrint.m_edges.size() + 2};
     partialPrint.m_edges.emplace_back(
-        MeshClipper::Edge{{effectorPositionIndex, effectorPivotIndices.at(i)}});
-    partialPrint.m_edges.emplace_back(MeshClipper::Edge{
-        {effectorPositionIndex, effectorPivotIndices.at(i + 1)}});
-    partialPrint.m_edges.emplace_back(MeshClipper::Edge{
-        {effectorPivotIndices.at(i), effectorPivotIndices.at(i + 1)}});
-    partialPrint.m_triangles.emplace_back(
-        MeshClipper::Triangle{edgeIndicesABC});
+        EdgePointIndices{effectorPositionIndex, effectorPivotIndices.at(i)});
+    partialPrint.m_edges.emplace_back(EdgePointIndices{
+        effectorPositionIndex, effectorPivotIndices.at(i + 1)});
+    partialPrint.m_edges.emplace_back(EdgePointIndices{
+        effectorPivotIndices.at(i), effectorPivotIndices.at(i + 1)});
+    partialPrint.m_triangles.emplace_back(edgeIndicesABC);
   }
 
   partialPrint.writeBinaryStl(outFileName);
