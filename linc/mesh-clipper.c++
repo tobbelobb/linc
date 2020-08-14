@@ -152,7 +152,7 @@ MeshClipper::MeshClipper(MeshClipper const &meshClipper) {
 
 auto MeshClipper::getPointsVisibility(Millimeter const zCut)
     -> std::vector<bool> {
-  double constexpr eps = 1e-4;
+  double constexpr eps = VertexConstants::eps;
   std::vector<bool> visible{};
   visible.reserve(m_points.size() + m_points.size() / 10);
   for (auto &point : m_points) {
@@ -265,25 +265,31 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
     Edge &edge = m_edges[edgeIndex];
     bool const visible0 = pointVisibility.at(edge.m_pointIndices[0]);
     bool const visible1 = pointVisibility.at(edge.m_pointIndices[1]);
-    if (not visible0 and not visible1) {
+
+    if ((not visible0 and
+         (m_points[edge.m_pointIndices[1]].z() - zCut) >= 0.0) or
+        (not visible1 and
+         (m_points[edge.m_pointIndices[0]].z() - zCut) >= 0.0)) {
       // Edge is entirely above cutting plane
       propagateInvisibilityToUsers(edgeIndex, edge);
-    } else if (visible0 != visible1) {
-      // Edge is split by the plane, we need a new point
-      double const distance0 = point0(edge).z() - zCut;
-      double const distance1 = point1(edge).z() - zCut;
+    } else if (not visible0 or not visible1) {
+      double const distance0 = m_points[edge.m_pointIndices[0]].z() - zCut;
+      double const distance1 = m_points[edge.m_pointIndices[1]].z() - zCut;
+      if ((distance0 < 0.0 and distance1 > 0.0) or
+          (distance0 > 0.0 and distance1 < 0.0)) {
+        // Edge is split by the plane, we need a new point
+        Vertex newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
+        newPoint.z() = zCut; // Hedge against truncation errors
 
-      Vertex newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
-      newPoint.z() = zCut; // Hedge against truncation errors
+        std::size_t const newPointIndex = m_points.size();
+        m_points.emplace_back(newPoint);
+        pointVisibility.emplace_back(true);
 
-      std::size_t const newPointIndex = m_points.size();
-      m_points.emplace_back(newPoint);
-      pointVisibility.emplace_back(true);
-
-      if (distance0 > 0.0) {
-        edge.m_pointIndices[0] = newPointIndex;
-      } else {
-        edge.m_pointIndices[1] = newPointIndex;
+        if (distance0 > 0.0) {
+          edge.m_pointIndices[0] = newPointIndex;
+        } else {
+          edge.m_pointIndices[1] = newPointIndex;
+        }
       }
     }
   }
