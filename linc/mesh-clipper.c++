@@ -15,29 +15,135 @@ using PairOfPairs = std::array<std::array<std::size_t, 2>, 2>;
 
 static auto logger = spdlog::get("file_logger");
 
-MeshClipper::MeshClipper(Mesh const &mesh) {
+void MeshClipper::loadVertices(std::vector<Stl::Facet> const &facets) {
+  for (const auto &facet : facets) {
+    for (const auto &vertex : facet.vertices) {
+      m_points.emplace_back(vertex);
+    }
+  }
+  SPDLOG_LOGGER_TRACE(logger, "found {} vertices", m_points.size());
+  std::sort(m_points.begin(), m_points.end());
+  auto const endOfUniqueVertices =
+      std::unique(m_points.begin(), m_points.end());
+  m_points.erase(endOfUniqueVertices, m_points.end());
+  SPDLOG_LOGGER_TRACE(logger, "found {} unique vertices", m_points.size());
+}
+
+auto MeshClipper::extractEdgeTriplets(std::vector<Stl::Facet> const &facets)
+    -> std::vector<std::array<MeshClipper::Edge, 3>> {
+  std::vector<std::array<Edge, 3>> edgeTriplets{};
+  edgeTriplets.reserve(facets.size());
+  for (const auto &facet : facets) {
+    // Populate the vertex index triplet that matches the facet's vertices
+    std::array<size_t, 3> vertexIndexTriplet = {INVALID_INDEX, INVALID_INDEX,
+                                                INVALID_INDEX};
+    for (auto const &[j, facetVertex] : enumerate(facet.vertices)) {
+      auto const distance = static_cast<std::size_t>(std::distance(
+          m_points.begin(),
+          std::lower_bound(m_points.begin(), m_points.end(), facetVertex)));
+      vertexIndexTriplet.at(j) = distance;
+    }
+    // Never mind edges from  this facet if two vertices are the same
+    if (vertexIndexTriplet[0] != vertexIndexTriplet[1] and
+        vertexIndexTriplet[0] != vertexIndexTriplet[2] and
+        vertexIndexTriplet[1] != vertexIndexTriplet[2]) {
+      std::array<Edge, 3> edgeTriplet = {
+          Edge{{vertexIndexTriplet[0], vertexIndexTriplet[1]}},
+          Edge{{vertexIndexTriplet[1], vertexIndexTriplet[2]}},
+          Edge{{vertexIndexTriplet[2], vertexIndexTriplet[0]}}};
+      std::sort(edgeTriplet.begin(), edgeTriplet.end());
+
+      edgeTriplets.emplace_back(edgeTriplet);
+    }
+  }
+  SPDLOG_LOGGER_TRACE(logger, "found {} edge triplets",
+                      consideredEdgeTriplets.size());
+  std::sort(edgeTriplets.begin(), edgeTriplets.end());
+  auto const endOfUniqueEdgeTriplets =
+      std::unique(edgeTriplets.begin(), edgeTriplets.end());
+  edgeTriplets.erase(endOfUniqueEdgeTriplets, edgeTriplets.end());
+  SPDLOG_LOGGER_TRACE(logger, "found {} unique edge triplets",
+                      edgeTriplets.size());
+
+  return edgeTriplets;
+}
+
+void MeshClipper::loadEdges(
+    std::vector<std::array<MeshClipper::Edge, 3>> const &edgeTriplets) {
+  for (auto const &edgeTriplet : edgeTriplets) {
+    for (auto const &edge : edgeTriplet) {
+      m_edges.emplace_back(edge);
+    }
+  }
+  SPDLOG_LOGGER_TRACE(logger, "found {} edges", m_edges.size());
+  std::sort(m_edges.begin(), m_edges.end());
+  auto const endOfUniqueEdges = std::unique(m_edges.begin(), m_edges.end());
+  m_edges.erase(endOfUniqueEdges, m_edges.end());
+  SPDLOG_LOGGER_TRACE(logger, "found {} unique edges", m_edges.size());
+}
+
+void MeshClipper::loadTriangles(
+    std::vector<std::array<MeshClipper::Edge, 3>> const &edgeTriplets) {
+  for (auto const &[i, edgeTriplet] : enumerate(edgeTriplets)) {
+    std::array<size_t, 3> edgeIndices{INVALID_INDEX, INVALID_INDEX,
+                                      INVALID_INDEX};
+    for (auto const &[q, edgeSuggestion] : enumerate(edgeTriplet)) {
+      auto const distance = static_cast<std::size_t>(std::distance(
+          m_edges.begin(),
+          std::lower_bound(m_edges.begin(), m_edges.end(), edgeSuggestion)));
+      edgeIndices.at(q) = distance;
+    }
+    if (edgeIndices[0] != edgeIndices[1] and
+        edgeIndices[0] != edgeIndices[2] and edgeIndices[1] != edgeIndices[2]) {
+      m_triangles.emplace_back(edgeIndices);
+    }
+  }
+
+  SPDLOG_LOGGER_TRACE(logger, "found {} triangles", m_triangles.size());
+
+  for (auto const &[i, triangle] : enumerate(m_triangles)) {
+    m_edges[triangle.m_edgeIndices[0]].m_users.emplace_back(i);
+    m_edges[triangle.m_edgeIndices[1]].m_users.emplace_back(i);
+    m_edges[triangle.m_edgeIndices[2]].m_users.emplace_back(i);
+  }
+}
+
+MeshClipper::MeshClipper(Stl const &stl) {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%t] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
+  SPDLOG_LOGGER_DEBUG(logger, "Building MeshClipper from {} facets",
+                      stl.m_facets.size());
+  m_points.reserve(3 * stl.m_facets.size());
+  loadVertices(stl.m_facets);
 
-  // We will typically soft clip a MeshClipper object.
-  // This requires adding some new points, edges, and triangles.
-  // So reserve some place for them from the start to avoid
-  // dynamic mallocs later.
-  m_points.reserve(mesh.m_vertices.size() + mesh.m_vertices.size() / 10);
-  m_edges.reserve(mesh.m_edges.size() + mesh.m_edges.size() / 10);
-  m_triangles.reserve(mesh.m_triangles.size() + mesh.m_triangles.size() / 10);
+  std::vector<std::array<Edge, 3>> const edgeTriplets =
+      extractEdgeTriplets(stl.m_facets);
+
+  m_edges.reserve(edgeTriplets.size() * 3);
+  loadEdges(edgeTriplets);
+
+  m_triangles.reserve(edgeTriplets.size() + edgeTriplets.size() / 10);
+  loadTriangles(edgeTriplets);
+
+  SPDLOG_LOGGER_DEBUG(logger, "finished loading MeshClipper from Stl");
+}
+
+MeshClipper::MeshClipper(MeshClipper const &meshClipper) {
+  m_points.reserve(meshClipper.m_points.capacity());
+  m_edges.reserve(meshClipper.m_edges.capacity());
+  m_triangles.reserve(meshClipper.m_triangles.capacity());
 
   // Copy over data from Mesh object
-  for (auto const &vertex : mesh.m_vertices) {
+  for (auto const &vertex : meshClipper.m_points) {
     m_points.emplace_back(vertex);
   }
-  for (auto const &meshEdge : mesh.m_edges) {
-    m_edges.emplace_back(meshEdge.m_vertexIndices, meshEdge.m_users);
+  for (auto const &meshEdge : meshClipper.m_edges) {
+    m_edges.emplace_back(meshEdge.m_pointIndices, meshEdge.m_users);
   }
-  for (auto const &meshTriangle : mesh.m_triangles) {
+  for (auto const &meshTriangle : meshClipper.m_triangles) {
     m_triangles.emplace_back(std::array<size_t, 3>{
         meshTriangle.m_edgeIndices.at(0), meshTriangle.m_edgeIndices.at(1),
         meshTriangle.m_edgeIndices.at(2)});

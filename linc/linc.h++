@@ -4,7 +4,6 @@
 #include <spdlog/spdlog.h>
 
 #include <linc/mesh-clipper.h++>
-#include <linc/mesh.h++>
 #include <linc/params.h++>
 #include <linc/units.h++>
 #include <linc/vertex.h++>
@@ -15,15 +14,6 @@ struct Triangle {
   Triangle() : m_corners({Vertex::Zero(), Vertex::Zero(), Vertex::Zero()}) {}
 
   Triangle(std::array<Vertex, 3> const &corners) : m_corners(corners) {}
-
-  Triangle(Mesh::Triangle const &meshTriangle) {
-    m_corners[0] = meshTriangle.edge0().vertex0();
-    m_corners[1] = meshTriangle.edge0().vertex1();
-    m_corners[2] = (meshTriangle.edge1().vertex0() == m_corners[0] or
-                    meshTriangle.edge1().vertex0() == m_corners[1])
-                       ? meshTriangle.edge1().vertex1()
-                       : meshTriangle.edge1().vertex0();
-  }
 
   Triangle(MeshClipper::Triangle const &meshTriangle,
            std::vector<Vertex> const &points,
@@ -103,8 +93,8 @@ struct Collision {
   operator bool() const { return m_isCollision; }
 };
 
-[[nodiscard]] Collision willCollide(Mesh const &, Pivots const &, Millimeter,
-                                    bool hullIt = true);
+[[nodiscard]] Collision willCollide(MeshClipper const &, Pivots const &,
+                                    Millimeter, bool hullIt = true);
 
-void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
+void makeDebugModel(MeshClipper const &meshClipper, Pivots const &pivots,
                     Collision const &collision, std::string const &outFileName);

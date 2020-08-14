@@ -69,7 +69,7 @@ auto main(int argc, char *argv[]) -> int {
     std::cerr << "Failed to load " << modelFileName << '\n';
     return -1;
   }
-  Mesh const mesh{stl};
+  MeshClipper const meshClipper{stl};
 
   if (not validateParamsFile(paramsFileName)) {
     std::cerr << "Validation of " << paramsFileName << " failed\n";
@@ -77,11 +77,11 @@ auto main(int argc, char *argv[]) -> int {
   }
   Pivots const pivots{paramsFileName};
 
-  Collision const found{willCollide(mesh, pivots, layerHeightMax)};
+  Collision const found{willCollide(meshClipper, pivots, layerHeightMax)};
   if (found) {
     std::cout << "Collision detected at z=" << found.m_height << '\n';
     if (not outFileName.empty()) {
-      makeDebugModel(mesh, pivots, found, outFileName);
+      makeDebugModel(meshClipper, pivots, found, outFileName);
       std::cout << "Wrote " << outFileName << '\n';
     }
     return 1;

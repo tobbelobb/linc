@@ -4,10 +4,11 @@
 
 #include <spdlog/spdlog.h>
 
-#include <linc/mesh.h++>
+#include <linc/stl.h++>
 #include <linc/units.h++>
 #include <linc/vertex.h++>
 
+constexpr std::size_t INVALID_INDEX{std::numeric_limits<std::size_t>::max()};
 using EdgePointIndices = std::array<std::size_t, 2>;
 
 class MeshClipper {
@@ -69,11 +70,19 @@ public:
   std::vector<Edge> m_edges{};
   std::vector<Triangle> m_triangles{};
 
-  MeshClipper(Mesh const &mesh);
+  MeshClipper(MeshClipper const &meshClipper);
+  MeshClipper(Stl const &stl);
+  // A mesh can start out from a single point
+  MeshClipper(Vertex v) : m_points{{v}} {}
 
   Vertex &point0(Edge const &edge) { return m_points[edge.m_pointIndices[0]]; }
   Vertex &point1(Edge const &edge) { return m_points[edge.m_pointIndices[1]]; }
 
+  void loadVertices(std::vector<Stl::Facet> const &facets);
+  std::vector<std::array<Edge, 3>>
+  extractEdgeTriplets(std::vector<Stl::Facet> const &facets);
+  void loadEdges(std::vector<std::array<Edge, 3>> const &edgeTriplets);
+  void loadTriangles(std::vector<std::array<Edge, 3>> const &edgeTriplets);
   double maxHeight() const;
   double softMaxHeight(std::vector<bool> const &visible) const;
   double minHeight() const;

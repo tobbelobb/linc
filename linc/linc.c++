@@ -178,54 +178,50 @@ void sortCcwInPlace(std::vector<Vertex> &vertices) {
 }
 
 static auto buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
-                      std::vector<Vertex> const &topVertices) -> Mesh {
+                      std::vector<Vertex> const &topVertices) -> MeshClipper {
   // POINTS
-  Mesh cone{anchorPivot};
-  cone.m_vertices.reserve(topVertices.size() + 1);
+  MeshClipper cone{anchorPivot};
+  cone.m_points.reserve(topVertices.size() + 1);
   for (auto const &topVertex : topVertices) {
-    cone.m_vertices.emplace_back(topVertex + effectorPivot);
+    cone.m_points.emplace_back(topVertex + effectorPivot);
   }
-  size_t const numPoints = cone.m_vertices.size();
+  std::size_t const numTopPoints = topVertices.size();
 
   // EDGES
   // Add star topology down to anchorPivot
-  cone.m_edges.reserve(topVertices.size() * 2);
-  for (size_t pointIdx{1}; pointIdx < numPoints; ++pointIdx) {
-    cone.m_edges.emplace_back(cone.m_vertices, EdgeVertexIndices{0, pointIdx});
+  cone.m_edges.reserve(numTopPoints * 2);
+  for (std::size_t pointIdx{1}; pointIdx < numTopPoints; ++pointIdx) {
+    cone.m_edges.emplace_back(EdgePointIndices{0, pointIdx});
   }
   // Add ring of edges through all top points
-  for (size_t pointIdx{1}; pointIdx < numPoints - 1; ++pointIdx) {
-    cone.m_edges.emplace_back(cone.m_vertices,
-                              EdgeVertexIndices{pointIdx, pointIdx + 1});
+  for (std::size_t pointIdx{1}; pointIdx < numTopPoints - 1; ++pointIdx) {
+    cone.m_edges.emplace_back(EdgePointIndices{pointIdx, pointIdx + 1});
   }
-  cone.m_edges.emplace_back(cone.m_vertices,
-                            EdgeVertexIndices{numPoints - 1, 0});
+  cone.m_edges.emplace_back(EdgePointIndices{numTopPoints - 1, 0});
 
   // TRIANGLES
   // There are numTopPoints top points (and thus star-topology-edges)
   // Right after star-topology edges comes as many ring edges
-  cone.m_triangles.reserve(topVertices.size());
-  size_t const numTopVertices = topVertices.size();
-  for (size_t starEdgeIdx{0}; starEdgeIdx < numTopVertices; ++starEdgeIdx) {
-    size_t const ringEdgeIdx = starEdgeIdx + numTopVertices;
-    cone.m_triangles.emplace_back(
-        cone.m_edges,
-        std::array<size_t, 3>{starEdgeIdx, (starEdgeIdx + 1) % numTopVertices,
-                              ringEdgeIdx});
+  cone.m_triangles.reserve(numTopPoints);
+  for (size_t starEdgeIdx{0}; starEdgeIdx < numTopPoints; ++starEdgeIdx) {
+    size_t const ringEdgeIdx = starEdgeIdx + numTopPoints;
+    cone.m_triangles.emplace_back(std::array<size_t, 3>{
+        starEdgeIdx, (starEdgeIdx + 1) % numTopPoints, ringEdgeIdx});
   }
   return cone;
 }
 
 static auto findCollision(std::vector<Millimeter> const &heights,
-                          Mesh const &mesh, Pivots const &pivots, bool hullIt,
-                          std::stop_token st) -> Collision {
+                          MeshClipper const &partialPrintOriginal,
+                          Pivots const &pivots, bool hullIt, std::stop_token st)
+    -> Collision {
   for (auto const h : heights) {
     if (st.stop_requested()) {
       SPDLOG_LOGGER_DEBUG(
           logger, "Another thread already found a collision. Returning.");
       return {false};
     }
-    MeshClipper partialPrint{mesh};
+    MeshClipper partialPrint{partialPrintOriginal};
     auto const visible{partialPrint.softClip(h)};
     if (visible.empty()) {
       SPDLOG_LOGGER_WARN(logger, "No points are visible");
@@ -259,7 +255,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
     for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
       Vertex const &effectorPivot{pivots.effector.at(anchorIndex)};
       Vertex const anchorToEffector{effectorPivot - anchorPivot};
-      Mesh cone = buildCone(anchorPivot, effectorPivot, topVertices);
+      MeshClipper cone = buildCone(anchorPivot, effectorPivot, topVertices);
 
       // Find the sharpest angle towards xy-plane the line will have on this
       // layer. Effector pivot will not travel farther away from anchorPivot
@@ -320,14 +316,17 @@ static auto findCollision(std::vector<Millimeter> const &heights,
           for (auto const &coneTriangle : cone.m_triangles) {
             if (intersect({partialPrintTriangle, partialPrint.m_points,
                            partialPrint.m_edges},
-                          coneTriangle))
+                          {coneTriangle, cone.m_points, cone.m_edges}))
               [[unlikely]] {
-                SPDLOG_LOGGER_INFO(logger, "Found collision! Between {} and {}",
-                                   Triangle{partialPrintTriangle,
-                                            partialPrint.m_points,
-                                            partialPrint.m_edges},
-                                   Triangle{coneTriangle});
-                return {true, h, coneTriangle, effectorPivot};
+                SPDLOG_LOGGER_INFO(
+                    logger, "Found collision! Between {} and {}",
+                    Triangle{partialPrintTriangle, partialPrint.m_points,
+                             partialPrint.m_edges},
+                    Triangle{coneTriangle, cone.m_points, cone.m_edges});
+                return {true,
+                        h,
+                        {coneTriangle, cone.m_points, cone.m_edges},
+                        effectorPivot};
               }
           }
         }
@@ -337,7 +336,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
   return {false};
 }
 
-auto willCollide(Mesh const &mesh, Pivots const &pivots,
+auto willCollide(MeshClipper const &mesh, Pivots const &pivots,
                  Millimeter const maxLayerHeight, bool hullIt) -> Collision {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
@@ -463,7 +462,7 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
   return {false};
 }
 
-void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
+void makeDebugModel(MeshClipper const &meshClipper, Pivots const &pivots,
                     Collision const &collision,
                     std::string const &outFileName) {
   if (not collision) {
@@ -472,7 +471,7 @@ void makeDebugModel(Mesh const &mesh, Pivots const &pivots,
   }
   SPDLOG_LOGGER_DEBUG(logger, "Making debug model");
 
-  MeshClipper partialPrint{mesh};
+  MeshClipper partialPrint{meshClipper};
   partialPrint.softClip(collision.m_height);
   // Add the intersecting cone triangle to partialPrint
   std::array<std::size_t, 3> cornerIndices{INVALID_INDEX, INVALID_INDEX,

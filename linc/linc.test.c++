@@ -126,18 +126,6 @@ auto main() -> int {
         compare(corner, vertex);
       }
     }
-    {
-      // Test Triangle constructor from Mesh types
-      std::vector<Vertex> vertices{
-          {Vertex{-2, 0, 0}, Vertex{0, -1, 0}, Vertex{0, 1, 0}}};
-      std::vector<Mesh::Edge> edges{
-          {vertices, {0, 1}}, {vertices, {1, 2}}, {vertices, {2, 0}}};
-      Mesh::Triangle triangle{edges, {0, 1, 2}};
-
-      Triangle const t0{triangle};
-      compare(Normal{t0.getNormalDirection().normalized()}, Normal{0, 0, 1});
-      compare(t0.m_corners, vertices);
-    }
     // Triangle intersection detection
     {
       // One edge of t0 goes straight through t1 and vice versa
@@ -266,57 +254,65 @@ auto main() -> int {
     }
     // Real world collision detections examples for cube prints
     {
-      Mesh const mesh{Stl{getPath("test-models/small-cube.ascii.stl")}};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/small-cube.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 1.0_mm));
+      check(not willCollide(meshClipper, pivots, 1.0_mm));
     }
     {
-      Mesh const mesh{Stl{getPath("test-models/cube-100.ascii.stl")}};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/cube-100.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm));
     }
     {
-      Mesh const mesh{Stl{getPath("test-models/cube-268.ascii.stl")}};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/cube-268.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm));
     }
     {
-      Mesh const mesh{Stl{getPath("test-models/cube-468.ascii.stl")}};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/cube-468.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm));
     }
     {
-      Mesh const mesh{Stl{getPath("test-models/cube-469.ascii.stl")}};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/cube-469.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm));
     }
     {
-      Mesh const mesh{Stl{getPath("test-models/cube-470.ascii.stl")}};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/cube-470.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm));
     }
     {
-      Mesh const mesh{Stl{getPath("test-models/cube-471.ascii.stl")}};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/cube-471.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(willCollide(mesh, pivots, 10.0_mm));
+      check(willCollide(meshClipper, pivots, 10.0_mm));
     }
     {
-      Mesh const mesh{Stl{getPath(
+      MeshClipper const meshClipper{Stl{getPath(
           "test-models/towards-anchors-star-800-300-twisted-30.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(willCollide(mesh, pivots, 10.0_mm, true));
+      check(willCollide(meshClipper, pivots, 10.0_mm, true));
     }
     {
-      Mesh const mesh{Stl{getPath(
+      MeshClipper const meshClipper{Stl{getPath(
           "test-models/towards-anchors-star-800-300-twisted-30.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 10.0_mm, false));
+      check(not willCollide(meshClipper, pivots, 10.0_mm, false));
     }
     {
       // We got core dumps before, when doing this
-      Mesh const mesh{Stl{getPath("test-models/clips/chimney3.stl")}};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/clips/chimney3.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(mesh, pivots, 1.0_mm, false));
+      check(not willCollide(meshClipper, pivots, 1.0_mm, false));
     }
   } catch (...) {
     return 1;

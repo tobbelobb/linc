@@ -9,6 +9,89 @@
 auto main() -> int {
   try {
     {
+      // Double check that we got the VertexCompare right
+      std::set<Vertex> setOfVertices{Vertex{0, 0, 0}};
+      constexpr auto eps = VertexConstants::eps;
+      // All these vertices should be considered equal to {0, 0, 0}
+      // clang-format off
+      std::vector<Vertex> smalls {
+        {-eps, -eps, -eps},
+        {   0, -eps, -eps},
+        { eps, -eps, -eps},
+        {-eps,    0, -eps},
+        {   0,    0, -eps},
+        { eps,    0, -eps},
+        {-eps,  eps, -eps},
+        {   0,  eps, -eps},
+        { eps,  eps, -eps},
+        {-eps, -eps,    0},
+        {   0, -eps,    0},
+        { eps, -eps,    0},
+        {-eps,    0,    0},
+        {   0,    0,    0},
+        { eps,    0,    0},
+        {-eps,  eps,    0},
+        {   0,  eps,    0},
+        { eps,  eps,    0},
+        {-eps, -eps,  eps},
+        {   0, -eps,  eps},
+        { eps, -eps,  eps},
+        {-eps,    0,  eps},
+        {   0,    0,  eps},
+        { eps,    0,  eps},
+        {-eps,  eps,  eps},
+        {   0,  eps,  eps},
+        { eps,  eps,  eps}
+      };
+      // clang-format on
+
+      for (auto const &small : smalls) {
+        auto [iterator, insertionTookPlace] = setOfVertices.insert(small);
+        check(not insertionTookPlace);
+      }
+      // All these vertices should be considered different
+      // from {0,0,0} and from each other
+      constexpr double eps2{eps + 1e-16};
+      // clang-format off
+      std::vector<Vertex> bigs {
+        {-eps2, -eps2, -eps2},
+        {    0, -eps2, -eps2},
+        { eps2, -eps2, -eps2},
+        {-eps2,     0, -eps2},
+        {    0,     0, -eps2},
+        { eps2,     0, -eps2},
+        {-eps2,  eps2, -eps2},
+        {    0,  eps2, -eps2},
+        { eps2,  eps2, -eps2},
+        {-eps2, -eps2,     0},
+        {    0, -eps2,     0},
+        { eps2, -eps2,     0},
+        {-eps2,     0,     0},
+        { eps2,     0,     0},
+        {-eps2,  eps2,     0},
+        {    0,  eps2,     0},
+        { eps2,  eps2,     0},
+        {-eps2, -eps2,  eps2},
+        {    0, -eps2,  eps2},
+        { eps2, -eps2,  eps2},
+        {-eps2,     0,  eps2},
+        {    0,     0,  eps2},
+        { eps2,     0,  eps2},
+        {-eps2,  eps2,  eps2},
+        {    0,  eps2,  eps2},
+        { eps2,  eps2,  eps2}
+      };
+      // clang-format on
+      for (auto const &big : bigs) {
+        auto [iterator, insertionTookPlace] = setOfVertices.insert(big);
+        check(insertionTookPlace);
+      }
+      for (auto const &small : smalls) {
+        auto [iterator, insertionTookPlace] = setOfVertices.insert(small);
+        check(not insertionTookPlace);
+      }
+    }
+    {
       // Check Point construction and comparison works as expected
       Vertex const point{Vertex{0, 0, 0}};
       Vertex const &itself{point};
@@ -44,8 +127,58 @@ auto main() -> int {
       compare(triangle, triangle2);
     }
     {
+      MeshClipper const meshClipper(
+          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")});
+
+      // Vertices
+      compare(meshClipper.m_points.size(), 3U);
+      std::vector<Vertex> expectedVertices{{0, -5, 0}, {0, 0, 10}, {0, 5, 0}};
+      std::sort(expectedVertices.begin(), expectedVertices.end());
+      compare(meshClipper.m_points, expectedVertices);
+
+      // Edges
+      compare(meshClipper.m_edges.size(), 3U);
+      std::vector<MeshClipper::Edge> expectedEdges{
+          {{0, 1}, {0}}, {{0, 2}, {0}}, {{1, 2}, {0}}};
+      std::sort(expectedEdges.begin(), expectedEdges.end());
+      compare(meshClipper.m_edges, expectedEdges);
+
+      // Triangles
+      compare(meshClipper.m_triangles.size(), 1U);
+      std::vector<MeshClipper::Triangle> const expectedTriangles{{{0, 1, 2}}};
+      compare(meshClipper.m_triangles, expectedTriangles);
+    }
+    {
+      MeshClipper const meshClipper(
+          Stl{getPath("test-models/tetrahedron.ascii.stl")});
+
+      compare(meshClipper.m_points.size(), 4U);
+      std::vector<Vertex> expectedVertices{
+          {0, 0, 0}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}};
+      compare(meshClipper.m_points, expectedVertices);
+
+      compare(meshClipper.m_edges.size(), 6U);
+      // All vertices are connected in a tetrahedron
+      // Never mind the m_users lists. They are not
+      // considered by the operator==.
+      std::vector<MeshClipper::Edge> expectedEdges{
+          {{0, 1}}, {{0, 2}}, {{0, 3}}, {{1, 2}}, {{1, 3}}, {{2, 3}}};
+      // We expect the constructor to have sorted the edges
+      std::sort(expectedEdges.begin(), expectedEdges.end());
+
+      compare(meshClipper.m_edges, expectedEdges);
+
+      compare(meshClipper.m_triangles.size(), 4U);
+      // Constructing these triangles manually from edges is tricky
+      std::vector<MeshClipper::Triangle> expectedTriangles{
+          {{0, 1, 3}}, {{0, 2, 4}}, {{1, 2, 5}}, {{3, 4, 5}}};
+      // We expect the constructor to have sorted the triangles
+      std::sort(expectedTriangles.begin(), expectedTriangles.end());
+      compare(meshClipper.m_triangles, expectedTriangles);
+    }
+    {
       MeshClipper const meshClipper{
-          Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
+          Stl{getPath("test-models/small-cube.ascii.stl")}};
 
       // Points
       compare(meshClipper.m_points.size(), 8U);
@@ -65,8 +198,9 @@ auto main() -> int {
 
       // Edges
       compare(meshClipper.m_edges.size(), 18U);
+
       // The short vector of m_users is expected to be equal and sorted
-      // For an edge to be fullyEqual another edge
+      // For an edge to be fully equal to another edge
       std::vector<MeshClipper::Edge> expectedEdges{{{0, 1}, {0, 1}},   // 0
                                                    {{0, 2}, {2, 3}},   // 1
                                                    {{0, 3}, {0, 2}},   // 2
@@ -123,12 +257,12 @@ auto main() -> int {
     {
       // Test maxHeight
       MeshClipper const meshClipper(
-          Mesh{Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}});
+          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")});
       compare(meshClipper.maxHeight(), 10.0_mm);
     }
     {
       MeshClipper const meshClipper(
-          Mesh{Stl{getPath("test-models/benchy-low-poly.binary.stl")}});
+          Stl{getPath("test-models/benchy-low-poly.binary.stl")});
       double const maxHeight = meshClipper.maxHeight();
       check(maxHeight > 48.0 - 0.01);
       check(48.0 + 0.01 > maxHeight);
@@ -136,7 +270,7 @@ auto main() -> int {
     {
       // Test getPointsVisibility
       MeshClipper meshClipper{
-          Mesh{Stl{getPath("test-models/tetrahedron.ascii.stl")}}};
+          Stl{getPath("test-models/tetrahedron.ascii.stl")}};
 
       compare(meshClipper.m_points.at(0).z(), 0.0_mm);
       compare(meshClipper.m_points.at(1).z(), 1.0_mm);
@@ -162,8 +296,7 @@ auto main() -> int {
       compare(ret15.at(3), true);
     }
     {
-      MeshClipper meshClipper{
-          Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
+      MeshClipper meshClipper{Stl{getPath("test-models/small-cube.ascii.stl")}};
       compare(meshClipper.m_points.size(), 8U);
       compare(meshClipper.m_edges.size(), 18U);
       compare(meshClipper.m_triangles.size(), 12U);
@@ -194,7 +327,7 @@ auto main() -> int {
     }
     {
       MeshClipper meshClipper{
-          Mesh{Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}}};
+          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}};
       auto const visible5{meshClipper.softClip(5.0)};
       double const softClippedAt5 = meshClipper.softMaxHeight(visible5);
       compare(softClippedAt5, 5.0);
@@ -241,8 +374,7 @@ auto main() -> int {
       }
     }
     {
-      MeshClipper meshClipper{
-          Mesh{Stl{getPath("test-models/small-cube.ascii.stl")}}};
+      MeshClipper meshClipper{Stl{getPath("test-models/small-cube.ascii.stl")}};
       compare(meshClipper.maxHeight(), 10.0);
 
       auto const visible5 = meshClipper.softClip(5.0);
@@ -334,13 +466,14 @@ auto main() -> int {
       // meshClipper.writeBinaryStl(getPath("test-models/broken/clipped-small-cube.binary.stl"));
     }
     {
-      Mesh const mesh{Stl{getPath("test-models/small-cube.binary.stl")}};
-      double const topHeight = mesh.maxHeight();
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/small-cube.binary.stl")}};
+      double const topHeight = meshClipper.maxHeight();
       compare(topHeight, 10.0);
-      double const minHeight = mesh.minHeight();
+      double const minHeight = meshClipper.minHeight();
       compare(minHeight, 0.0);
       for (size_t h{0}; h <= 10; ++h) {
-        MeshClipper partialPrint{mesh};
+        MeshClipper partialPrint{meshClipper};
         auto const newH{static_cast<double>(h)};
         auto const visibleH = partialPrint.softClip(newH);
         // Clip should give exactly the new max height that we ask for.
@@ -361,7 +494,7 @@ auto main() -> int {
       // If this test gets annoyingly slow, work on performance
       // until it's not.
       MeshClipper meshClipper(
-          Mesh{Stl{getPath("test-models/broken/3DBenchy.binary.stl")}});
+          Stl{getPath("test-models/broken/3DBenchy.binary.stl")});
       compare(meshClipper.m_points.size(), 112569U);
       compare(meshClipper.m_edges.size(), 337731U);
       compare(meshClipper.m_triangles.size(), 225154U);
@@ -380,7 +513,7 @@ auto main() -> int {
       auto const clippedBenchyPath{
           getPath("test-models/broken/clipped-benchy.binary.stl")};
       meshClipper.writeBinaryStl(clippedBenchyPath);
-      MeshClipper meshClipper2{Mesh{Stl{clippedBenchyPath}}};
+      MeshClipper meshClipper2{Stl{clippedBenchyPath}};
       std::filesystem::remove(clippedBenchyPath);
 
       // Some non-unique vertices, edges, and triangles will have been created
