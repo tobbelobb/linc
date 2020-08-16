@@ -5,7 +5,7 @@
 #include <linc/stl.h++>
 
 auto main() -> int {
-  auto constexpr maxRelativeError = 0.0000001F;
+  auto constexpr maxRelativeError = 0.0000001_mm;
   try {
     {
       Stl const stl{getPath("test-models/broken/empty.stl")};
@@ -57,9 +57,9 @@ auto main() -> int {
       Stl const stl{getPath("test-models/broken/3DBenchy.binary.stl")};
       compare(stl.m_facets.size(), 225706U);
       compare(stl.m_type, Stl::Type::BINARY);
-      check(stl.m_stats.size.isApprox(Vertex{60, 31, 48}, 0.0001F));
-      check(stl.m_stats.shortest_edge < 0.07401 and
-            stl.m_stats.shortest_edge > 0.07399);
+      check(stl.m_stats.size.isApprox(Vertex{60, 31, 48}, 0.0001_mm));
+      check(stl.m_stats.shortest_edge < 0.07401_mm and
+            stl.m_stats.shortest_edge > 0.07399_mm);
       check(stl.m_initialized);
     }
     {
@@ -77,8 +77,8 @@ auto main() -> int {
       compare(stl.m_stats.min, Vertex{0, -5, 0});
       compare(stl.m_stats.size, Vertex{0, 10, 10});
       compare(stl.m_stats.bounding_diameter, stl.m_stats.size.norm());
-      compare(stl.m_stats.shortest_edge, 10.0);
-      compare(stl.m_stats.volume, -1.0); // default
+      compare(stl.m_stats.shortest_edge, 10.0_mm);
+      compare(stl.m_stats.volume, -1.0_mm); // default
       check(stl.m_stats.size.isApprox(Vertex{0, 10, 10}, maxRelativeError));
       // misc
       check(stl.m_initialized);
@@ -90,7 +90,8 @@ auto main() -> int {
       // We want the parser to just skip the fourth vertex
       // and keep parsing the rest of the facets as if nothing happened
       check(stl.m_facets[0].normal.isApprox(
-          Normal{0.57735027, 0.57735027, 0.57735027}, maxRelativeError));
+          Normal{0.57735027_mm, 0.57735027_mm, 0.57735027_mm},
+          maxRelativeError));
       compare(stl.m_facets[0].vertices[0], Vertex{1, 0, 0});
       compare(stl.m_facets[0].vertices[1], Vertex{0, 1, 0});
       compare(stl.m_facets[0].vertices[2], Vertex{0, 0, 1});
@@ -169,7 +170,7 @@ auto main() -> int {
       compare(stl.m_stats.size, Vertex{100, 100, 100});
       compare(stl.m_stats.max, Vertex{50, 50, 50});
       compare(stl.m_stats.min, Vertex{-50, -50, -50});
-      compare(stl.m_stats.shortest_edge, 100.0);
+      compare(stl.m_stats.shortest_edge, 100.0_mm);
     }
     {
       Stl const stl{getPath("test-models/broken/wrong-normal.ascii.stl")};
@@ -234,7 +235,7 @@ auto main() -> int {
           getPath("test-models/broken/non-normalized-normals.ascii.stl")};
       compare(stl.m_facets.size(), 4U);
       check(stl.m_facets[0].normal.isApprox(
-          Normal{5.7735027, 5.7735027, 5.7735027}, maxRelativeError));
+          Normal{5.7735027_mm, 5.7735027_mm, 5.7735027_mm}, maxRelativeError));
       compare(stl.m_facets[1].normal, Normal{0, -10, 0});
       compare(stl.m_facets[2].normal, Normal{-100, 0, 0});
       compare(stl.m_facets[3].normal, Normal{0, 0, -1000});
@@ -245,11 +246,11 @@ auto main() -> int {
       Stl const stl{getPath("test-models/large-numbers.ascii.stl")};
       compare(stl.m_facets.size(), 4U);
       check(stl.m_initialized);
-      check(stl.m_facets[3].normal.isApprox(Vertex{0, 0, -9999999.9},
+      check(stl.m_facets[3].normal.isApprox(Vertex{0, 0, -9999999.9_mm},
                                             maxRelativeError));
-      check(stl.m_facets[3].vertices[1].isApprox(Vertex{0, 10000.0, 0},
+      check(stl.m_facets[3].vertices[1].isApprox(Vertex{0, 10000.0_mm, 0},
                                                  maxRelativeError));
-      check(stl.m_facets[3].vertices[2].isApprox(Vertex{10000.0, 0, 0},
+      check(stl.m_facets[3].vertices[2].isApprox(Vertex{10000.0_mm, 0, 0},
                                                  maxRelativeError));
     }
     {

@@ -17,7 +17,7 @@ using Vertex = Eigen::Matrix<Millimeter, 3, 1, Eigen::DontAlign>;
 using Normal = Vertex;
 
 namespace VertexConstants {
-constexpr auto eps = 1e-4;
+constexpr Millimeter eps = 1e-4_mm;
 }
 
 namespace Eigen {

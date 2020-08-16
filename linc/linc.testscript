@@ -205,6 +205,8 @@ EOE
 
 : Malformed-coordinate
 : Checks error when coordinate cannot be parsed
+:
+: Regex will match both stod and stof
 cat <<EOI >=test.params;
 effector-pivot-A1: 220.0, -140.0, 130
 effector-pivot-A2: -220.0, -140.0, 130.0
@@ -219,9 +221,9 @@ anchor-pivot-B2:  1317.51,  1540.88, -32.19
 anchor-pivot-C1: -1435.30,  1011.60, -31.23
 anchor-pivot-C2: -,   611.63, -31.23
 EOI
-$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>EOE != 0
+$* "$src_base/test-models/small-cube.ascii.stl" test.params &linc.log 2>>~/EOE/ != 0
 Could not convert to number: -
-stod
+/sto./
 Invalid line:
 anchor-pivot-C2: -,   611.63, -31.23
 Validation of test.params failed

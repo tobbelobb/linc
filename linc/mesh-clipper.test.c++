@@ -51,7 +51,7 @@ auto main() -> int {
       }
       // All these vertices should be considered different
       // from {0,0,0} and from each other
-      constexpr double eps2{eps + 1e-16};
+      constexpr Millimeter eps2{std::nexttoward(2 * eps, eps)};
       // clang-format off
       std::vector<Vertex> bigs {
         {-eps2, -eps2, -eps2},
@@ -99,7 +99,7 @@ auto main() -> int {
       constexpr auto eps = VertexConstants::eps;
       Vertex const pointEps{Vertex{eps, eps, eps}};
       compare(point, pointEps);
-      constexpr double eps2{eps + 1e-16};
+      constexpr double eps2{eps + std::nexttoward(2 * eps, eps)};
       Vertex const pointEps2{Vertex{eps2, eps, eps}};
       check(point != pointEps2);
     }
@@ -375,13 +375,13 @@ auto main() -> int {
     }
     {
       MeshClipper meshClipper{Stl{getPath("test-models/small-cube.ascii.stl")}};
-      compare(meshClipper.maxHeight(), 10.0);
+      compare(meshClipper.maxHeight(), 10.0_mm);
 
-      auto const visible5 = meshClipper.softClip(5.0);
-      double const softClippedAt5 = meshClipper.softMaxHeight(visible5);
-      double constexpr eps = 1e-6;
-      check(softClippedAt5 < 5.0 + eps);
-      check(softClippedAt5 > 5.0 - eps);
+      auto const visible5 = meshClipper.softClip(5.0_mm);
+      Millimeter const softClippedAt5 = meshClipper.softMaxHeight(visible5);
+      Millimeter constexpr eps = 1e-6_mm;
+      check(softClippedAt5 < 5.0_mm + eps);
+      check(softClippedAt5 > 5.0_mm - eps);
 
       // POINT correctness
       compare(meshClipper.m_points.size(), 16U);
@@ -474,7 +474,7 @@ auto main() -> int {
       compare(minHeight, 0.0);
       for (size_t h{0}; h <= 10; ++h) {
         MeshClipper partialPrint{meshClipper};
-        auto const newH{static_cast<double>(h)};
+        auto const newH{static_cast<Millimeter>(h)};
         auto const visibleH = partialPrint.softClip(newH);
         // Clip should give exactly the new max height that we ask for.
         // No truncation errors allowed.
@@ -499,15 +499,15 @@ auto main() -> int {
       compare(meshClipper.m_edges.size(), 337731U);
       compare(meshClipper.m_triangles.size(), 225154U);
 
-      double constexpr eps = 1e-6;
-      double const maxHeight = meshClipper.maxHeight();
-      check(maxHeight > 48.0 - eps);
-      check(48.0 + eps > maxHeight);
+      auto constexpr eps = 1e-4_mm;
+      Millimeter const maxHeight = meshClipper.maxHeight();
+      check(maxHeight > 48.0_mm - eps);
+      check(48.0_mm + eps > maxHeight);
 
       auto const visible1 = meshClipper.softClip(1.0);
-      double const softClippedAt1 =
+      Millimeter const softClippedAt1 =
           maxHeight - meshClipper.softMaxHeight(visible1);
-      compare(softClippedAt1, 47.0);
+      compare(softClippedAt1, 47.0_mm);
 
       // Check that we can write a binary stl and read it back again
       auto const clippedBenchyPath{

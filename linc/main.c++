@@ -58,7 +58,7 @@ auto main(int argc, char *argv[]) -> int {
     return 0;
   }
 
-  if (layerHeightMax < 0.0) {
+  if (layerHeightMax < 0.0_mm) {
     std::cerr << "Negative layer height is not allowed: " << layerHeightMax
               << '\n';
     return -1;

@@ -27,7 +27,7 @@ static inline auto signed2DCross(Vertex const &v0, Vertex const &v1,
 
 static inline auto isLeft(Vertex const &v0, Vertex const &v1, Vertex const &v2)
     -> bool {
-  return signed2DCross(v0, v1, v2) > 0.0;
+  return signed2DCross(v0, v1, v2) > 0.0_mm;
 }
 
 static void fanSort(std::vector<Vertex> &fan) {
@@ -292,7 +292,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       // Check if a visible point is above the checkit plane
       for (auto const &[i, point] : enumerate(partialPrint.m_points)) {
         Vertex const fromFarthestToPoint = point - farthest;
-        checkIts[i] = (fromFarthestToPoint.dot(normal) >= 0.0);
+        checkIts[i] = (fromFarthestToPoint.dot(normal) >= 0.0_mm);
       }
 
       // Check for collision
@@ -342,7 +342,7 @@ auto willCollide(MeshClipper const &mesh, Pivots const &pivots,
     logger = spdlog::get("file_logger");
   }
 
-  constexpr Millimeter SMALL_LAYER_HEIGHT{1.0};
+  constexpr Millimeter SMALL_LAYER_HEIGHT{1.0_mm};
   if (maxLayerHeight < SMALL_LAYER_HEIGHT) {
     SPDLOG_LOGGER_WARN(logger,
                        "Layer height {} is very small. Execution might take "
@@ -351,7 +351,7 @@ auto willCollide(MeshClipper const &mesh, Pivots const &pivots,
   }
 
   Millimeter const minHeight = mesh.minHeight();
-  if (minHeight < 0.0) {
+  if (minHeight < 0.0_mm) {
     SPDLOG_LOGGER_WARN(logger, "Mesh goes below z=0.0");
   }
 
@@ -371,7 +371,7 @@ auto willCollide(MeshClipper const &mesh, Pivots const &pivots,
 
   Millimeter const startAnalysisAt = topHeight;
   Millimeter const stopAnalysisAt =
-      std::max(minHeight, std::max(lowestAnchorZ, 0.0));
+      std::max(minHeight, std::max(lowestAnchorZ, 0.0_mm));
 
   // Create some worker threads
   auto const numThreads = std::thread::hardware_concurrency();
@@ -404,11 +404,12 @@ auto willCollide(MeshClipper const &mesh, Pivots const &pivots,
     // will be of length (0.5, 1.0]. But that's ok, it's more important to
     // find an eventual collision fast, than to be fast at confirming no
     // collision
-    for (double denominator{2.0};                                /* NOLINT */
-         (2.0 * intervalLength / denominator) > maxLayerHeight;  /* NOLINT */
-         denominator *= 2.0) {                                   /* NOLINT */
-      for (double numerator{denominator - 1.0}; numerator > 0.0; /* NOLINT */
-           numerator -= 2.0) {                                   /* NOLINT */
+    for (Millimeter denominator{2.0};                              /* NOLINT */
+         (2.0_mm * intervalLength / denominator) > maxLayerHeight; /* NOLINT */
+         denominator *= 2.0_mm) {                                  /* NOLINT */
+      for (Millimeter numerator{denominator - 1.0_mm};
+           numerator > 0.0_mm;    /* NOLINT */
+           numerator -= 2.0_mm) { /* NOLINT */
         heights.emplace_back(a + intervalLength * numerator / denominator);
       }
     }

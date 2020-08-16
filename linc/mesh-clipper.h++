@@ -83,9 +83,9 @@ public:
   extractEdgeTriplets(std::vector<Stl::Facet> const &facets);
   void loadEdges(std::vector<std::array<Edge, 3>> const &edgeTriplets);
   void loadTriangles(std::vector<std::array<Edge, 3>> const &edgeTriplets);
-  double maxHeight() const;
-  double softMaxHeight(std::vector<bool> const &visible) const;
-  double minHeight() const;
+  Millimeter maxHeight() const;
+  Millimeter softMaxHeight(std::vector<bool> const &visible) const;
+  Millimeter minHeight() const;
   std::size_t countVisibleTriangles() const;
   void writeBinaryStl(std::string const &fileName) const;
   std::vector<Vertex> getVerticesAt(Millimeter height) const;
@@ -93,7 +93,7 @@ public:
   void adjustEdges(Millimeter zCut, std::vector<bool> &pointVisibility);
   void adjustTriangles();
   void propagateInvisibilityToUsers(std::size_t edgeIndex, Edge const &edge);
-  Vertex pointAlong(Edge const &edge, double t) const;
+  Vertex pointAlong(Edge const &edge, Millimeter t) const;
   void close2EdgeOpenTriangle(std::size_t triangleIndex,
                               Opening const &opening);
   void close3EdgeOpenTriangle(std::size_t triangleIndex,

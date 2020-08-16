@@ -83,9 +83,9 @@ public:
     Vertex max = Vertex::Zero();
     Vertex min = Vertex::Zero();
     Vertex size = Vertex::Zero();
-    double bounding_diameter = 0.0F;
-    double shortest_edge = 0.0F;
-    double volume = -1.0F;
+    Millimeter bounding_diameter = 0.0_mm;
+    Millimeter shortest_edge = 0.0_mm;
+    Millimeter volume = -1.0_mm;
   };
 
   enum class Type { BINARY, ASCII, INMEMORY, UNKNOWN };
@@ -158,6 +158,3 @@ private:
   bool readAsciiFacets(FILE *fp);
   void computeSomeStats();
 };
-
-static_assert(sizeof(Stl::Facet) >= SIZEOF_STL_FACET,
-              "size of SmallFacet is too small");

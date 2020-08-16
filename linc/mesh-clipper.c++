@@ -168,16 +168,16 @@ auto MeshClipper::getPointsVisibility(Millimeter const zCut)
 }
 
 auto MeshClipper::softMaxHeight(std::vector<bool> const &visible) const
-    -> double {
+    -> Millimeter {
   if (m_points.size() != visible.size()) {
-    return 0.0;
+    return 0.0_mm;
   }
   if (m_points.empty()) {
-    return 0.0;
+    return 0.0_mm;
   }
   if (std::none_of(visible.begin(), visible.end(),
                    [](bool const b) { return b; })) {
-    return 0.0;
+    return 0.0_mm;
   }
   // At least one visible point exists. Find it.
   auto itp = m_points.begin();
@@ -186,7 +186,7 @@ auto MeshClipper::softMaxHeight(std::vector<bool> const &visible) const
     ++itp;
     ++itv;
   }
-  double max = (*itp).z();
+  Millimeter max = (*itp).z();
   for (; itp != m_points.end(); ++itp, ++itv) {
     if ((*itv) and (*itp).z() > max) {
       max = (*itp).z();
@@ -195,9 +195,9 @@ auto MeshClipper::softMaxHeight(std::vector<bool> const &visible) const
   return max;
 }
 
-auto MeshClipper::maxHeight() const -> double {
+auto MeshClipper::maxHeight() const -> Millimeter {
   if (m_points.empty()) {
-    return 0.0;
+    return 0.0_mm;
   }
   return (*std::max_element(m_points.begin(), m_points.end(),
                             [](Vertex const &point0, Vertex const &point1) {
@@ -206,9 +206,9 @@ auto MeshClipper::maxHeight() const -> double {
       .z();
 }
 
-auto MeshClipper::minHeight() const -> double {
+auto MeshClipper::minHeight() const -> Millimeter {
   if (m_points.empty()) {
-    return 0.0;
+    return 0.0_mm;
   }
   return (*std::min_element(m_points.begin(), m_points.end(),
                             [](Vertex const &point0, Vertex const &point1) {
@@ -252,7 +252,7 @@ void MeshClipper::propagateInvisibilityToUsers(size_t const edgeIndex,
 // t = 1 gives back point1
 // 0 < t < 1 gives back a point in between
 auto MeshClipper::pointAlong(MeshClipper::Edge const &edge,
-                             double const t) const -> Vertex {
+                             Millimeter const t) const -> Vertex {
   return (1 - t) * m_points[edge.m_pointIndices[0]] +
          t * m_points[edge.m_pointIndices[1]];
 }
@@ -267,16 +267,16 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
     bool const visible1 = pointVisibility.at(edge.m_pointIndices[1]);
 
     if ((not visible0 and
-         (m_points[edge.m_pointIndices[1]].z() - zCut) >= 0.0) or
+         (m_points[edge.m_pointIndices[1]].z() - zCut) >= 0.0_mm) or
         (not visible1 and
-         (m_points[edge.m_pointIndices[0]].z() - zCut) >= 0.0)) {
+         (m_points[edge.m_pointIndices[0]].z() - zCut) >= 0.0_mm)) {
       // Edge is entirely above cutting plane
       propagateInvisibilityToUsers(edgeIndex, edge);
     } else if (not visible0 or not visible1) {
-      double const distance0 = m_points[edge.m_pointIndices[0]].z() - zCut;
-      double const distance1 = m_points[edge.m_pointIndices[1]].z() - zCut;
-      if ((distance0 < 0.0 and distance1 > 0.0) or
-          (distance0 > 0.0 and distance1 < 0.0)) {
+      Millimeter const distance0 = m_points[edge.m_pointIndices[0]].z() - zCut;
+      Millimeter const distance1 = m_points[edge.m_pointIndices[1]].z() - zCut;
+      if ((distance0 < 0.0_mm and distance1 > 0.0_mm) or
+          (distance0 > 0.0_mm and distance1 < 0.0_mm)) {
         // Edge is split by the plane, we need a new point
         Vertex newPoint{pointAlong(edge, distance0 / (distance0 - distance1))};
         newPoint.z() = zCut; // Hedge against truncation errors
@@ -285,7 +285,7 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
         m_points.emplace_back(newPoint);
         pointVisibility.emplace_back(true);
 
-        if (distance0 > 0.0) {
+        if (distance0 > 0.0_mm) {
           edge.m_pointIndices[0] = newPointIndex;
         } else {
           edge.m_pointIndices[1] = newPointIndex;

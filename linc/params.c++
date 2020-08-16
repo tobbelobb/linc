@@ -28,7 +28,7 @@ static inline void lrTrimNonNumber(std::string &s) {
   s.erase(std::find_if(s.rbegin(), s.rend(), isNumber).base(), s.end());
 }
 
-static inline auto toDouble(std::string const &s) -> double {
+static inline auto toDouble(std::string const &s) -> Millimeter {
   std::size_t charCount = 0;
   double res = std::stod(s, &charCount);
   if (s.size() != charCount) {
