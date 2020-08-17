@@ -26,8 +26,8 @@ public:
     friend std::ostream &operator<<(std::ostream &os,
                                     MeshClipper::Edge const &edge) {
       os << "{ " << std::setiosflags(std::ios::right) << std::setw(3)
-         << std::setfill(' ') << edge.m_pointIndices[0] << " (" << std::setw(3)
-         << edge.m_pointIndices[1] << ") users: (";
+         << std::setfill(' ') << edge.m_pointIndices[0] << " <-> " << std::setw(3)
+         << edge.m_pointIndices[1] << " users: (";
       std::string delim{""};
       if (edge.m_users.size() == 1) {
         delim = "    ";

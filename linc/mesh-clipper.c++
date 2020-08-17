@@ -35,8 +35,8 @@ auto MeshClipper::extractEdgeTriplets(std::vector<Stl::Facet> const &facets)
   edgeTriplets.reserve(facets.size());
   for (const auto &facet : facets) {
     // Populate the vertex index triplet that matches the facet's vertices
-    std::array<size_t, 3> vertexIndexTriplet = {INVALID_INDEX, INVALID_INDEX,
-                                                INVALID_INDEX};
+    std::array<std::size_t, 3> vertexIndexTriplet = {
+        INVALID_INDEX, INVALID_INDEX, INVALID_INDEX};
     for (auto const &[j, facetVertex] : enumerate(facet.vertices)) {
       auto const distance = static_cast<std::size_t>(std::distance(
           m_points.begin(),
@@ -85,8 +85,8 @@ void MeshClipper::loadEdges(
 void MeshClipper::loadTriangles(
     std::vector<std::array<MeshClipper::Edge, 3>> const &edgeTriplets) {
   for (auto const &[i, edgeTriplet] : enumerate(edgeTriplets)) {
-    std::array<size_t, 3> edgeIndices{INVALID_INDEX, INVALID_INDEX,
-                                      INVALID_INDEX};
+    std::array<std::size_t, 3> edgeIndices{INVALID_INDEX, INVALID_INDEX,
+                                           INVALID_INDEX};
     for (auto const &[q, edgeSuggestion] : enumerate(edgeTriplet)) {
       auto const distance = static_cast<std::size_t>(std::distance(
           m_edges.begin(),
@@ -125,7 +125,11 @@ MeshClipper::MeshClipper(Stl const &stl) {
   m_edges.reserve(edgeTriplets.size() * 3);
   loadEdges(edgeTriplets);
 
-  m_triangles.reserve(edgeTriplets.size() + edgeTriplets.size() / 10);
+  // 1/10 seems to work well
+  std::size_t constexpr EXPECTED_EDGE_VECTOR_GROWTH_DENOMINATOR{10};
+  m_triangles.reserve(edgeTriplets.size() +
+                      edgeTriplets.size() /
+                          EXPECTED_EDGE_VECTOR_GROWTH_DENOMINATOR);
   loadTriangles(edgeTriplets);
 
   SPDLOG_LOGGER_DEBUG(logger, "finished loading MeshClipper from Stl");
@@ -144,7 +148,7 @@ MeshClipper::MeshClipper(MeshClipper const &meshClipper) {
     m_edges.emplace_back(meshEdge.m_pointIndices, meshEdge.m_users);
   }
   for (auto const &meshTriangle : meshClipper.m_triangles) {
-    m_triangles.emplace_back(std::array<size_t, 3>{
+    m_triangles.emplace_back(std::array<std::size_t, 3>{
         meshTriangle.m_edgeIndices.at(0), meshTriangle.m_edgeIndices.at(1),
         meshTriangle.m_edgeIndices.at(2)});
   }
@@ -225,7 +229,7 @@ auto MeshClipper::countVisibleTriangles() const -> std::size_t {
 
 // Go through edge's users and remove edge
 // from them
-void MeshClipper::propagateInvisibilityToUsers(size_t const edgeIndex,
+void MeshClipper::propagateInvisibilityToUsers(std::size_t const edgeIndex,
                                                Edge const &edge) {
   for (auto const &triangleIndex : edge.m_users) {
     Triangle &triangle = m_triangles[triangleIndex];
@@ -462,7 +466,7 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
       smallFacet.normal[0] = 0.0;
       smallFacet.normal[1] = 0.0;
       smallFacet.normal[2] = 0.0;
-      size_t i{0};
+      std::size_t i{0};
       for (auto it{points.begin()}; it != points.end(); ++it, ++i) {
         smallFacet.vertices.at(i).at(0) = static_cast<float>((*it).x());
         smallFacet.vertices.at(i).at(1) = static_cast<float>((*it).y());
