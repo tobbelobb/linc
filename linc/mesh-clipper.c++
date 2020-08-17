@@ -261,10 +261,13 @@ auto MeshClipper::pointAlong(MeshClipper::Edge const &edge,
          t * m_points[edge.m_pointIndices[1]];
 }
 
-void MeshClipper::adjustEdges(Millimeter const zCut,
-                              std::vector<bool> &pointVisibility) {
+auto MeshClipper::adjustEdges(Millimeter const zCut,
+                              std::vector<bool> &pointVisibility)
+    -> std::vector<std::size_t> {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting edges");
   std::size_t const numEdges = m_edges.size();
+  std::vector<std::size_t> cutTriangles{};
+  cutTriangles.reserve(m_triangles.size() / 5);
   for (std::size_t edgeIndex{0}; edgeIndex < numEdges; ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
     bool const visible0 = pointVisibility.at(edge.m_pointIndices[0]);
@@ -296,11 +299,17 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
         }
 
         for (auto const &user : edge.m_users) {
-          m_triangles[user].m_cut = true;
+          cutTriangles.emplace_back(user);
         }
       }
     }
   }
+
+  std::sort(cutTriangles.begin(), cutTriangles.end());
+  auto const endOfUniques =
+      std::unique(cutTriangles.begin(), cutTriangles.end());
+  cutTriangles.erase(endOfUniques, cutTriangles.end());
+  return cutTriangles;
 }
 
 void MeshClipper::close2EdgeOpenTriangle(std::size_t const triangleIndex,
@@ -376,27 +385,21 @@ void MeshClipper::close3EdgeOpenTriangle(std::size_t const triangleIndex,
       Triangle{{newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
 }
 
-void MeshClipper::adjustTriangles() {
+void MeshClipper::adjustTriangles(std::vector<std::size_t> triangleIndices) {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting triangles");
-  std::size_t const numTriangles = m_triangles.size();
-  for (std::size_t triangleIndex{0}; triangleIndex < numTriangles;
-       ++triangleIndex) {
+  for (auto const &triangleIndex : triangleIndices) {
     Triangle &triangle = m_triangles[triangleIndex];
-    if (triangle.m_cut) {
-      Opening const opening = getOpening(triangle);
-      // Add the new edge
-      auto const numEdges = static_cast<std::size_t>(std::count_if(
-          triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
-          [](auto const index) { return index != INVALID_INDEX; }));
-      if (numEdges == 2) {
-        close2EdgeOpenTriangle(triangleIndex, opening);
-      } else if (numEdges == 3) {
-        close3EdgeOpenTriangle(triangleIndex, opening);
-      } else {
-        SPDLOG_LOGGER_ERROR(
-            logger,
-            "Cannot close 1-edge or 0-edge triangle with one new edge.");
-      }
+    Opening const opening = getOpening(triangle);
+    auto const numEdges = static_cast<std::size_t>(std::count_if(
+        triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
+        [](auto const index) { return index != INVALID_INDEX; }));
+    if (numEdges == 2) {
+      close2EdgeOpenTriangle(triangleIndex, opening);
+    } else if (numEdges == 3) {
+      close3EdgeOpenTriangle(triangleIndex, opening);
+    } else {
+      SPDLOG_LOGGER_ERROR(
+          logger, "Cannot close 1-edge or 0-edge triangle with one new edge.");
     }
   }
 }
@@ -422,12 +425,12 @@ auto MeshClipper::softClip(Millimeter const zCut) -> std::vector<bool> {
     return visible;
   }
 
-  adjustEdges(zCut, visible);
+  auto cutTriangles{adjustEdges(zCut, visible)};
   SPDLOG_LOGGER_TRACE(
       logger,
       "There exists {} points, {} edges, and {} triangles after adjustEdges().",
       m_points.size(), m_edges.size(), m_triangles.size());
-  adjustTriangles();
+  adjustTriangles(cutTriangles);
   SPDLOG_LOGGER_TRACE(logger,
                       "There exists {} points, {} edges, and {} triangles "
                       "after adjustTriangles().",
