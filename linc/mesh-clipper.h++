@@ -45,12 +45,6 @@ public:
                                              INVALID_INDEX};
     bool m_visible = true;
 
-    Triangle &operator=(Triangle const &other) {
-      m_edgeIndices = other.m_edgeIndices;
-      m_visible = other.m_visible;
-      return *this;
-    }
-
     friend std::ostream &operator<<(std::ostream &os,
                                     Triangle const &triangle) {
       os << '{';
