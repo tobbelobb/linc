@@ -385,7 +385,8 @@ void MeshClipper::close3EdgeOpenTriangle(std::size_t const triangleIndex,
       Triangle{{newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
 }
 
-void MeshClipper::adjustTriangles(std::vector<std::size_t> triangleIndices) {
+void MeshClipper::adjustTriangles(
+    std::vector<std::size_t> const &triangleIndices) {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting triangles");
   for (auto const &triangleIndex : triangleIndices) {
     Triangle &triangle = m_triangles[triangleIndex];

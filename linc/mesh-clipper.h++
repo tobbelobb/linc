@@ -86,7 +86,7 @@ public:
   std::vector<bool> getPointsVisibility(Millimeter zCut);
   std::vector<std::size_t> adjustEdges(Millimeter zCut,
                                        std::vector<bool> &pointVisibility);
-  void adjustTriangles(std::vector<std::size_t> triangleIndices);
+  void adjustTriangles(std::vector<std::size_t> const &triangleIndices);
   void propagateInvisibilityToUsers(std::size_t edgeIndex, Edge const &edge);
   Vertex pointAlong(Edge const &edge, Millimeter t) const;
   void close2EdgeOpenTriangle(std::size_t triangleIndex,
