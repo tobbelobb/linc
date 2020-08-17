@@ -294,6 +294,10 @@ void MeshClipper::adjustEdges(Millimeter const zCut,
         } else {
           edge.m_pointIndices[1] = newPointIndex;
         }
+
+        for (auto const &user : edge.m_users) {
+          m_triangles[user].m_cut = true;
+        }
       }
     }
   }
@@ -378,22 +382,20 @@ void MeshClipper::adjustTriangles() {
   for (std::size_t triangleIndex{0}; triangleIndex < numTriangles;
        ++triangleIndex) {
     Triangle &triangle = m_triangles[triangleIndex];
-    if (triangle.m_visible) {
+    if (triangle.m_cut) {
       Opening const opening = getOpening(triangle);
-      if (opening.endPointIndex != INVALID_INDEX) {
-        // Add the new edge
-        auto const numEdges = static_cast<std::size_t>(std::count_if(
-            triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
-            [](auto const index) { return index != INVALID_INDEX; }));
-        if (numEdges == 2) {
-          close2EdgeOpenTriangle(triangleIndex, opening);
-        } else if (numEdges == 3) {
-          close3EdgeOpenTriangle(triangleIndex, opening);
-        } else {
-          SPDLOG_LOGGER_ERROR(
-              logger,
-              "Cannot close 1-edge or 0-edge triangle with one new edge.");
-        }
+      // Add the new edge
+      auto const numEdges = static_cast<std::size_t>(std::count_if(
+          triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
+          [](auto const index) { return index != INVALID_INDEX; }));
+      if (numEdges == 2) {
+        close2EdgeOpenTriangle(triangleIndex, opening);
+      } else if (numEdges == 3) {
+        close3EdgeOpenTriangle(triangleIndex, opening);
+      } else {
+        SPDLOG_LOGGER_ERROR(
+            logger,
+            "Cannot close 1-edge or 0-edge triangle with one new edge.");
       }
     }
   }
