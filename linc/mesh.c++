@@ -142,8 +142,10 @@ Mesh::Mesh(Mesh const &meshClipper, std::vector<Vertex> &points,
     : m_points(points), m_edges(edges), m_triangles(triangles) {
 
   // Copy over data from Mesh object
-  for (auto const &vertex : meshClipper.m_points) {
-    m_points.emplace_back(vertex);
+  if (points.empty()) {
+    for (auto const &vertex : meshClipper.m_points) {
+      m_points.emplace_back(vertex);
+    }
   }
   for (auto const &meshEdge : meshClipper.m_edges) {
     m_edges.emplace_back(meshEdge.m_pointIndices, meshEdge.m_users);

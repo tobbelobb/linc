@@ -220,13 +220,20 @@ static auto findCollision(std::vector<Millimeter> const &heights,
   points.reserve(partialPrintOriginal.m_points.capacity());
   edges.reserve(partialPrintOriginal.m_edges.capacity());
   triangles.reserve(partialPrintOriginal.m_triangles.capacity());
+  bool firstRun = true;
   for (auto const h : heights) {
     if (st.stop_requested()) {
       SPDLOG_LOGGER_DEBUG(
           logger, "Another thread already found a collision. Returning.");
       return {false};
     }
-    points.clear();
+    if (firstRun) {
+      firstRun = false;
+    } else {
+      // Points are not changed by the algorithm,
+      // so we don't need to reload them at all
+      points.resize(partialPrintOriginal.m_points.size());
+    }
     edges.clear();
     triangles.clear();
     Mesh partialPrint{partialPrintOriginal, points, edges, triangles};
