@@ -127,8 +127,12 @@ auto main() -> int {
       compare(triangle, triangle2);
     }
     {
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
       MeshClipper const meshClipper(
-          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")});
+          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}, v, e,
+          t);
 
       // Vertices
       compare(meshClipper.m_points.size(), 3U);
@@ -149,8 +153,11 @@ auto main() -> int {
       compare(meshClipper.m_triangles, expectedTriangles);
     }
     {
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
       MeshClipper const meshClipper(
-          Stl{getPath("test-models/tetrahedron.ascii.stl")});
+          Stl{getPath("test-models/tetrahedron.ascii.stl")}, v, e, t);
 
       compare(meshClipper.m_points.size(), 4U);
       std::vector<Vertex> expectedVertices{
@@ -177,8 +184,11 @@ auto main() -> int {
       compare(meshClipper.m_triangles, expectedTriangles);
     }
     {
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
       MeshClipper const meshClipper{
-          Stl{getPath("test-models/small-cube.ascii.stl")}};
+          Stl{getPath("test-models/small-cube.ascii.stl")}, v, e, t};
 
       // Points
       compare(meshClipper.m_points.size(), 8U);
@@ -256,21 +266,31 @@ auto main() -> int {
     }
     {
       // Test maxHeight
-      MeshClipper const meshClipper(
-          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")});
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}, v, e,
+          t};
       compare(meshClipper.maxHeight(), 10.0_mm);
     }
     {
-      MeshClipper const meshClipper(
-          Stl{getPath("test-models/benchy-low-poly.binary.stl")});
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
+      MeshClipper const meshClipper{
+          Stl{getPath("test-models/benchy-low-poly.binary.stl")}, v, e, t};
       double const maxHeight = meshClipper.maxHeight();
       check(maxHeight > 48.0 - 0.01);
       check(48.0 + 0.01 > maxHeight);
     }
     {
       // Test getPointsVisibility
-      MeshClipper meshClipper{
-          Stl{getPath("test-models/tetrahedron.ascii.stl")}};
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
+      MeshClipper meshClipper{Stl{getPath("test-models/tetrahedron.ascii.stl")},
+                              v, e, t};
 
       compare(meshClipper.m_points.at(0).z(), 0.0_mm);
       compare(meshClipper.m_points.at(1).z(), 1.0_mm);
@@ -296,7 +316,11 @@ auto main() -> int {
       compare(ret15.at(3), true);
     }
     {
-      MeshClipper meshClipper{Stl{getPath("test-models/small-cube.ascii.stl")}};
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
+      MeshClipper meshClipper{Stl{getPath("test-models/small-cube.ascii.stl")},
+                              v, e, t};
       compare(meshClipper.m_points.size(), 8U);
       compare(meshClipper.m_edges.size(), 18U);
       compare(meshClipper.m_triangles.size(), 12U);
@@ -326,8 +350,12 @@ auto main() -> int {
       compare(visiblePoints, 4U);
     }
     {
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
       MeshClipper meshClipper{
-          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}};
+          Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}, v, e,
+          t};
       auto const visible5{meshClipper.softClip(5.0)};
       double const softClippedAt5 = meshClipper.softMaxHeight(visible5);
       compare(softClippedAt5, 5.0);
@@ -374,7 +402,11 @@ auto main() -> int {
       }
     }
     {
-      MeshClipper meshClipper{Stl{getPath("test-models/small-cube.ascii.stl")}};
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
+      MeshClipper meshClipper{Stl{getPath("test-models/small-cube.ascii.stl")},
+                              v, e, t};
       compare(meshClipper.maxHeight(), 10.0_mm);
 
       auto const visible5 = meshClipper.softClip(5.0_mm);
@@ -466,14 +498,20 @@ auto main() -> int {
       // meshClipper.writeBinaryStl(getPath("test-models/broken/clipped-small-cube.binary.stl"));
     }
     {
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
       MeshClipper const meshClipper{
-          Stl{getPath("test-models/small-cube.binary.stl")}};
+          Stl{getPath("test-models/small-cube.binary.stl")}, v, e, t};
       double const topHeight = meshClipper.maxHeight();
       compare(topHeight, 10.0);
       double const minHeight = meshClipper.minHeight();
       compare(minHeight, 0.0);
       for (size_t h{0}; h <= 10; ++h) {
-        MeshClipper partialPrint{meshClipper};
+        std::vector<Vertex> v2{};
+        std::vector<MeshClipper::Edge> e2{};
+        std::vector<MeshClipper::Triangle> t2{};
+        MeshClipper partialPrint{meshClipper, v2, e2, t2};
         auto const newH{static_cast<Millimeter>(h)};
         auto const visibleH = partialPrint.softClip(newH);
         // Clip should give exactly the new max height that we ask for.
@@ -487,14 +525,20 @@ auto main() -> int {
         } else {
           compare(topVertices.size(), 8U);
         }
+        v2.clear();
+        e2.clear();
+        t2.clear();
       }
     }
     {
       // Confirm that we can load a large complicated broken mesh.
       // If this test gets annoyingly slow, work on performance
       // until it's not.
-      MeshClipper meshClipper(
-          Stl{getPath("test-models/broken/3DBenchy.binary.stl")});
+      std::vector<Vertex> v{};
+      std::vector<MeshClipper::Edge> e{};
+      std::vector<MeshClipper::Triangle> t{};
+      MeshClipper meshClipper{
+          Stl{getPath("test-models/broken/3DBenchy.binary.stl")}, v, e, t};
       compare(meshClipper.m_points.size(), 112569U);
       compare(meshClipper.m_edges.size(), 337731U);
       compare(meshClipper.m_triangles.size(), 225154U);
@@ -513,7 +557,10 @@ auto main() -> int {
       auto const clippedBenchyPath{
           getPath("test-models/broken/clipped-benchy.binary.stl")};
       meshClipper.writeBinaryStl(clippedBenchyPath);
-      MeshClipper meshClipper2{Stl{clippedBenchyPath}};
+      std::vector<Vertex> v2{};
+      std::vector<MeshClipper::Edge> e2{};
+      std::vector<MeshClipper::Triangle> t2{};
+      MeshClipper meshClipper2{Stl{clippedBenchyPath}, v2, e2, t2};
       std::filesystem::remove(clippedBenchyPath);
 
       // Some non-unique vertices, edges, and triangles will have been created

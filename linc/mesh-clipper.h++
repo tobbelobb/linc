@@ -60,14 +60,19 @@ public:
     std::size_t endPointIndex = INVALID_INDEX;
   };
 
-  std::vector<Vertex> m_points{};
-  std::vector<Edge> m_edges{};
-  std::vector<Triangle> m_triangles{};
+  std::vector<Vertex> &m_points;
+  std::vector<Edge> &m_edges;
+  std::vector<Triangle> &m_triangles;
 
-  MeshClipper(MeshClipper const &meshClipper);
-  MeshClipper(Stl const &stl);
-  // A mesh can start out from a single point
-  MeshClipper(Vertex v) : m_points{{v}} {}
+  MeshClipper(MeshClipper const &meshClipper) = delete;
+
+  MeshClipper(MeshClipper const &meshClipper, std::vector<Vertex> &points,
+              std::vector<Edge> &edges, std::vector<Triangle> &triangles);
+  MeshClipper(Stl const &stl, std::vector<Vertex> &points,
+              std::vector<Edge> &edges, std::vector<Triangle> &triangles);
+  MeshClipper(std::vector<Vertex> &points, std::vector<Edge> &edges,
+              std::vector<Triangle> &triangles)
+      : m_points(points), m_edges(edges), m_triangles(triangles) {}
 
   Vertex &point0(Edge const &edge) { return m_points[edge.m_pointIndices[0]]; }
   Vertex &point1(Edge const &edge) { return m_points[edge.m_pointIndices[1]]; }

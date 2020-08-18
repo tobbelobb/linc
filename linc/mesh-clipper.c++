@@ -108,7 +108,10 @@ void MeshClipper::loadTriangles(
   }
 }
 
-MeshClipper::MeshClipper(Stl const &stl) {
+MeshClipper::MeshClipper(Stl const &stl, std::vector<Vertex> &points,
+                         std::vector<Edge> &edges,
+                         std::vector<Triangle> &triangles)
+    : m_points(points), m_edges(edges), m_triangles(triangles) {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
@@ -135,10 +138,10 @@ MeshClipper::MeshClipper(Stl const &stl) {
   SPDLOG_LOGGER_DEBUG(logger, "finished loading MeshClipper from Stl");
 }
 
-MeshClipper::MeshClipper(MeshClipper const &meshClipper) {
-  m_points.reserve(meshClipper.m_points.capacity());
-  m_edges.reserve(meshClipper.m_edges.capacity());
-  m_triangles.reserve(meshClipper.m_triangles.capacity());
+MeshClipper::MeshClipper(MeshClipper const &meshClipper,
+                         std::vector<Vertex> &points, std::vector<Edge> &edges,
+                         std::vector<Triangle> &triangles)
+    : m_points(points), m_edges(edges), m_triangles(triangles) {
 
   // Copy over data from Mesh object
   for (auto const &vertex : meshClipper.m_points) {
