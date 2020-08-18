@@ -11,7 +11,7 @@
 constexpr std::size_t INVALID_INDEX{std::numeric_limits<std::size_t>::max()};
 using EdgePointIndices = std::array<std::size_t, 2>;
 
-class MeshClipper {
+class Mesh {
 public:
   struct Edge {
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
@@ -23,8 +23,7 @@ public:
       return *this;
     }
 
-    friend std::ostream &operator<<(std::ostream &os,
-                                    MeshClipper::Edge const &edge) {
+    friend std::ostream &operator<<(std::ostream &os, Mesh::Edge const &edge) {
       os << "{ " << std::setiosflags(std::ios::right) << std::setw(3)
          << std::setfill(' ') << edge.m_pointIndices[0] << " <-> "
          << std::setw(3) << edge.m_pointIndices[1] << " users: (";
@@ -64,14 +63,14 @@ public:
   std::vector<Edge> &m_edges;
   std::vector<Triangle> &m_triangles;
 
-  MeshClipper(MeshClipper const &meshClipper) = delete;
+  Mesh(Mesh const &meshClipper) = delete;
 
-  MeshClipper(MeshClipper const &meshClipper, std::vector<Vertex> &points,
-              std::vector<Edge> &edges, std::vector<Triangle> &triangles);
-  MeshClipper(Stl const &stl, std::vector<Vertex> &points,
-              std::vector<Edge> &edges, std::vector<Triangle> &triangles);
-  MeshClipper(std::vector<Vertex> &points, std::vector<Edge> &edges,
-              std::vector<Triangle> &triangles)
+  Mesh(Mesh const &meshClipper, std::vector<Vertex> &points,
+       std::vector<Edge> &edges, std::vector<Triangle> &triangles);
+  Mesh(Stl const &stl, std::vector<Vertex> &points, std::vector<Edge> &edges,
+       std::vector<Triangle> &triangles);
+  Mesh(std::vector<Vertex> &points, std::vector<Edge> &edges,
+       std::vector<Triangle> &triangles)
       : m_points(points), m_edges(edges), m_triangles(triangles) {}
 
   Vertex &point0(Edge const &edge) { return m_points[edge.m_pointIndices[0]]; }
@@ -99,11 +98,10 @@ public:
   void close3EdgeOpenTriangle(std::size_t triangleIndex,
                               Opening const &opening);
   std::vector<bool> softClip(Millimeter zCut);
-  Opening getOpening(MeshClipper::Triangle const &triangle) const;
+  Opening getOpening(Mesh::Triangle const &triangle) const;
 };
 
-inline bool operator<(MeshClipper::Edge const &lhs,
-                      MeshClipper::Edge const &rhs) {
+inline bool operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) {
   auto const &[lhsPointLow, lhsPointHigh] =
       std::minmax(lhs.m_pointIndices[0], lhs.m_pointIndices[1]);
   auto const &[rhsPointLow, rhsPointHigh] =
@@ -124,21 +122,18 @@ inline bool operator<(MeshClipper::Edge const &lhs,
   return false;
 }
 
-inline bool operator==(MeshClipper::Edge const &lhs,
-                       MeshClipper::Edge const &rhs) {
+inline bool operator==(Mesh::Edge const &lhs, Mesh::Edge const &rhs) {
   return (lhs.m_pointIndices[0] == rhs.m_pointIndices[0] and
           lhs.m_pointIndices[1] == rhs.m_pointIndices[1]) or
          (lhs.m_pointIndices[1] == rhs.m_pointIndices[0] and
           lhs.m_pointIndices[0] == rhs.m_pointIndices[1]);
 }
 
-inline bool operator!=(MeshClipper::Edge const &lhs,
-                       MeshClipper::Edge const &rhs) {
+inline bool operator!=(Mesh::Edge const &lhs, Mesh::Edge const &rhs) {
   return not(lhs == rhs);
 }
 
-inline bool operator<(MeshClipper::Triangle const &lhs,
-                      MeshClipper::Triangle const &rhs) {
+inline bool operator<(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs) {
   std::set<std::size_t> lhsEdges{lhs.m_edgeIndices[0], lhs.m_edgeIndices[1],
                                  lhs.m_edgeIndices[2]};
   std::set<std::size_t> rhsEdges{rhs.m_edgeIndices[0], rhs.m_edgeIndices[1],
@@ -158,8 +153,7 @@ inline bool operator<(MeshClipper::Triangle const &lhs,
   return false;
 }
 
-inline bool operator==(MeshClipper::Triangle const &lhs,
-                       MeshClipper::Triangle const &rhs) {
+inline bool operator==(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs) {
   return (lhs.m_edgeIndices[0] == rhs.m_edgeIndices[0] and
           ((lhs.m_edgeIndices[1] == rhs.m_edgeIndices[1] and
             lhs.m_edgeIndices[2] == rhs.m_edgeIndices[2]) or
@@ -177,13 +171,11 @@ inline bool operator==(MeshClipper::Triangle const &lhs,
             lhs.m_edgeIndices[2] == rhs.m_edgeIndices[1])));
 }
 
-inline bool operator!=(MeshClipper::Triangle const &lhs,
-                       MeshClipper::Triangle const &rhs) {
+inline bool operator!=(Mesh::Triangle const &lhs, Mesh::Triangle const &rhs) {
   return not(lhs == rhs);
 }
 
-inline auto operator<<(std::ostream &os,
-                       std::vector<MeshClipper::Edge> const &edges)
+inline auto operator<<(std::ostream &os, std::vector<Mesh::Edge> const &edges)
     -> std::ostream & {
 
   std::string delim{""};
@@ -196,8 +188,7 @@ inline auto operator<<(std::ostream &os,
   return os;
 }
 
-inline auto operator<<(std::ostream &os,
-                       std::vector<MeshClipper::Triangle> triangles)
+inline auto operator<<(std::ostream &os, std::vector<Mesh::Triangle> triangles)
     -> std::ostream & {
   std::string delim{""};
   os << "\n{";
@@ -209,7 +200,7 @@ inline auto operator<<(std::ostream &os,
   return os;
 }
 
-template <> struct fmt::formatter<MeshClipper::Edge> {
+template <> struct fmt::formatter<Mesh::Edge> {
   constexpr auto parse(format_parse_context &ctx) {
     // [ctx.begin(), ctx.end()) is a character range that contains a part of
     // the format string starting from the format specifications to be parsed,
@@ -243,7 +234,7 @@ template <> struct fmt::formatter<MeshClipper::Edge> {
   }
 
   template <typename FormatContext>
-  auto format(const MeshClipper::Edge &edge, FormatContext &ctx) {
+  auto format(const Mesh::Edge &edge, FormatContext &ctx) {
     // ctx.out() is an output iterator to write to.
     return format_to(ctx.out(), "{{({}) --- ({})}}", edge.m_pointIndices[0],
                      edge.m_pointIndices[1]);

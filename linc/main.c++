@@ -70,9 +70,9 @@ auto main(int argc, char *argv[]) -> int {
     return -1;
   }
   std::vector<Vertex> v{};
-  std::vector<MeshClipper::Edge> e{};
-  std::vector<MeshClipper::Triangle> t{};
-  MeshClipper const meshClipper{stl, v, e, t};
+  std::vector<Mesh::Edge> e{};
+  std::vector<Mesh::Triangle> t{};
+  Mesh const meshClipper{stl, v, e, t};
 
   if (not validateParamsFile(paramsFileName)) {
     std::cerr << "Validation of " << paramsFileName << " failed\n";

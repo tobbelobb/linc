@@ -3,7 +3,7 @@
 
 #include <spdlog/spdlog.h>
 
-#include <linc/mesh-clipper.h++>
+#include <linc/mesh.h++>
 #include <linc/params.h++>
 #include <linc/units.h++>
 #include <linc/vertex.h++>
@@ -15,9 +15,9 @@ struct Triangle {
 
   Triangle(std::array<Vertex, 3> const &corners) : m_corners(corners) {}
 
-  Triangle(MeshClipper::Triangle const &meshTriangle,
+  Triangle(Mesh::Triangle const &meshTriangle,
            std::vector<Vertex> const &points,
-           std::vector<MeshClipper::Edge> const &edges) {
+           std::vector<Mesh::Edge> const &edges) {
     m_corners[0] =
         points[edges[meshTriangle.m_edgeIndices[0]].m_pointIndices[0]];
     m_corners[1] =
@@ -93,8 +93,8 @@ struct Collision {
   operator bool() const { return m_isCollision; }
 };
 
-[[nodiscard]] Collision willCollide(MeshClipper const &, Pivots const &,
-                                    Millimeter, bool hullIt = true);
+[[nodiscard]] Collision willCollide(Mesh const &, Pivots const &, Millimeter,
+                                    bool hullIt = true);
 
-void makeDebugModel(MeshClipper const &meshClipper, Pivots const &pivots,
+void makeDebugModel(Mesh const &meshClipper, Pivots const &pivots,
                     Collision const &collision, std::string const &outFileName);

@@ -7,7 +7,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
-#include <linc/mesh-clipper.h++>
+#include <linc/mesh.h++>
 #include <linc/stl.h++>
 #include <linc/util.h++>
 
@@ -15,7 +15,7 @@ using PairOfPairs = std::array<std::array<std::size_t, 2>, 2>;
 
 static auto logger = spdlog::get("file_logger");
 
-void MeshClipper::loadVertices(std::vector<Stl::Facet> const &facets) {
+void Mesh::loadVertices(std::vector<Stl::Facet> const &facets) {
   for (const auto &facet : facets) {
     for (const auto &vertex : facet.vertices) {
       m_points.emplace_back(vertex);
@@ -29,8 +29,8 @@ void MeshClipper::loadVertices(std::vector<Stl::Facet> const &facets) {
   SPDLOG_LOGGER_TRACE(logger, "found {} unique vertices", m_points.size());
 }
 
-auto MeshClipper::extractEdgeTriplets(std::vector<Stl::Facet> const &facets)
-    -> std::vector<std::array<MeshClipper::Edge, 3>> {
+auto Mesh::extractEdgeTriplets(std::vector<Stl::Facet> const &facets)
+    -> std::vector<std::array<Mesh::Edge, 3>> {
   std::vector<std::array<Edge, 3>> edgeTriplets{};
   edgeTriplets.reserve(facets.size());
   for (const auto &facet : facets) {
@@ -68,8 +68,8 @@ auto MeshClipper::extractEdgeTriplets(std::vector<Stl::Facet> const &facets)
   return edgeTriplets;
 }
 
-void MeshClipper::loadEdges(
-    std::vector<std::array<MeshClipper::Edge, 3>> const &edgeTriplets) {
+void Mesh::loadEdges(
+    std::vector<std::array<Mesh::Edge, 3>> const &edgeTriplets) {
   for (auto const &edgeTriplet : edgeTriplets) {
     for (auto const &edge : edgeTriplet) {
       m_edges.emplace_back(edge);
@@ -82,8 +82,8 @@ void MeshClipper::loadEdges(
   SPDLOG_LOGGER_TRACE(logger, "found {} unique edges", m_edges.size());
 }
 
-void MeshClipper::loadTriangles(
-    std::vector<std::array<MeshClipper::Edge, 3>> const &edgeTriplets) {
+void Mesh::loadTriangles(
+    std::vector<std::array<Mesh::Edge, 3>> const &edgeTriplets) {
   for (auto const &[i, edgeTriplet] : enumerate(edgeTriplets)) {
     std::array<std::size_t, 3> edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                            INVALID_INDEX};
@@ -108,16 +108,15 @@ void MeshClipper::loadTriangles(
   }
 }
 
-MeshClipper::MeshClipper(Stl const &stl, std::vector<Vertex> &points,
-                         std::vector<Edge> &edges,
-                         std::vector<Triangle> &triangles)
+Mesh::Mesh(Stl const &stl, std::vector<Vertex> &points,
+           std::vector<Edge> &edges, std::vector<Triangle> &triangles)
     : m_points(points), m_edges(edges), m_triangles(triangles) {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%t] [%s(%#)] [%!] [%l] %v");
   spdlog::set_level(spdlog::level::trace);
-  SPDLOG_LOGGER_DEBUG(logger, "Building MeshClipper from {} facets",
+  SPDLOG_LOGGER_DEBUG(logger, "Building Mesh from {} facets",
                       stl.m_facets.size());
   m_points.reserve(3 * stl.m_facets.size());
   loadVertices(stl.m_facets);
@@ -135,12 +134,11 @@ MeshClipper::MeshClipper(Stl const &stl, std::vector<Vertex> &points,
                           EXPECTED_EDGE_VECTOR_GROWTH_DENOMINATOR);
   loadTriangles(edgeTriplets);
 
-  SPDLOG_LOGGER_DEBUG(logger, "finished loading MeshClipper from Stl");
+  SPDLOG_LOGGER_DEBUG(logger, "finished loading Mesh from Stl");
 }
 
-MeshClipper::MeshClipper(MeshClipper const &meshClipper,
-                         std::vector<Vertex> &points, std::vector<Edge> &edges,
-                         std::vector<Triangle> &triangles)
+Mesh::Mesh(Mesh const &meshClipper, std::vector<Vertex> &points,
+           std::vector<Edge> &edges, std::vector<Triangle> &triangles)
     : m_points(points), m_edges(edges), m_triangles(triangles) {
 
   // Copy over data from Mesh object
@@ -157,8 +155,7 @@ MeshClipper::MeshClipper(MeshClipper const &meshClipper,
   }
 }
 
-auto MeshClipper::getPointsVisibility(Millimeter const zCut)
-    -> std::vector<bool> {
+auto Mesh::getPointsVisibility(Millimeter const zCut) -> std::vector<bool> {
   double constexpr eps = VertexConstants::eps;
   std::vector<bool> visible{};
   visible.reserve(m_points.size() + m_points.size() / 10);
@@ -174,8 +171,7 @@ auto MeshClipper::getPointsVisibility(Millimeter const zCut)
   return visible;
 }
 
-auto MeshClipper::softMaxHeight(std::vector<bool> const &visible) const
-    -> Millimeter {
+auto Mesh::softMaxHeight(std::vector<bool> const &visible) const -> Millimeter {
   if (m_points.size() != visible.size()) {
     return 0.0_mm;
   }
@@ -202,7 +198,7 @@ auto MeshClipper::softMaxHeight(std::vector<bool> const &visible) const
   return max;
 }
 
-auto MeshClipper::maxHeight() const -> Millimeter {
+auto Mesh::maxHeight() const -> Millimeter {
   if (m_points.empty()) {
     return 0.0_mm;
   }
@@ -213,7 +209,7 @@ auto MeshClipper::maxHeight() const -> Millimeter {
       .z();
 }
 
-auto MeshClipper::minHeight() const -> Millimeter {
+auto Mesh::minHeight() const -> Millimeter {
   if (m_points.empty()) {
     return 0.0_mm;
   }
@@ -224,7 +220,7 @@ auto MeshClipper::minHeight() const -> Millimeter {
       .z();
 }
 
-auto MeshClipper::countVisibleTriangles() const -> std::size_t {
+auto Mesh::countVisibleTriangles() const -> std::size_t {
   return static_cast<std::size_t>(std::count_if(
       m_triangles.begin(), m_triangles.end(),
       [](Triangle const &triangle) { return triangle.m_visible; }));
@@ -232,8 +228,8 @@ auto MeshClipper::countVisibleTriangles() const -> std::size_t {
 
 // Go through edge's users and remove edge
 // from them
-void MeshClipper::propagateInvisibilityToUsers(std::size_t const edgeIndex,
-                                               Edge const &edge) {
+void Mesh::propagateInvisibilityToUsers(std::size_t const edgeIndex,
+                                        Edge const &edge) {
   for (auto const &triangleIndex : edge.m_users) {
     Triangle &triangle = m_triangles[triangleIndex];
     for (auto &triangleEdgeIndex : triangle.m_edgeIndices) {
@@ -258,14 +254,14 @@ void MeshClipper::propagateInvisibilityToUsers(std::size_t const edgeIndex,
 // t = 0 gives back point0
 // t = 1 gives back point1
 // 0 < t < 1 gives back a point in between
-auto MeshClipper::pointAlong(MeshClipper::Edge const &edge,
-                             Millimeter const t) const -> Vertex {
+auto Mesh::pointAlong(Mesh::Edge const &edge, Millimeter const t) const
+    -> Vertex {
   return (1 - t) * m_points[edge.m_pointIndices[0]] +
          t * m_points[edge.m_pointIndices[1]];
 }
 
-auto MeshClipper::adjustEdges(Millimeter const zCut,
-                              std::vector<bool> &pointVisibility)
+auto Mesh::adjustEdges(Millimeter const zCut,
+                       std::vector<bool> &pointVisibility)
     -> std::vector<std::size_t> {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting edges");
   std::size_t const numEdges = m_edges.size();
@@ -315,8 +311,8 @@ auto MeshClipper::adjustEdges(Millimeter const zCut,
   return cutTriangles;
 }
 
-void MeshClipper::close2EdgeOpenTriangle(std::size_t const triangleIndex,
-                                         Opening const &opening) {
+void Mesh::close2EdgeOpenTriangle(std::size_t const triangleIndex,
+                                  Opening const &opening) {
   Triangle &triangle = m_triangles[triangleIndex];
 
   std::size_t const newEdgeIndex = m_edges.size();
@@ -331,8 +327,8 @@ void MeshClipper::close2EdgeOpenTriangle(std::size_t const triangleIndex,
   triangle.m_edgeIndices.at(insertEdgeIndexAt) = newEdgeIndex;
 }
 
-void MeshClipper::close3EdgeOpenTriangle(std::size_t const triangleIndex,
-                                         Opening const &opening) {
+void Mesh::close3EdgeOpenTriangle(std::size_t const triangleIndex,
+                                  Opening const &opening) {
   Triangle &triangle = m_triangles[triangleIndex];
 
   // We will add one triangle
@@ -388,8 +384,7 @@ void MeshClipper::close3EdgeOpenTriangle(std::size_t const triangleIndex,
       Triangle{{newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
 }
 
-void MeshClipper::adjustTriangles(
-    std::vector<std::size_t> const &triangleIndices) {
+void Mesh::adjustTriangles(std::vector<std::size_t> const &triangleIndices) {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting triangles");
   for (auto const &triangleIndex : triangleIndices) {
     Triangle &triangle = m_triangles[triangleIndex];
@@ -409,7 +404,7 @@ void MeshClipper::adjustTriangles(
 }
 
 // Returns vector saying which points are visible
-auto MeshClipper::softClip(Millimeter const zCut) -> std::vector<bool> {
+auto Mesh::softClip(Millimeter const zCut) -> std::vector<bool> {
   SPDLOG_LOGGER_DEBUG(logger, "Soft clipping at z={}", zCut);
 
   std::vector<bool> visible{getPointsVisibility(zCut)};
@@ -443,7 +438,7 @@ auto MeshClipper::softClip(Millimeter const zCut) -> std::vector<bool> {
   return visible;
 }
 
-void MeshClipper::writeBinaryStl(std::string const &fileName) const {
+void Mesh::writeBinaryStl(std::string const &fileName) const {
   SPDLOG_LOGGER_DEBUG(logger, "Writing binary stl: {}", fileName);
   auto myfile = std::fstream(fileName, std::ios::out | std::ios::binary);
   constexpr std::array<char const, LABEL_SIZE> emptyHeader = {'\0'};
@@ -490,8 +485,7 @@ void MeshClipper::writeBinaryStl(std::string const &fileName) const {
   myfile.close();
 }
 
-auto MeshClipper::getVerticesAt(Millimeter const height) const
-    -> std::vector<Vertex> {
+auto Mesh::getVerticesAt(Millimeter const height) const -> std::vector<Vertex> {
   std::vector<Vertex> res{};
   for (auto const &point : m_points) {
     if ((point.z() <= VertexConstants::eps + height) and
@@ -502,8 +496,7 @@ auto MeshClipper::getVerticesAt(Millimeter const height) const
   return res;
 }
 
-auto MeshClipper::getOpening(MeshClipper::Triangle const &triangle) const
-    -> MeshClipper::Opening {
+auto Mesh::getOpening(Mesh::Triangle const &triangle) const -> Mesh::Opening {
   std::size_t startPointIndex = INVALID_INDEX;
   std::size_t endPointIndex = INVALID_INDEX;
   std::array<std::size_t, 6> indices{INVALID_INDEX};

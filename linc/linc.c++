@@ -13,7 +13,7 @@
 #include <spdlog/spdlog.h>
 
 #include <linc/linc.h++>
-#include <linc/mesh-clipper.h++>
+#include <linc/mesh.h++>
 #include <linc/util.h++>
 #include <linc/vertex.h++>
 
@@ -178,8 +178,7 @@ void sortCcwInPlace(std::vector<Vertex> &vertices) {
 }
 
 static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
-                      std::vector<Vertex> const &topVertices,
-                      MeshClipper &cone) {
+                      std::vector<Vertex> const &topVertices, Mesh &cone) {
   // POINTS
   cone.m_points.reserve(topVertices.size() + 1);
   cone.m_points.emplace_back(anchorPivot);
@@ -212,12 +211,12 @@ static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
 }
 
 static auto findCollision(std::vector<Millimeter> const &heights,
-                          MeshClipper const &partialPrintOriginal,
+                          Mesh const &partialPrintOriginal,
                           Pivots const &pivots, bool hullIt, std::stop_token st)
     -> Collision {
   std::vector<Vertex> points{};
-  std::vector<MeshClipper::Edge> edges{};
-  std::vector<MeshClipper::Triangle> triangles{};
+  std::vector<Mesh::Edge> edges{};
+  std::vector<Mesh::Triangle> triangles{};
   points.reserve(partialPrintOriginal.m_points.capacity());
   edges.reserve(partialPrintOriginal.m_edges.capacity());
   triangles.reserve(partialPrintOriginal.m_triangles.capacity());
@@ -230,7 +229,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
     points.clear();
     edges.clear();
     triangles.clear();
-    MeshClipper partialPrint{partialPrintOriginal, points, edges, triangles};
+    Mesh partialPrint{partialPrintOriginal, points, edges, triangles};
     auto const visible{partialPrint.softClip(h)};
     if (visible.empty()) {
       SPDLOG_LOGGER_WARN(logger, "No points are visible");
@@ -262,8 +261,8 @@ static auto findCollision(std::vector<Millimeter> const &heights,
 
     std::vector<bool> checkIts(partialPrint.m_points.size(), true);
     std::vector<Vertex> vCone{};
-    std::vector<MeshClipper::Edge> eCone{};
-    std::vector<MeshClipper::Triangle> tCone{};
+    std::vector<Mesh::Edge> eCone{};
+    std::vector<Mesh::Triangle> tCone{};
     for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
       Vertex const &effectorPivot{pivots.effector.at(anchorIndex)};
       Vertex const anchorToEffector{effectorPivot - anchorPivot};
@@ -271,7 +270,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       vCone.clear();
       eCone.clear();
       tCone.clear();
-      MeshClipper cone{vCone, eCone, tCone};
+      Mesh cone{vCone, eCone, tCone};
       buildCone(anchorPivot, effectorPivot, topVertices, cone);
 
       // Find the sharpest angle towards xy-plane the line will have on this
@@ -359,7 +358,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
   return {false};
 }
 
-auto willCollide(MeshClipper const &mesh, Pivots const &pivots,
+auto willCollide(Mesh const &mesh, Pivots const &pivots,
                  Millimeter const maxLayerHeight, bool hullIt) -> Collision {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
@@ -486,7 +485,7 @@ auto willCollide(MeshClipper const &mesh, Pivots const &pivots,
   return {false};
 }
 
-void makeDebugModel(MeshClipper const &meshClipper, Pivots const &pivots,
+void makeDebugModel(Mesh const &meshClipper, Pivots const &pivots,
                     Collision const &collision,
                     std::string const &outFileName) {
   if (not collision) {
@@ -496,9 +495,9 @@ void makeDebugModel(MeshClipper const &meshClipper, Pivots const &pivots,
   SPDLOG_LOGGER_DEBUG(logger, "Making debug model");
 
   std::vector<Vertex> v{};
-  std::vector<MeshClipper::Edge> e{};
-  std::vector<MeshClipper::Triangle> t{};
-  MeshClipper partialPrint{meshClipper, v, e, t};
+  std::vector<Mesh::Edge> e{};
+  std::vector<Mesh::Triangle> t{};
+  Mesh partialPrint{meshClipper, v, e, t};
   partialPrint.softClip(collision.m_height);
   // Add the intersecting cone triangle to partialPrint
   std::array<std::size_t, 3> cornerIndices{INVALID_INDEX, INVALID_INDEX,
