@@ -108,9 +108,7 @@ void Mesh::loadTriangles(
   }
 }
 
-Mesh::Mesh(Stl const &stl, std::vector<Vertex> &points,
-           std::vector<Edge> &edges, std::vector<Triangle> &triangles)
-    : m_points(points), m_edges(edges), m_triangles(triangles) {
+Mesh::Mesh(Stl const &stl) {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
@@ -137,61 +135,52 @@ Mesh::Mesh(Stl const &stl, std::vector<Vertex> &points,
   SPDLOG_LOGGER_DEBUG(logger, "finished loading Mesh from Stl");
 }
 
-Mesh::Mesh(Mesh const &originalMesh, std::vector<Vertex> &points,
-           std::vector<Edge> &edges, std::vector<Triangle> &triangles,
-           std::vector<std::size_t> const &clippedTriangles, bool const isCheap)
-    : m_points(points), m_edges(edges), m_triangles(triangles) {
+void Mesh::reset(Mesh const &originalMesh,
+                 std::vector<std::size_t> clippedTriangles) {
+  if (not clippedTriangles.empty()) {
+    m_points.resize(originalMesh.m_points.size());
+    m_edges.resize(originalMesh.m_edges.size());
+    m_triangles.resize(originalMesh.m_triangles.size());
 
-  if (isCheap)
-    [[likely]] {
-      // The mesh was previously clipped, and we just replace
-      // those elements who have been invalidated or changed
-      if (not clippedTriangles.empty()) {
-        m_points.resize(originalMesh.m_points.size());
-        m_edges.resize(originalMesh.m_edges.size());
-        m_triangles.resize(originalMesh.m_triangles.size());
-
-        for (std::size_t triangleIndex{0}; triangleIndex < m_triangles.size();
-             ++triangleIndex) {
-          Triangle &ourTriangle = m_triangles[triangleIndex];
-          if (std::any_of(ourTriangle.m_edgeIndices.begin(),
-                          ourTriangle.m_edgeIndices.end(),
-                          [](std::size_t const index) {
-                            return index == INVALID_INDEX;
-                          }) or
-              not ourTriangle.m_visible) {
-            ourTriangle = originalMesh.m_triangles[triangleIndex];
-          }
-        }
-        for (auto const triangleIndex : clippedTriangles) {
-          Triangle &originalTriangle = originalMesh.m_triangles[triangleIndex];
-          m_triangles[triangleIndex] = originalTriangle;
-          for (auto const edgeIndex : originalTriangle.m_edgeIndices) {
-            m_edges[edgeIndex] = originalMesh.m_edges[edgeIndex];
-          }
-        }
+    for (std::size_t triangleIndex{0}; triangleIndex < m_triangles.size();
+         ++triangleIndex) {
+      Triangle &ourTriangle = m_triangles[triangleIndex];
+      if (std::any_of(
+              ourTriangle.m_edgeIndices.begin(),
+              ourTriangle.m_edgeIndices.end(),
+              [](std::size_t const index) { return index == INVALID_INDEX; }) or
+          not ourTriangle.m_visible) {
+        ourTriangle = originalMesh.m_triangles[triangleIndex];
       }
     }
-  else {
-    // Copy over everything from the original
-    m_points.clear();
-    m_points.reserve(originalMesh.m_points.size() +
-                     originalMesh.m_points.size() / 10);
-    for (auto const &originalPoint : originalMesh.m_points) {
-      m_points.emplace_back(originalPoint);
+
+    for (auto const triangleIndex : clippedTriangles) {
+      Triangle const &originalTriangle =
+          originalMesh.m_triangles[triangleIndex];
+      m_triangles[triangleIndex] = originalTriangle;
+      for (auto const edgeIndex : originalTriangle.m_edgeIndices) {
+        m_edges[edgeIndex] = originalMesh.m_edges[edgeIndex];
+      }
     }
-    m_edges.clear();
-    m_edges.reserve(originalMesh.m_edges.size() +
-                    originalMesh.m_edges.size() / 10);
-    for (auto const &originalEdge : originalMesh.m_edges) {
-      m_edges.emplace_back(originalEdge);
-    }
-    m_triangles.clear();
-    m_triangles.reserve(originalMesh.m_triangles.size() +
-                        originalMesh.m_triangles.size() / 10);
-    for (auto const &originalTriangle : originalMesh.m_triangles) {
-      m_triangles.emplace_back(originalTriangle);
-    }
+  }
+}
+
+Mesh::Mesh(Mesh const &originalMesh) {
+  // Copy over everything from the original
+  m_points.reserve(originalMesh.m_points.size() +
+                   originalMesh.m_points.size() / 10);
+  for (auto const &originalPoint : originalMesh.m_points) {
+    m_points.emplace_back(originalPoint);
+  }
+  m_edges.reserve(originalMesh.m_edges.size() +
+                  originalMesh.m_edges.size() / 10);
+  for (auto const &originalEdge : originalMesh.m_edges) {
+    m_edges.emplace_back(originalEdge);
+  }
+  m_triangles.reserve(originalMesh.m_triangles.size() +
+                      originalMesh.m_triangles.size() / 10);
+  for (auto const &originalTriangle : originalMesh.m_triangles) {
+    m_triangles.emplace_back(originalTriangle);
   }
 }
 

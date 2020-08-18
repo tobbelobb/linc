@@ -59,20 +59,14 @@ public:
     std::size_t endPointIndex = INVALID_INDEX;
   };
 
-  std::vector<Vertex> &m_points;
-  std::vector<Edge> &m_edges;
-  std::vector<Triangle> &m_triangles;
+  std::vector<Vertex> m_points{};
+  std::vector<Edge> m_edges{};
+  std::vector<Triangle> m_triangles{};
 
-  Mesh(Mesh const &meshClipper) = delete;
-
-  Mesh(Mesh const &meshClipper, std::vector<Vertex> &points,
-       std::vector<Edge> &edges, std::vector<Triangle> &triangles,
-       std::vector<std::size_t> const &clippedTriangles, bool isCheap = false);
-  Mesh(Stl const &stl, std::vector<Vertex> &points, std::vector<Edge> &edges,
-       std::vector<Triangle> &triangles);
-  Mesh(std::vector<Vertex> &points, std::vector<Edge> &edges,
-       std::vector<Triangle> &triangles)
-      : m_points(points), m_edges(edges), m_triangles(triangles) {}
+  Mesh(Mesh const &meshClipper);
+  Mesh(Stl const &stl);
+  Mesh(Vertex v) : m_points{{v}} {}
+  Mesh() = default;
 
   Vertex &point0(Edge const &edge) { return m_points[edge.m_pointIndices[0]]; }
   Vertex &point1(Edge const &edge) { return m_points[edge.m_pointIndices[1]]; }
@@ -101,6 +95,8 @@ public:
   std::vector<bool> softClip(Millimeter zCut,
                              std::vector<std::size_t> &clippedTriangles);
   Opening getOpening(Mesh::Triangle const &triangle) const;
+  void reset(Mesh const &originalMesh,
+             std::vector<std::size_t> clippedTriangles);
 };
 
 inline bool operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) {

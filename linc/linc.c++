@@ -180,7 +180,6 @@ void sortCcwInPlace(std::vector<Vertex> &vertices) {
 static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
                       std::vector<Vertex> const &topVertices, Mesh &cone) {
   // POINTS
-  cone.m_points.reserve(topVertices.size() + 1);
   cone.m_points.emplace_back(anchorPivot);
   for (auto const &topVertex : topVertices) {
     cone.m_points.emplace_back(topVertex + effectorPivot);
@@ -189,7 +188,6 @@ static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
 
   // EDGES
   // Add star topology down to anchorPivot
-  cone.m_edges.reserve(numTopPoints * 2);
   for (std::size_t pointIdx{1}; pointIdx < numTopPoints; ++pointIdx) {
     cone.m_edges.emplace_back(EdgePointIndices{0, pointIdx});
   }
@@ -202,7 +200,6 @@ static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
   // TRIANGLES
   // There are numTopPoints top points (and thus star-topology-edges)
   // Right after star-topology edges comes as many ring edges
-  cone.m_triangles.reserve(numTopPoints);
   for (size_t starEdgeIdx{0}; starEdgeIdx < numTopPoints; ++starEdgeIdx) {
     size_t const ringEdgeIdx = starEdgeIdx + numTopPoints;
     cone.m_triangles.emplace_back(std::array<size_t, 3>{
@@ -214,22 +211,15 @@ static auto findCollision(std::vector<Millimeter> const &heights,
                           Mesh const &partialPrintOriginal,
                           Pivots const &pivots, bool hullIt, std::stop_token st)
     -> Collision {
-  std::vector<Vertex> points{};
-  std::vector<Mesh::Edge> edges{};
-  std::vector<Mesh::Triangle> triangles{};
   std::vector<std::size_t> clippedTriangles{};
   clippedTriangles.reserve(partialPrintOriginal.m_triangles.size() / 5);
-  bool useCheapConstructor = false;
+  Mesh partialPrint{partialPrintOriginal};
   for (auto const h : heights) {
     if (st.stop_requested()) {
       SPDLOG_LOGGER_DEBUG(
           logger, "Another thread already found a collision. Returning.");
       return {false};
     }
-    Mesh partialPrint{
-        partialPrintOriginal, points, edges, triangles, clippedTriangles,
-        useCheapConstructor};
-    useCheapConstructor = true;
     clippedTriangles.clear();
     auto const pointsVisibility = partialPrint.softClip(h, clippedTriangles);
     if (pointsVisibility.empty()) {
@@ -261,17 +251,17 @@ static auto findCollision(std::vector<Millimeter> const &heights,
     }
 
     std::vector<bool> checkIts(partialPrint.m_points.size(), true);
-    std::vector<Vertex> vCone{};
-    std::vector<Mesh::Edge> eCone{};
-    std::vector<Mesh::Triangle> tCone{};
+    Mesh cone{};
+    cone.m_points.reserve(topVertices.size() + 1);
+    cone.m_edges.reserve(topVertices.size() * 2);
+    cone.m_triangles.reserve(topVertices.size());
     for (auto const &[anchorIndex, anchorPivot] : enumerate(pivots.anchors)) {
       Vertex const &effectorPivot{pivots.effector.at(anchorIndex)};
       Vertex const anchorToEffector{effectorPivot - anchorPivot};
 
-      vCone.clear();
-      eCone.clear();
-      tCone.clear();
-      Mesh cone{vCone, eCone, tCone};
+      cone.m_points.clear();
+      cone.m_edges.clear();
+      cone.m_triangles.clear();
       buildCone(anchorPivot, effectorPivot, topVertices, cone);
 
       // Find the sharpest angle towards xy-plane the line will have on this
@@ -355,6 +345,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
         }
       }
     }
+    partialPrint.reset(partialPrintOriginal, clippedTriangles);
   }
   return {false};
 }
@@ -495,11 +486,8 @@ void makeDebugModel(Mesh const &meshClipper, Pivots const &pivots,
   }
   SPDLOG_LOGGER_DEBUG(logger, "Making debug model");
 
-  std::vector<Vertex> v{};
-  std::vector<Mesh::Edge> e{};
-  std::vector<Mesh::Triangle> t{};
   std::vector<std::size_t> c{};
-  Mesh partialPrint{meshClipper, v, e, t, c};
+  Mesh partialPrint{meshClipper};
   partialPrint.softClip(collision.m_height, c);
   // Add the intersecting cone triangle to partialPrint
   std::array<std::size_t, 3> cornerIndices{INVALID_INDEX, INVALID_INDEX,

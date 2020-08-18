@@ -69,10 +69,7 @@ auto main(int argc, char *argv[]) -> int {
     std::cerr << "Failed to load " << modelFileName << '\n';
     return -1;
   }
-  std::vector<Vertex> v{};
-  std::vector<Mesh::Edge> e{};
-  std::vector<Mesh::Triangle> t{};
-  Mesh const meshClipper{stl, v, e, t};
+  Mesh const meshClipper{stl};
 
   if (not validateParamsFile(paramsFileName)) {
     std::cerr << "Validation of " << paramsFileName << " failed\n";
