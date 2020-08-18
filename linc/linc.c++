@@ -217,33 +217,27 @@ static auto findCollision(std::vector<Millimeter> const &heights,
   std::vector<Vertex> points{};
   std::vector<Mesh::Edge> edges{};
   std::vector<Mesh::Triangle> triangles{};
-  points.reserve(partialPrintOriginal.m_points.capacity());
-  edges.reserve(partialPrintOriginal.m_edges.capacity());
-  triangles.reserve(partialPrintOriginal.m_triangles.capacity());
-  bool firstRun = true;
+  std::vector<std::size_t> clippedTriangles{};
+  clippedTriangles.reserve(partialPrintOriginal.m_triangles.size() / 5);
+  bool useCheapConstructor = false;
   for (auto const h : heights) {
     if (st.stop_requested()) {
       SPDLOG_LOGGER_DEBUG(
           logger, "Another thread already found a collision. Returning.");
       return {false};
     }
-    if (firstRun) {
-      firstRun = false;
-    } else {
-      // Points are not changed by the algorithm,
-      // so we don't need to reload them at all
-      points.resize(partialPrintOriginal.m_points.size());
-    }
-    edges.clear();
-    triangles.clear();
-    Mesh partialPrint{partialPrintOriginal, points, edges, triangles};
-    auto const visible{partialPrint.softClip(h)};
-    if (visible.empty()) {
+    Mesh partialPrint{
+        partialPrintOriginal, points, edges, triangles, clippedTriangles,
+        useCheapConstructor};
+    useCheapConstructor = true;
+    clippedTriangles.clear();
+    auto const pointsVisibility = partialPrint.softClip(h, clippedTriangles);
+    if (pointsVisibility.empty()) {
       SPDLOG_LOGGER_WARN(logger, "No points are visible");
       continue;
     }
     SPDLOG_LOGGER_DEBUG(logger, "New soft max height after clip is {}",
-                        partialPrint.softMaxHeight(visible));
+                        partialPrint.softMaxHeight(pointsVisibility));
 
     // Extract convex hull of the top points
     // This involves removing points that are enclosed by other points
@@ -504,8 +498,9 @@ void makeDebugModel(Mesh const &meshClipper, Pivots const &pivots,
   std::vector<Vertex> v{};
   std::vector<Mesh::Edge> e{};
   std::vector<Mesh::Triangle> t{};
-  Mesh partialPrint{meshClipper, v, e, t};
-  partialPrint.softClip(collision.m_height);
+  std::vector<std::size_t> c{};
+  Mesh partialPrint{meshClipper, v, e, t, c};
+  partialPrint.softClip(collision.m_height, c);
   // Add the intersecting cone triangle to partialPrint
   std::array<std::size_t, 3> cornerIndices{INVALID_INDEX, INVALID_INDEX,
                                            INVALID_INDEX};

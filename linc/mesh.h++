@@ -66,7 +66,8 @@ public:
   Mesh(Mesh const &meshClipper) = delete;
 
   Mesh(Mesh const &meshClipper, std::vector<Vertex> &points,
-       std::vector<Edge> &edges, std::vector<Triangle> &triangles);
+       std::vector<Edge> &edges, std::vector<Triangle> &triangles,
+       std::vector<std::size_t> const &clippedTriangles, bool isCheap = false);
   Mesh(Stl const &stl, std::vector<Vertex> &points, std::vector<Edge> &edges,
        std::vector<Triangle> &triangles);
   Mesh(std::vector<Vertex> &points, std::vector<Edge> &edges,
@@ -88,8 +89,8 @@ public:
   void writeBinaryStl(std::string const &fileName) const;
   std::vector<Vertex> getVerticesAt(Millimeter height) const;
   std::vector<bool> getPointsVisibility(Millimeter zCut);
-  std::vector<std::size_t> adjustEdges(Millimeter zCut,
-                                       std::vector<bool> &pointVisibility);
+  void adjustEdges(Millimeter zCut, std::vector<bool> &pointVisibility,
+                   std::vector<std::size_t> &clippedTriangles);
   void adjustTriangles(std::vector<std::size_t> const &triangleIndices);
   void propagateInvisibilityToUsers(std::size_t edgeIndex, Edge const &edge);
   Vertex pointAlong(Edge const &edge, Millimeter t) const;
@@ -97,7 +98,8 @@ public:
                               Opening const &opening);
   void close3EdgeOpenTriangle(std::size_t triangleIndex,
                               Opening const &opening);
-  std::vector<bool> softClip(Millimeter zCut);
+  std::vector<bool> softClip(Millimeter zCut,
+                             std::vector<std::size_t> &clippedTriangles);
   Opening getOpening(Mesh::Triangle const &triangle) const;
 };
 

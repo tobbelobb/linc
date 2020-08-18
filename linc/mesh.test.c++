@@ -332,7 +332,8 @@ auto main() -> int {
 
       // If we soft-clip at the top layer, 0 mm should disappear
       // And no points should be set invisible
-      auto const visible10{meshClipper.softClip(10.0)};
+      std::vector<std::size_t> clippedTriangles{};
+      auto const visible10{meshClipper.softClip(10.0, clippedTriangles)};
       compare(meshClipper.m_points.size(), visible10.size());
       double const softClippedAt10 = meshClipper.softMaxHeight(visible10);
       compare(softClippedAt10, 10.0);
@@ -340,7 +341,8 @@ auto main() -> int {
                         [](bool const b) { return b; }));
 
       // If we soft-clip at the bottom there should be another special case
-      auto const visible0{meshClipper.softClip(0.0)};
+      clippedTriangles.clear();
+      auto const visible0{meshClipper.softClip(0.0, clippedTriangles)};
       double const softClippedAt0 = meshClipper.softMaxHeight(visible0);
       compare(softClippedAt0, 0.0);
       // The four points at z=0.0 should not have been cut away
@@ -355,7 +357,8 @@ auto main() -> int {
       Mesh meshClipper{
           Stl{getPath("test-models/broken/standing-triangle.ascii.stl")}, v, e,
           t};
-      auto const visible5{meshClipper.softClip(5.0)};
+      std::vector<std::size_t> clippedTriangles{};
+      auto const visible5{meshClipper.softClip(5.0, clippedTriangles)};
       double const softClippedAt5 = meshClipper.softMaxHeight(visible5);
       compare(softClippedAt5, 5.0);
 
@@ -408,7 +411,8 @@ auto main() -> int {
                        t};
       compare(meshClipper.maxHeight(), 10.0_mm);
 
-      auto const visible5 = meshClipper.softClip(5.0_mm);
+      std::vector<std::size_t> clippedTriangles{};
+      auto const visible5 = meshClipper.softClip(5.0_mm, clippedTriangles);
       Millimeter const softClippedAt5 = meshClipper.softMaxHeight(visible5);
       Millimeter constexpr eps = 1e-6_mm;
       check(softClippedAt5 < 5.0_mm + eps);
@@ -510,9 +514,11 @@ auto main() -> int {
         std::vector<Vertex> v2{};
         std::vector<Mesh::Edge> e2{};
         std::vector<Mesh::Triangle> t2{};
-        Mesh partialPrint{meshClipper, v2, e2, t2};
+        std::vector<std::size_t> clippedTriangles{};
+        Mesh partialPrint{meshClipper, v2, e2, t2, clippedTriangles};
         auto const newH{static_cast<Millimeter>(h)};
-        auto const visibleH = partialPrint.softClip(newH);
+
+        auto const visibleH = partialPrint.softClip(newH, clippedTriangles);
         // Clip should give exactly the new max height that we ask for.
         // No truncation errors allowed.
         compare(partialPrint.softMaxHeight(visibleH), newH);
@@ -524,9 +530,6 @@ auto main() -> int {
         } else {
           compare(topVertices.size(), 8U);
         }
-        v2.clear();
-        e2.clear();
-        t2.clear();
       }
     }
     {
@@ -547,7 +550,8 @@ auto main() -> int {
       check(maxHeight > 48.0_mm - eps);
       check(48.0_mm + eps > maxHeight);
 
-      auto const visible1 = meshClipper.softClip(1.0);
+      std::vector<std::size_t> clippedTriangles{};
+      auto const visible1 = meshClipper.softClip(1.0, clippedTriangles);
       Millimeter const softClippedAt1 =
           maxHeight - meshClipper.softMaxHeight(visible1);
       compare(softClippedAt1, 47.0_mm);

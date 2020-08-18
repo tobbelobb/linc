@@ -137,23 +137,61 @@ Mesh::Mesh(Stl const &stl, std::vector<Vertex> &points,
   SPDLOG_LOGGER_DEBUG(logger, "finished loading Mesh from Stl");
 }
 
-Mesh::Mesh(Mesh const &meshClipper, std::vector<Vertex> &points,
-           std::vector<Edge> &edges, std::vector<Triangle> &triangles)
+Mesh::Mesh(Mesh const &originalMesh, std::vector<Vertex> &points,
+           std::vector<Edge> &edges, std::vector<Triangle> &triangles,
+           std::vector<std::size_t> const &clippedTriangles, bool const isCheap)
     : m_points(points), m_edges(edges), m_triangles(triangles) {
 
-  // Copy over data from Mesh object
-  if (points.empty()) {
-    for (auto const &vertex : meshClipper.m_points) {
-      m_points.emplace_back(vertex);
+  if (isCheap)
+    [[likely]] {
+      // The mesh was previously clipped, and we just replace
+      // those elements who have been invalidated or changed
+      if (not clippedTriangles.empty()) {
+        m_points.resize(originalMesh.m_points.size());
+        m_edges.resize(originalMesh.m_edges.size());
+        m_triangles.resize(originalMesh.m_triangles.size());
+
+        for (std::size_t triangleIndex{0}; triangleIndex < m_triangles.size();
+             ++triangleIndex) {
+          Triangle &ourTriangle = m_triangles[triangleIndex];
+          if (std::any_of(ourTriangle.m_edgeIndices.begin(),
+                          ourTriangle.m_edgeIndices.end(),
+                          [](std::size_t const index) {
+                            return index == INVALID_INDEX;
+                          }) or
+              not ourTriangle.m_visible) {
+            ourTriangle = originalMesh.m_triangles[triangleIndex];
+          }
+        }
+        for (auto const triangleIndex : clippedTriangles) {
+          Triangle &originalTriangle = originalMesh.m_triangles[triangleIndex];
+          m_triangles[triangleIndex] = originalTriangle;
+          for (auto const edgeIndex : originalTriangle.m_edgeIndices) {
+            m_edges[edgeIndex] = originalMesh.m_edges[edgeIndex];
+          }
+        }
+      }
     }
-  }
-  for (auto const &meshEdge : meshClipper.m_edges) {
-    m_edges.emplace_back(meshEdge.m_pointIndices, meshEdge.m_users);
-  }
-  for (auto const &meshTriangle : meshClipper.m_triangles) {
-    m_triangles.emplace_back(std::array<std::size_t, 3>{
-        meshTriangle.m_edgeIndices.at(0), meshTriangle.m_edgeIndices.at(1),
-        meshTriangle.m_edgeIndices.at(2)});
+  else {
+    // Copy over everything from the original
+    m_points.clear();
+    m_points.reserve(originalMesh.m_points.size() +
+                     originalMesh.m_points.size() / 10);
+    for (auto const &originalPoint : originalMesh.m_points) {
+      m_points.emplace_back(originalPoint);
+    }
+    m_edges.clear();
+    m_edges.reserve(originalMesh.m_edges.size() +
+                    originalMesh.m_edges.size() / 10);
+    for (auto const &originalEdge : originalMesh.m_edges) {
+      m_edges.emplace_back(originalEdge);
+    }
+    m_triangles.clear();
+    m_triangles.reserve(originalMesh.m_triangles.size() +
+                        originalMesh.m_triangles.size() / 10);
+    for (auto const &originalTriangle : originalMesh.m_triangles) {
+      m_triangles.emplace_back(originalTriangle);
+    }
   }
 }
 
@@ -262,13 +300,11 @@ auto Mesh::pointAlong(Mesh::Edge const &edge, Millimeter const t) const
          t * m_points[edge.m_pointIndices[1]];
 }
 
-auto Mesh::adjustEdges(Millimeter const zCut,
-                       std::vector<bool> &pointVisibility)
-    -> std::vector<std::size_t> {
+void Mesh::adjustEdges(Millimeter const zCut,
+                       std::vector<bool> &pointVisibility,
+                       std::vector<std::size_t> &clippedTriangles) {
   SPDLOG_LOGGER_DEBUG(logger, "Adjusting edges");
   std::size_t const numEdges = m_edges.size();
-  std::vector<std::size_t> cutTriangles{};
-  cutTriangles.reserve(m_triangles.size() / 5);
   for (std::size_t edgeIndex{0}; edgeIndex < numEdges; ++edgeIndex) {
     Edge &edge = m_edges[edgeIndex];
     bool const visible0 = pointVisibility.at(edge.m_pointIndices[0]);
@@ -300,17 +336,16 @@ auto Mesh::adjustEdges(Millimeter const zCut,
         }
 
         for (auto const &user : edge.m_users) {
-          cutTriangles.emplace_back(user);
+          clippedTriangles.emplace_back(user);
         }
       }
     }
   }
 
-  std::sort(cutTriangles.begin(), cutTriangles.end());
+  std::sort(clippedTriangles.begin(), clippedTriangles.end());
   auto const endOfUniques =
-      std::unique(cutTriangles.begin(), cutTriangles.end());
-  cutTriangles.erase(endOfUniques, cutTriangles.end());
-  return cutTriangles;
+      std::unique(clippedTriangles.begin(), clippedTriangles.end());
+  clippedTriangles.erase(endOfUniques, clippedTriangles.end());
 }
 
 void Mesh::close2EdgeOpenTriangle(std::size_t const triangleIndex,
@@ -400,13 +435,15 @@ void Mesh::adjustTriangles(std::vector<std::size_t> const &triangleIndices) {
       close3EdgeOpenTriangle(triangleIndex, opening);
     } else {
       SPDLOG_LOGGER_ERROR(
-          logger, "Cannot close 1-edge or 0-edge triangle with one new edge.");
+          logger, "Cannot close {}-edge triangle with one new edge.", numEdges);
     }
   }
 }
 
 // Returns vector saying which points are visible
-auto Mesh::softClip(Millimeter const zCut) -> std::vector<bool> {
+auto Mesh::softClip(Millimeter const zCut,
+                    std::vector<std::size_t> &clippedTriangles)
+    -> std::vector<bool> {
   SPDLOG_LOGGER_DEBUG(logger, "Soft clipping at z={}", zCut);
 
   std::vector<bool> visible{getPointsVisibility(zCut)};
@@ -426,12 +463,13 @@ auto Mesh::softClip(Millimeter const zCut) -> std::vector<bool> {
     return visible;
   }
 
-  auto cutTriangles{adjustEdges(zCut, visible)};
+  assert(clippedTriangles.size() == 0);
+  adjustEdges(zCut, visible, clippedTriangles);
   SPDLOG_LOGGER_TRACE(
       logger,
       "There exists {} points, {} edges, and {} triangles after adjustEdges().",
       m_points.size(), m_edges.size(), m_triangles.size());
-  adjustTriangles(cutTriangles);
+  adjustTriangles(clippedTriangles);
   SPDLOG_LOGGER_TRACE(logger,
                       "There exists {} points, {} edges, and {} triangles "
                       "after adjustTriangles().",
