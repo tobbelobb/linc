@@ -17,12 +17,6 @@ public:
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
     std::vector<std::size_t> m_users{};
 
-    Edge &operator=(Edge const &other) {
-      m_pointIndices = other.m_pointIndices;
-      m_users = other.m_users;
-      return *this;
-    }
-
     friend std::ostream &operator<<(std::ostream &os, Mesh::Edge const &edge) {
       os << "{ " << std::setiosflags(std::ios::right) << std::setw(3)
          << std::setfill(' ') << edge.m_pointIndices[0] << " <-> "
