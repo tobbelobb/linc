@@ -15,19 +15,22 @@ class Mesh {
 public:
   struct Edge {
     EdgePointIndices m_pointIndices{INVALID_INDEX, INVALID_INDEX};
-    std::vector<std::size_t> m_users{};
+    std::array<std::size_t, 2> m_users{INVALID_INDEX, INVALID_INDEX};
 
     friend std::ostream &operator<<(std::ostream &os, Mesh::Edge const &edge) {
       os << "{ " << std::setiosflags(std::ios::right) << std::setw(3)
          << std::setfill(' ') << edge.m_pointIndices[0] << " <-> "
          << std::setw(3) << edge.m_pointIndices[1] << " users: (";
       std::string delim{""};
-      if (edge.m_users.size() == 1) {
+      if (std::count(edge.m_users.begin(), edge.m_users.end(), INVALID_INDEX) ==
+          1) {
         delim = "    ";
       }
       for (auto const &user : edge.m_users) {
-        os << delim << std::setw(3) << user;
-        delim = ",";
+        if (user != INVALID_INDEX) {
+          os << delim << std::setw(3) << user;
+          delim = ",";
+        }
       }
       return os << ") }";
     }

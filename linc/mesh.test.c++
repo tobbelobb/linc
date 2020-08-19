@@ -342,10 +342,10 @@ auto main() -> int {
 
       // EDGES correctness
       compare(meshClipper.m_edges.size(), 5U);
-      std::vector<Mesh::Edge> expectedEdges{{{0, 3}, {0}},
-                                            {{0, 2}, {0}},
-                                            {{2, 4}, {1}},
-                                            {{3, 4}, {1}},
+      std::vector<Mesh::Edge> expectedEdges{{{0, 3}, {0, INVALID_INDEX}},
+                                            {{0, 2}, {0, INVALID_INDEX}},
+                                            {{2, 4}, {1, INVALID_INDEX}},
+                                            {{3, 4}, {1, INVALID_INDEX}},
                                             {{2, 3}, {0, 1}}};
       compare(meshClipper.m_edges, expectedEdges);
       for (auto const &[i, expectedEdge] : enumerate(expectedEdges)) {
@@ -442,18 +442,18 @@ auto main() -> int {
           {{ 6, 14}, {15, 11}},
           {{ 7,  5}, { 8, 11}},
           {{15,  6}, { 9, 11}},
-          {{ 8,  9}, {     0}},
-          {{ 8, 10}, {     1}},
-          {{ 9, 11}, {    12}},
+          {{ 8,  9}, { 0, INVALID_INDEX}},
+          {{ 8, 10}, { 1, INVALID_INDEX}},
+          {{ 9, 11}, {12, INVALID_INDEX}},
           {{ 9,  2}, { 2, 12}},
-          {{10, 13}, {    13}},
+          {{10, 13}, {13, INVALID_INDEX}},
           {{10,  4}, { 4, 13}},
-          {{11, 12}, {    14}},
+          {{11, 12}, {14, INVALID_INDEX}},
           {{11,  6}, { 7, 14}},
-          {{12, 15}, {     9}},
-          {{13, 14}, {    15}},
+          {{12, 15}, { 9, INVALID_INDEX}},
+          {{13, 14}, {15, INVALID_INDEX}},
           {{13,  6}, {10, 15}},
-          {{14, 15}, {    11}}};
+          {{14, 15}, {11, INVALID_INDEX}}};
       // clang-format on
       compare(meshClipper.m_edges, expectedEdges);
       for (auto const &[i, expectedEdge] : enumerate(expectedEdges)) {

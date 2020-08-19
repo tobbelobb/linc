@@ -102,9 +102,14 @@ void Mesh::loadTriangles(
   SPDLOG_LOGGER_TRACE(logger, "found {} triangles", m_triangles.size());
 
   for (auto const &[i, triangle] : enumerate(m_triangles)) {
-    m_edges[triangle.m_edgeIndices[0]].m_users.emplace_back(i);
-    m_edges[triangle.m_edgeIndices[1]].m_users.emplace_back(i);
-    m_edges[triangle.m_edgeIndices[2]].m_users.emplace_back(i);
+    for (auto &edgeIndex : triangle.m_edgeIndices) {
+      Edge &edge = m_edges[edgeIndex];
+      if (edge.m_users[0] == INVALID_INDEX) {
+        edge.m_users[0] = i;
+      } else if (edge.m_users[1] == INVALID_INDEX) {
+        edge.m_users[1] = i;
+      }
+    }
   }
 }
 
@@ -266,10 +271,12 @@ void Mesh::getTrianglesVisibility(std::vector<bool> &visible) const {
 void Mesh::propagateInvisibilityToUsers(std::size_t const edgeIndex,
                                         Edge const &edge) {
   for (auto const &triangleIndex : edge.m_users) {
-    Triangle &triangle = m_triangles[triangleIndex];
-    for (auto &triangleEdgeIndex : triangle.m_edgeIndices) {
-      if (triangleEdgeIndex == edgeIndex) {
-        triangleEdgeIndex = INVALID_INDEX;
+    if (triangleIndex != INVALID_INDEX) {
+      Triangle &triangle = m_triangles[triangleIndex];
+      for (auto &triangleEdgeIndex : triangle.m_edgeIndices) {
+        if (triangleEdgeIndex == edgeIndex) {
+          triangleEdgeIndex = INVALID_INDEX;
+        }
       }
     }
   }
@@ -322,7 +329,9 @@ void Mesh::adjustEdges(Millimeter const zCut,
         }
 
         for (auto const &user : edge.m_users) {
-          clippedTriangles.emplace_back(user);
+          if (user != INVALID_INDEX) {
+            clippedTriangles.emplace_back(user);
+          }
         }
       }
     }
@@ -340,7 +349,8 @@ void Mesh::close2EdgeOpenTriangle(std::size_t const triangleIndex,
 
   std::size_t const newEdgeIndex = m_edges.size();
   m_edges.emplace_back(
-      Edge{{opening.startPointIndex, opening.endPointIndex}, {triangleIndex}});
+      EdgePointIndices{opening.startPointIndex, opening.endPointIndex},
+      std::array<std::size_t, 2>{triangleIndex, INVALID_INDEX});
   auto *const emptySpot =
       std::find(triangle.m_edgeIndices.begin(), triangle.m_edgeIndices.end(),
                 INVALID_INDEX);
@@ -396,15 +406,17 @@ void Mesh::close3EdgeOpenTriangle(std::size_t const triangleIndex,
   }
 
   // The newEdge
-  m_edges.emplace_back(Edge{{opening.startPointIndex, opening.endPointIndex},
-                            {newTriangleIndex}});
+  m_edges.emplace_back(
+      EdgePointIndices{opening.startPointIndex, opening.endPointIndex},
+      std::array<std::size_t, 2>{newTriangleIndex, INVALID_INDEX});
   // The newNewEdge
-  m_edges.emplace_back(Edge{{opening.startPointIndex, crossPointIndex},
-                            {triangleIndex, newTriangleIndex}});
+  m_edges.emplace_back(
+      EdgePointIndices{opening.startPointIndex, crossPointIndex},
+      std::array<std::size_t, 2>{triangleIndex, newTriangleIndex});
 
   // The new triangle
-  m_triangles.emplace_back(
-      Triangle{{newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex}});
+  m_triangles.emplace_back(std::array<std::size_t, 3>{
+      newEdgeIndex, betweenEdgeIndex, newNewEdgeIndex});
 }
 
 void Mesh::adjustTriangles(std::vector<std::size_t> const &triangleIndices) {
