@@ -214,6 +214,9 @@ static auto findCollision(std::vector<Millimeter> const &heights,
   std::vector<std::size_t> clippedTriangles{};
   clippedTriangles.reserve(partialPrintOriginal.m_triangles.size() / 5);
   Mesh partialPrint{partialPrintOriginal};
+  std::vector<bool> trianglesVisibility{};
+  trianglesVisibility.reserve(partialPrintOriginal.m_triangles.size() +
+                              partialPrintOriginal.m_triangles.size() / 10);
   for (auto const h : heights) {
     if (st.stop_requested()) {
       SPDLOG_LOGGER_DEBUG(
@@ -228,6 +231,8 @@ static auto findCollision(std::vector<Millimeter> const &heights,
     }
     SPDLOG_LOGGER_DEBUG(logger, "New soft max height after clip is {}",
                         partialPrint.softMaxHeight(pointsVisibility));
+    trianglesVisibility.clear();
+    partialPrint.getTrianglesVisibility(trianglesVisibility);
 
     // Extract convex hull of the top points
     // This involves removing points that are enclosed by other points
@@ -306,14 +311,9 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       // An intersection between a print triangle and a cone triangle
       // means the two meshes intersect, and we regard that as a line
       // collision
-      for (auto const &partialPrintTriangle : partialPrint.m_triangles) {
-        if (partialPrintTriangle.m_visible and
-            // Without INVALID_INDEX check, we might get segfault.
-            // I don't know why some still visible triangles store invalid
-            // indices
-            (partialPrintTriangle.m_edgeIndices[0] != INVALID_INDEX and
-             partialPrintTriangle.m_edgeIndices[1] != INVALID_INDEX and
-             partialPrintTriangle.m_edgeIndices[2] != INVALID_INDEX) and
+      for (auto const &[i, partialPrintTriangle] :
+           enumerate(partialPrint.m_triangles)) {
+        if (trianglesVisibility[i] and
             (checkIts[partialPrint
                           .m_edges[partialPrintTriangle.m_edgeIndices[0]]
                           .m_pointIndices[0]] or

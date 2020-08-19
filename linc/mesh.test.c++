@@ -238,17 +238,19 @@ auto main() -> int {
           {{10, 12, 16}}, {{11, 12, 17}}, {{13, 14, 15}}, {{15, 16, 17}}};
       compare(expectedTriangles.size(), meshClipper.m_triangles.size());
 
+      std::vector<bool> trianglesVisibility{};
+      meshClipper.getTrianglesVisibility(trianglesVisibility);
       for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
         Mesh::Triangle const &gotTriangle = meshClipper.m_triangles[i];
-        bool const visibleEqual =
-            gotTriangle.m_visible == expectedTriangle.m_visible;
-        if (not visibleEqual) {
-          std::cerr << "index: " << i << " expected: \n"
-                    << expectedTriangle << "\ngot: \n"
-                    << gotTriangle << '\n';
-        }
         compare(gotTriangle, expectedTriangle);
-        check(visibleEqual);
+        if (not trianglesVisibility[i]) {
+          std::cerr << "index: " << i << " expected: \n"
+                    << expectedTriangle << " visible\ngot: \n"
+                    << gotTriangle
+                    << (trianglesVisibility[i] ? " visible" : " invisible")
+                    << '\n';
+        }
+        check(trianglesVisibility[i]);
       }
     }
     {
@@ -359,17 +361,21 @@ auto main() -> int {
       // TRIANGLE correctness
       compare(meshClipper.m_triangles.size(), 2U);
       compare(meshClipper.countVisibleTriangles(), 2U);
-      std::vector<Mesh::Triangle> expectedTriangles{{{0, 1, 4}, true},
-                                                    {{2, 3, 4}, true}};
+      std::vector<Mesh::Triangle> expectedTriangles{{{0, 1, 4}}, {{2, 3, 4}}};
       compare(meshClipper.m_triangles, expectedTriangles);
+      std::vector<bool> trianglesVisibility{};
+      meshClipper.getTrianglesVisibility(trianglesVisibility);
       for (auto const &[i, expectedTriangle] : enumerate(expectedTriangles)) {
-        bool visibleEquals =
-            expectedTriangle.m_visible == meshClipper.m_triangles[i].m_visible;
-        if (not visibleEquals) {
-          std::cerr << "Index " << i << " Expected " << expectedTriangle
-                    << " got " << meshClipper.m_triangles[i] << '\n';
+        Mesh::Triangle const &gotTriangle = meshClipper.m_triangles[i];
+        compare(gotTriangle, expectedTriangle);
+        if (not trianglesVisibility[i]) {
+          std::cerr << "index: " << i << " expected: \n"
+                    << expectedTriangle << " visible\ngot: \n"
+                    << gotTriangle
+                    << (trianglesVisibility[i] ? " visible" : " invisible")
+                    << '\n';
         }
-        check(visibleEquals);
+        check(trianglesVisibility[i]);
       }
     }
     {

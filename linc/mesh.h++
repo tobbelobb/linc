@@ -42,8 +42,6 @@ public:
   struct Triangle {
     std::array<std::size_t, 3> m_edgeIndices{INVALID_INDEX, INVALID_INDEX,
                                              INVALID_INDEX};
-    bool m_visible = true;
-
     friend std::ostream &operator<<(std::ostream &os,
                                     Triangle const &triangle) {
       os << '{';
@@ -83,10 +81,12 @@ public:
   void writeBinaryStl(std::string const &fileName) const;
   std::vector<Vertex> getVerticesAt(Millimeter height) const;
   std::vector<bool> getPointsVisibility(Millimeter zCut);
+  void getTrianglesVisibility(std::vector<bool> &visible) const;
+  void propagateInvisibilityToUsers(std::size_t const edgeIndex,
+                                    Edge const &edge);
   void adjustEdges(Millimeter zCut, std::vector<bool> &pointVisibility,
                    std::vector<std::size_t> &clippedTriangles);
   void adjustTriangles(std::vector<std::size_t> const &triangleIndices);
-  void propagateInvisibilityToUsers(std::size_t edgeIndex, Edge const &edge);
   Vertex pointAlong(Edge const &edge, Millimeter t) const;
   void close2EdgeOpenTriangle(std::size_t triangleIndex,
                               Opening const &opening);

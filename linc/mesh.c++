@@ -148,8 +148,7 @@ void Mesh::reset(Mesh const &originalMesh,
       if (std::any_of(
               ourTriangle.m_edgeIndices.begin(),
               ourTriangle.m_edgeIndices.end(),
-              [](std::size_t const index) { return index == INVALID_INDEX; }) or
-          not ourTriangle.m_visible) {
+              [](std::size_t const index) { return index == INVALID_INDEX; })) {
         ourTriangle = originalMesh.m_triangles[triangleIndex];
       }
     }
@@ -250,9 +249,19 @@ auto Mesh::minHeight() const -> Millimeter {
 }
 
 auto Mesh::countVisibleTriangles() const -> std::size_t {
-  return static_cast<std::size_t>(std::count_if(
-      m_triangles.begin(), m_triangles.end(),
-      [](Triangle const &triangle) { return triangle.m_visible; }));
+  std::vector<bool> trianglesVisibility{};
+  trianglesVisibility.reserve(m_triangles.size());
+  getTrianglesVisibility(trianglesVisibility);
+  return static_cast<std::size_t>(
+      std::count(trianglesVisibility.begin(), trianglesVisibility.end(), true));
+}
+
+void Mesh::getTrianglesVisibility(std::vector<bool> &visible) const {
+  for (auto const &triangle : m_triangles) {
+    visible.emplace_back(triangle.m_edgeIndices[0] != INVALID_INDEX and
+                         triangle.m_edgeIndices[1] != INVALID_INDEX and
+                         triangle.m_edgeIndices[2] != INVALID_INDEX);
+  }
 }
 
 // Go through edge's users and remove edge
@@ -265,15 +274,6 @@ void Mesh::propagateInvisibilityToUsers(std::size_t const edgeIndex,
       if (triangleEdgeIndex == edgeIndex) {
         triangleEdgeIndex = INVALID_INDEX;
       }
-    }
-    // If this was the triangle's last visible edge,
-    // the triangle has also become invisible
-    if (std::all_of(triangle.m_edgeIndices.begin(),
-                    triangle.m_edgeIndices.end(),
-                    [](std::size_t const triangleEdgeIndex) {
-                      return triangleEdgeIndex == INVALID_INDEX;
-                    })) {
-      triangle.m_visible = false;
     }
   }
 }
@@ -445,9 +445,6 @@ auto Mesh::softClip(Millimeter const zCut,
   if (std::none_of(m_points.begin(), m_points.end(),
                    [zCut](Vertex const &point) { return point.z() < zCut; })) {
     SPDLOG_LOGGER_INFO(logger, "Special case: No z-thickness left.");
-    for (auto &triangle : m_triangles) {
-      triangle.m_visible = false;
-    }
     // There might still be visible points
     return visible;
   }
@@ -484,9 +481,12 @@ void Mesh::writeBinaryStl(std::string const &fileName) const {
   SPDLOG_LOGGER_DEBUG(logger, "Writing into header that we have {} facets",
                       facetCounter);
   myfile.write(facetCounterBytes.data(), FACET_COUNTER_SIZE);
+  std::vector<bool> trianglesVisibility{};
+  trianglesVisibility.reserve(m_triangles.size());
+  getTrianglesVisibility(trianglesVisibility);
 
-  for (auto const &triangle : m_triangles) {
-    if (triangle.m_visible) {
+  for (auto const &[i, triangle] : enumerate(m_triangles)) {
+    if (trianglesVisibility[i]) {
       // Only write visible triangles
       std::set<Vertex> points{};
       for (auto const &edgeIndex : triangle.m_edgeIndices) {
