@@ -345,7 +345,8 @@ static auto findCollision(std::vector<Millimeter> const &heights,
         }
       }
     }
-    partialPrint.reset(partialPrintOriginal, clippedTriangles);
+    partialPrint.reset(partialPrintOriginal, clippedTriangles,
+                       trianglesVisibility);
   }
   return {false};
 }

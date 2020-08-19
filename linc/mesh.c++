@@ -136,30 +136,27 @@ Mesh::Mesh(Stl const &stl) {
 }
 
 void Mesh::reset(Mesh const &originalMesh,
-                 std::vector<std::size_t> clippedTriangles) {
+                 std::vector<std::size_t> const &clippedTriangles,
+                 std::vector<bool> const &trianglesVisibility) {
   if (not clippedTriangles.empty()) {
     m_points.resize(originalMesh.m_points.size());
     m_edges.resize(originalMesh.m_edges.size());
     m_triangles.resize(originalMesh.m_triangles.size());
+  }
 
-    for (std::size_t triangleIndex{0}; triangleIndex < m_triangles.size();
-         ++triangleIndex) {
-      Triangle &ourTriangle = m_triangles[triangleIndex];
-      if (std::any_of(
-              ourTriangle.m_edgeIndices.begin(),
-              ourTriangle.m_edgeIndices.end(),
-              [](std::size_t const index) { return index == INVALID_INDEX; })) {
-        ourTriangle = originalMesh.m_triangles[triangleIndex];
-      }
+  for (auto const triangleIndex : clippedTriangles) {
+    Triangle const &originalTriangle = originalMesh.m_triangles[triangleIndex];
+    m_triangles[triangleIndex] = originalTriangle;
+    for (auto const edgeIndex : originalTriangle.m_edgeIndices) {
+      m_edges[edgeIndex] = originalMesh.m_edges[edgeIndex];
     }
+  }
 
-    for (auto const triangleIndex : clippedTriangles) {
-      Triangle const &originalTriangle =
-          originalMesh.m_triangles[triangleIndex];
-      m_triangles[triangleIndex] = originalTriangle;
-      for (auto const edgeIndex : originalTriangle.m_edgeIndices) {
-        m_edges[edgeIndex] = originalMesh.m_edges[edgeIndex];
-      }
+  for (std::size_t triangleIndex{0}; triangleIndex < m_triangles.size();
+       ++triangleIndex) {
+    Triangle &ourTriangle = m_triangles[triangleIndex];
+    if (not trianglesVisibility[triangleIndex]) {
+      ourTriangle = originalMesh.m_triangles[triangleIndex];
     }
   }
 }

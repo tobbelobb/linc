@@ -96,7 +96,8 @@ public:
                              std::vector<std::size_t> &clippedTriangles);
   Opening getOpening(Mesh::Triangle const &triangle) const;
   void reset(Mesh const &originalMesh,
-             std::vector<std::size_t> clippedTriangles);
+             std::vector<std::size_t> const &clippedTriangles,
+             std::vector<bool> const &trianglesVisibility);
 };
 
 inline bool operator<(Mesh::Edge const &lhs, Mesh::Edge const &rhs) {
