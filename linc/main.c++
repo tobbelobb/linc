@@ -12,19 +12,18 @@
 auto main(int argc, char *argv[]) -> int {
   // These optional variables can be set via the command line.
   std::string outFileName{};
-  Millimeter layerHeightMax{1.0};
+  Millimeter layerHeight{1.0};
   bool printHelp{false};
   // Configure optional command line options.
   std::stringstream usage;
   usage << "Usage:\n"
         << *argv
-        << " <3d-model> <params> [-l layer-height-max-in-mm] "
+        << " <3d-model> <params> [-l layer-height-in-mm] "
            "[-o out-file-name] [-h|--help]\n";
   CommandLine args(usage.str());
-  args.addArgument({"-l"}, &layerHeightMax,
-                   "Defaults to 1.0. The analysis will cut each layer in half "
-                   "until all layers are thinner than this layer height, or "
-                   "until a collision is detected in one of the layers.");
+  args.addArgument({"-l"}, &layerHeight,
+                   "Defaults to 1.0. The analysis will search for collisions "
+                   "at z-heights this far apart.");
   args.addArgument(
       {"-o"}, &outFileName,
       "A debug stl with this name is created upon collision detection."
@@ -58,8 +57,8 @@ auto main(int argc, char *argv[]) -> int {
     return 0;
   }
 
-  if (layerHeightMax < 0.0_mm) {
-    std::cerr << "Negative layer height is not allowed: " << layerHeightMax
+  if (layerHeight < 0.0_mm) {
+    std::cerr << "Negative layer height is not allowed: " << layerHeight
               << '\n';
     return -1;
   }
@@ -77,7 +76,7 @@ auto main(int argc, char *argv[]) -> int {
   }
   Pivots const pivots{paramsFileName};
 
-  Collision const found{willCollide(meshClipper, pivots, layerHeightMax)};
+  Collision const found{willCollide(meshClipper, pivots, layerHeight)};
   if (found) {
     std::cout << "Collision detected at z=" << found.m_height << '\n';
     if (not outFileName.empty()) {

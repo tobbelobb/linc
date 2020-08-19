@@ -357,11 +357,11 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     logger = spdlog::get("file_logger");
   }
 
-  constexpr Millimeter SMALL_LAYER_HEIGHT{1.0_mm};
+  constexpr Millimeter SMALL_LAYER_HEIGHT{0.1_mm};
   if (maxLayerHeight < SMALL_LAYER_HEIGHT) {
     SPDLOG_LOGGER_WARN(logger,
                        "Layer height {} is very small. Execution might take "
-                       "a very long time",
+                       "a long time",
                        maxLayerHeight);
   }
 
@@ -409,24 +409,20 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
                               static_cast<Millimeter>(numThreads));
     auto const intervalLength = b - a;
 
+    std::vector<Millimeter> linearHeights{};
+    linearHeights.reserve(static_cast<std::size_t>(
+        std::ceil(intervalLength / maxLayerHeight) + 1));
+    for (Millimeter ba{b}; a < ba; ba -= maxLayerHeight) {
+      linearHeights.emplace_back(ba);
+    }
     std::vector<Millimeter> heights{};
-    heights.reserve(static_cast<std::size_t>(
-        std::ceil(intervalLength / maxLayerHeight * 2)));
-    // Each thread should check its top layer first
-    heights.emplace_back(b);
-    // Then it should go on to binary search through its segment.
-    // Small comment: If maxLayerHeight is 1.0, our smallest searched segment
-    // will be of length (0.5, 1.0]. But that's ok, it's more important to
-    // find an eventual collision fast, than to be fast at confirming no
-    // collision
-    for (Millimeter denominator{2.0};                              /* NOLINT */
-         (2.0_mm * intervalLength / denominator) > maxLayerHeight; /* NOLINT */
-         denominator *= 2.0_mm) {                                  /* NOLINT */
-      for (Millimeter numerator{denominator - 1.0_mm};
-           numerator > 0.0_mm;    /* NOLINT */
-           numerator -= 2.0_mm) { /* NOLINT */
-        heights.emplace_back(a + intervalLength * numerator / denominator);
-      }
+    heights.reserve(linearHeights.size());
+    // Force topmost layer to be analyzed first
+    heights.emplace_back(linearHeights[0]);
+    // Then jump back and forth in the interval in
+    // a binary search fashion
+    for (auto const index : binarySearchSequence(1, linearHeights.size() - 1)) {
+      heights.emplace_back(linearHeights[index]);
     }
 
     std::packaged_task<Collision(std::stop_token st)> task(

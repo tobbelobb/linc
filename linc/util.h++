@@ -25,3 +25,5 @@ constexpr auto enumerate(T &&iterable) {
   };
   return iterable_wrapper{std::forward<T>(iterable)};
 }
+
+auto binarySearchSequence(size_t begin, size_t end) -> std::vector<std::size_t>;
