@@ -1,3 +1,5 @@
+#include <numeric>
+
 #include <linc/util.h++>
 
 std::vector<std::size_t> binarySearchSequence(size_t begin, size_t end) {
@@ -17,7 +19,7 @@ std::vector<std::size_t> binarySearchSequence(size_t begin, size_t end) {
       if (start == stop) {
         indices.emplace_back(start);
       } else {
-        auto const newMid{start + (stop - start) / 2};
+        auto const newMid{std::midpoint(start, stop)};
         indices.emplace_back(newMid);
         if (newMid != start) {
           intervals.emplace_back(std::array<std::size_t, 2>{start, newMid - 1});
