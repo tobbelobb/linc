@@ -1,61 +1,12 @@
 Refactor to make use of Eigen matrix operations?
-Add a zip function in <linc/util.h++> that makes raw-loops prettier?
 
 If we need more performance later:
   - sort vertices based on z, y, x, in that order instead of x, y, z like we do now
     that would speed up MeshClipper::setDistances by more than 50% since we could
     check the special cases all/none visible with one comparison each (look at first/last element),
     and use binary search to find the index of the last visible point.
-  - Merge Mesh and MeshClipper into one class.
-    Or keep only Mesh, and put the special MeshClipper book-keeping variables (m_distance, m_visisble etc)
-    into vectors that live inside the softClip function
+  - Use Halide?
 
 If user doesn't want the hull algorithm to be used:
   - don't sort ccw. Use the walls already in the model to
     determine the order of the top points
-
-When a collision is detected, export:
-  - The triangle from the cone that collided
-  - A tetrahedron representing the position of the effector
-  - The clipped mesh that was being printed
-  Export all three in a single mesh. There will be so many buttons to
-  press in Blender or whatever other viewer program otherwise
-
-Make multi threaded to save some time
-
-# Bounding volume hierarchy (suggested by @drayde on Twitter)
-When loading the Mesh, include enclosing/bounding tetrahedrons, and place each triangle
-in one, two, or three such bounding tetrahedrons.
-The bounding tetrahedrons could live in a vector member
-std::vector<Mesh::BoundingVolume> m_boundingVolumes;
-... within the Mesh class.
-
-The class BoundingVolume could be what a Mesh is today, a collection of points,
-edges, and triangles.
-But it should also contain an
-std::vector<std::size_t> m_memberTriangles;
-... with offsets into the m_triangles vector in the Mesh class.
-
-A triangle is added as a member of a bounding volume if one of its edges
-intersects with the bounding volume
-
-Then, we can change the algorithm in willCollide() from
-
-for every cone triangle t0:
-  for every Mesh triangle t1:
-    if(intersect(t0, t1)):
-      return true
-
-to ...
-
-for every Mesh bounding volume b0:
-  for every cone triangle t0:
-    if(intersect(b0, t0)):
-      for every triangle t1 within b0:
-        if (intersect(t0, t1)):
-          return true;
-
-Some mesh triangles will be tested many times, if their edges cross
-several bounding volumes.
-This should not be a problem, as long as the vast majority of Mesh triangles
-don't get tested at all.
