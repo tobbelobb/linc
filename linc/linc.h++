@@ -74,6 +74,10 @@ template <> struct fmt::formatter<Triangle> {
 // Disregards z and constructs hull as if all vertices were at z=0
 void sortCcwInPlace(std::vector<Vertex> &v);
 
+// Finds mean point of the vertices, and moves each of them away
+// from the mean point by a distance given by the offset parameter
+void scaleOffsetInPlace(std::vector<Vertex> &v, Millimeter offset);
+
 struct Collision {
   bool const m_isCollision;
   Millimeter m_height;
@@ -94,7 +98,7 @@ struct Collision {
 };
 
 [[nodiscard]] Collision willCollide(Mesh const &, Pivots const &, Millimeter,
-                                    bool hullIt = true);
+                                    bool hullIt, Millimeter offset = 0.0);
 
 void makeDebugModel(Mesh const &meshClipper, Pivots const &pivots,
                     Collision const &collision, std::string const &outFileName);

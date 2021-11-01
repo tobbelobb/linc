@@ -17,6 +17,23 @@ auto main() -> int {
       compare(sortedCcw, vertices);
     }
     {
+      std::vector<Vertex> vertices{{1, -2, 1}, {-2, -0.1_mm, 1}, {1, 2, 1}};
+      std::vector<Vertex> const scaled{{1.45325, -2.89139, 1},
+                                       {-2.99944, -0.13331, 1},
+                                       {1.44132, 2.89735, 1}};
+      scaleOffsetInPlace(vertices, 1.0_mm);
+      auto constexpr EPS = 0.00001;
+      check(std::abs(vertices[0][0] - scaled[0][0]) < EPS);
+      check(std::abs(vertices[0][1] - scaled[0][1]) < EPS);
+      check(std::abs(vertices[0][2] - scaled[0][2]) < EPS);
+      check(std::abs(vertices[1][0] - scaled[1][0]) < EPS);
+      check(std::abs(vertices[1][1] - scaled[1][1]) < EPS);
+      check(std::abs(vertices[1][2] - scaled[1][2]) < EPS);
+      check(std::abs(vertices[2][0] - scaled[2][0]) < EPS);
+      check(std::abs(vertices[2][1] - scaled[2][1]) < EPS);
+      check(std::abs(vertices[2][2] - scaled[2][2]) < EPS);
+    }
+    {
       std::vector<Vertex> vertices{
           {1, -2, 0}, {-2, -0.1_mm, 0}, {1, 2, 0}, {-0.1_mm, -0.1_mm, 0}};
       std::vector<Vertex> const hullOfThem{
@@ -271,37 +288,57 @@ auto main() -> int {
     {
       Mesh const meshClipper{Stl{getPath("test-models/small-cube.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(meshClipper, pivots, 1.0_mm));
+      check(not willCollide(meshClipper, pivots, 1.0_mm, true));
     }
     {
       Mesh const meshClipper{Stl{getPath("test-models/cube-100.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(meshClipper, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm, true));
     }
     {
       Mesh const meshClipper{Stl{getPath("test-models/cube-268.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(meshClipper, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm, true));
     }
     {
       Mesh const meshClipper{Stl{getPath("test-models/cube-468.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(meshClipper, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm, true));
     }
     {
       Mesh const meshClipper{Stl{getPath("test-models/cube-469.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(meshClipper, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm, true));
     }
     {
       Mesh const meshClipper{Stl{getPath("test-models/cube-470.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(meshClipper, pivots, 10.0_mm));
+      check(not willCollide(meshClipper, pivots, 10.0_mm, true));
+    }
+    {
+      Mesh const meshClipper{Stl{getPath("test-models/cube-470.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(meshClipper, pivots, 10.0_mm, true, 1.0_mm));
+    }
+    {
+      Mesh const meshClipper{Stl{getPath("test-models/cube-470.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(meshClipper, pivots, 10.0_mm, true, 2.0_mm));
+    }
+    {
+      Mesh const meshClipper{Stl{getPath("test-models/cube-470.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(willCollide(meshClipper, pivots, 10.0_mm, true, 3.0_mm));
     }
     {
       Mesh const meshClipper{Stl{getPath("test-models/cube-471.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(willCollide(meshClipper, pivots, 10.0_mm));
+      check(willCollide(meshClipper, pivots, 10.0_mm, true));
+    }
+    {
+      Mesh const meshClipper{Stl{getPath("test-models/cube-471.ascii.stl")}};
+      Pivots pivots{getPath("params-example")};
+      check(not willCollide(meshClipper, pivots, 10.0_mm, true, -1.0_mm));
     }
     {
       Mesh const meshClipper{Stl{getPath(

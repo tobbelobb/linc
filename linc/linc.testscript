@@ -14,6 +14,10 @@ $0 <3d-model> <params> [-l layer-height-in-mm] [-o out-file-name] [-h|--help]
 
 -l          Defaults to 1.0. The analysis will search for collisions at z-heights
             this far apart.
+-m          Defaults to 0.0. Each layer will be stretched outwards from its
+            median point by this length. If you want to detect "near collisions",
+            then set this parameter to a few millimeters. If you want to
+            ignore shallow collisions, set it to negative a few millimeters.
 -o          A debug stl with this name is created upon collision detection.This
             stl is meant for visual inspection in another program. If no
             -o file name is specified, no debug-stl is generated.
@@ -274,7 +278,18 @@ EOE
 $* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-example" -l 20 &linc.log > 'No collision detected'
 
 : Big-benchy-collision
-: Analysis detects no collision
+: Analysis detects collision
 :
 : Regex expects one, two, or three characters after z=
 $* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" &linc.log >~'/Collision detected at z=..?.?/' != 0
+
+: Big-benchy-collision-because-of-margin
+: Analysis detects collision because of margin offset
+:
+: Regex expects one, two, or three characters after z=
+$* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-example" -m 55 &linc.log >~'/Collision detected at z=..?.?/' != 0
+
+: Big-benchy-almost-collision-saved-by-margin
+: Analysis detects no collision because of margin offset
+:
+$* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" -m -25 -l 20 &linc.log > 'No collision detected'

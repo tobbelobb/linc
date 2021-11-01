@@ -13,7 +13,7 @@ std::vector<std::size_t> binarySearchSequence(size_t begin, size_t end) {
   while (not intervals.empty()) {
     auto const intervalsCopy{intervals};
     intervals.clear();
-    for (auto &interval : intervalsCopy) {
+    for (auto const &interval : intervalsCopy) {
       auto const start = interval[0];
       auto const stop = interval[1];
       if (start == stop) {

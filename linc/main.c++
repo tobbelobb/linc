@@ -13,6 +13,7 @@ auto main(int argc, char *argv[]) -> int {
   // These optional variables can be set via the command line.
   std::string outFileName{};
   Millimeter layerHeight{1.0};
+  Millimeter offset{0.0};
   bool printHelp{false};
   // Configure optional command line options.
   std::stringstream usage;
@@ -24,6 +25,12 @@ auto main(int argc, char *argv[]) -> int {
   args.addArgument({"-l"}, &layerHeight,
                    "Defaults to 1.0. The analysis will search for collisions "
                    "at z-heights this far apart.");
+  args.addArgument(
+      {"-m"}, &offset,
+      "Defaults to 0.0. Each layer will be stretched outwards from its median "
+      "point by this length. If you want to detect \"near collisions\", then "
+      "set this parameter to a few millimeters. If you want to ignore shallow "
+      "collisions, set it to negative a few millimeters.");
   args.addArgument(
       {"-o"}, &outFileName,
       "A debug stl with this name is created upon collision detection."
@@ -76,7 +83,7 @@ auto main(int argc, char *argv[]) -> int {
   }
   Pivots const pivots{paramsFileName};
 
-  Collision const found{willCollide(meshClipper, pivots, layerHeight)};
+  Collision const found{willCollide(meshClipper, pivots, layerHeight, true, offset)};
   if (found) {
     std::cout << "Collision detected at z=" << found.m_height << '\n';
     if (not outFileName.empty()) {

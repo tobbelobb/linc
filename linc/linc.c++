@@ -161,20 +161,33 @@ auto intersect(Triangle const &triangle0, Triangle const &triangle1) -> bool {
 }
 
 void sortCcwInPlace(std::vector<Vertex> &vertices) {
-  Vertex middlePoint{Vertex::Zero()};
+  Vertex meanPoint{Vertex::Zero()};
   for (auto const &vertex : vertices) {
-    middlePoint += vertex;
+    meanPoint += vertex;
   }
-  middlePoint = middlePoint / vertices.size();
+  meanPoint = meanPoint / vertices.size();
 
   std::sort(vertices.begin(), vertices.end(),
-            [&middlePoint](Vertex const &vertex0, Vertex const &vertex1) {
-              Vertex const offsetPoint0 = vertex0 - middlePoint;
-              Vertex const offsetPoint1 = vertex1 - middlePoint;
+            [&meanPoint](Vertex const &vertex0, Vertex const &vertex1) {
+              Vertex const offsetPoint0 = vertex0 - meanPoint;
+              Vertex const offsetPoint1 = vertex1 - meanPoint;
               auto const angle0 = atan2(offsetPoint0.y(), offsetPoint0.x());
               auto const angle1 = atan2(offsetPoint1.y(), offsetPoint1.x());
               return angle0 < angle1;
             });
+}
+
+void scaleOffsetInPlace(std::vector<Vertex> &vertices, Millimeter const offset) {
+  Vertex meanPoint{Vertex::Zero()};
+  for (auto const &vertex : vertices) {
+    meanPoint += vertex;
+  }
+  meanPoint = meanPoint / vertices.size();
+
+  std::for_each(vertices.begin(), vertices.end(), [&meanPoint, offset](auto &point) {
+      Vertex const diff = point - meanPoint;
+      point = meanPoint + ((diff.norm() + offset)/diff.norm()) * diff;
+  });
 }
 
 static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
@@ -209,7 +222,8 @@ static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
 
 static auto findCollision(std::vector<Millimeter> const &heights,
                           Mesh const &partialPrintOriginal,
-                          Pivots const &pivots, bool hullIt, std::stop_token st)
+                          Pivots const &pivots, bool hullIt,
+                          Millimeter offset, std::stop_token st)
     -> Collision {
   std::vector<std::size_t> clippedTriangles{};
   clippedTriangles.reserve(partialPrintOriginal.m_triangles.size() / 5);
@@ -253,6 +267,9 @@ static auto findCollision(std::vector<Millimeter> const &heights,
     } else {
       // TODO: We should use edges from model here instead of sorting ccw
       sortCcwInPlace(topVertices);
+    }
+    if (std::abs(offset) > 0.0001) {
+      scaleOffsetInPlace(topVertices, offset);
     }
 
     std::vector<bool> checkIts(partialPrint.m_points.size(), true);
@@ -352,7 +369,8 @@ static auto findCollision(std::vector<Millimeter> const &heights,
 }
 
 auto willCollide(Mesh const &mesh, Pivots const &pivots,
-                 Millimeter const maxLayerHeight, bool hullIt) -> Collision {
+                 Millimeter const maxLayerHeight, bool const hullIt,
+                 Millimeter const offset) -> Collision {
   if (logger == nullptr) {
     logger = spdlog::get("file_logger");
   }
@@ -426,8 +444,8 @@ auto willCollide(Mesh const &mesh, Pivots const &pivots,
     }
 
     std::packaged_task<Collision(std::stop_token st)> task(
-        [heights, &mesh, &pivots, hullIt](std::stop_token st) {
-          return findCollision(heights, mesh, pivots, hullIt, st);
+        [heights, &mesh, &pivots, hullIt, offset](std::stop_token st) {
+          return findCollision(heights, mesh, pivots, hullIt, offset, st);
         });
     futures.emplace_back(task.get_future());
     threads.emplace_back(std::move(task));
