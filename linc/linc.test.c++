@@ -18,9 +18,8 @@ auto main() -> int {
     }
     {
       std::vector<Vertex> vertices{{1, -2, 1}, {-2, -0.1_mm, 1}, {1, 2, 1}};
-      std::vector<Vertex> const scaled{{ 2.0000, -3.8170, 1},
-                                       {-3.80326, -0.14162, 1},
-                                       {2.0000, 3.9207, 1}};
+      std::vector<Vertex> const scaled{
+          {2.0000, -3.8170, 1}, {-3.80326, -0.14162, 1}, {2.0000, 3.9207, 1}};
       scaleOffsetInPlace(vertices, 1.0_mm);
       auto constexpr EPS = 0.0001;
       check(std::abs(vertices[0][0] - scaled[0][0]) < EPS);

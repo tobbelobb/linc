@@ -88,7 +88,8 @@ auto main(int argc, char *argv[]) -> int {
   }
   Pivots const pivots{paramsFileName, offset};
 
-  Collision const found{willCollide(meshClipper, pivots, layerHeight, true, offset)};
+  Collision const found{
+      willCollide(meshClipper, pivots, layerHeight, true, offset)};
   if (found) {
     std::cout << "Collision detected at z=" << found.m_height << '\n';
     if (not outFileName.empty()) {

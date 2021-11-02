@@ -116,18 +116,30 @@ Pivots::Pivots(std::string const &fileName, double const offset) {
     save(tokenize(line));
   }
   if (std::abs(offset) > VertexConstants::eps) {
-    Vertex const A = (anchors[Pivots::ColumnIndex::A1] + anchors[Pivots::ColumnIndex::A2])/2;
-    Vertex const B = (anchors[Pivots::ColumnIndex::B1] + anchors[Pivots::ColumnIndex::B2])/2;
-    Vertex const C = (anchors[Pivots::ColumnIndex::C1] + anchors[Pivots::ColumnIndex::C2])/2;
-    Vertex const A_dir = A/A.norm();
-    Vertex const B_dir = B/B.norm();
-    Vertex const C_dir = C/C.norm();
-    anchors[Pivots::ColumnIndex::A1] = anchors[Pivots::ColumnIndex::A1] - offset*A_dir;
-    anchors[Pivots::ColumnIndex::A2] = anchors[Pivots::ColumnIndex::A2] - offset*A_dir;
-    anchors[Pivots::ColumnIndex::B1] = anchors[Pivots::ColumnIndex::B1] - offset*B_dir;
-    anchors[Pivots::ColumnIndex::B2] = anchors[Pivots::ColumnIndex::B2] - offset*B_dir;
-    anchors[Pivots::ColumnIndex::C1] = anchors[Pivots::ColumnIndex::C1] - offset*C_dir;
-    anchors[Pivots::ColumnIndex::C2] = anchors[Pivots::ColumnIndex::C2] - offset*C_dir;
+    Vertex const A =
+        (anchors[Pivots::ColumnIndex::A1] + anchors[Pivots::ColumnIndex::A2]) /
+        2;
+    Vertex const B =
+        (anchors[Pivots::ColumnIndex::B1] + anchors[Pivots::ColumnIndex::B2]) /
+        2;
+    Vertex const C =
+        (anchors[Pivots::ColumnIndex::C1] + anchors[Pivots::ColumnIndex::C2]) /
+        2;
+    Vertex const A_dir = A / A.norm();
+    Vertex const B_dir = B / B.norm();
+    Vertex const C_dir = C / C.norm();
+    anchors[Pivots::ColumnIndex::A1] =
+        anchors[Pivots::ColumnIndex::A1] - offset * A_dir;
+    anchors[Pivots::ColumnIndex::A2] =
+        anchors[Pivots::ColumnIndex::A2] - offset * A_dir;
+    anchors[Pivots::ColumnIndex::B1] =
+        anchors[Pivots::ColumnIndex::B1] - offset * B_dir;
+    anchors[Pivots::ColumnIndex::B2] =
+        anchors[Pivots::ColumnIndex::B2] - offset * B_dir;
+    anchors[Pivots::ColumnIndex::C1] =
+        anchors[Pivots::ColumnIndex::C1] - offset * C_dir;
+    anchors[Pivots::ColumnIndex::C2] =
+        anchors[Pivots::ColumnIndex::C2] - offset * C_dir;
   }
 }
 

@@ -177,7 +177,8 @@ void sortCcwInPlace(std::vector<Vertex> &vertices) {
             });
 }
 
-void scaleOffsetInPlace(std::vector<Vertex> &vertices, Millimeter const offset) {
+void scaleOffsetInPlace(std::vector<Vertex> &vertices,
+                        Millimeter const offset) {
   std::vector<Vertex> newVertices;
   newVertices.reserve(std::size(vertices));
 
@@ -186,27 +187,27 @@ void scaleOffsetInPlace(std::vector<Vertex> &vertices, Millimeter const offset) 
   Vertex C = vertices[1];
   Vertex BA = A - B;
   Vertex BC = C - B;
-  double alpha_half = acos(BA.dot(BC)/(BA.norm()*BC.norm()))/2.0;
-  double x = offset/sin(alpha_half);
-  Vertex BA_dir = BA/BA.norm();
-  Vertex BC_dir = BC/BC.norm();
-  Normal x_dir = -(BA_dir + BC_dir)/(BA_dir + BC_dir).norm();
+  double alpha_half = acos(BA.dot(BC) / (BA.norm() * BC.norm())) / 2.0;
+  double x = offset / sin(alpha_half);
+  Vertex BA_dir = BA / BA.norm();
+  Vertex BC_dir = BC / BC.norm();
+  Normal x_dir = -(BA_dir + BC_dir) / (BA_dir + BC_dir).norm();
 
-  newVertices[0] = B+x*x_dir;
+  newVertices[0] = B + x * x_dir;
 
-  for(size_t i{1}; i < std::size(vertices) - 1; i++){
-    A = vertices[i-1];
+  for (size_t i{1}; i < std::size(vertices) - 1; i++) {
+    A = vertices[i - 1];
     B = vertices[i];
-    C = vertices[i+1];
+    C = vertices[i + 1];
     BA = A - B;
     BC = C - B;
-    alpha_half = acos(BA.dot(BC)/(BA.norm()*BC.norm()))/2.0;
-    x = offset/sin(alpha_half);
-    BA_dir = BA/BA.norm();
-    BC_dir = BC/BC.norm();
-    x_dir = -(BA_dir + BC_dir)/(BA_dir + BC_dir).norm();
+    alpha_half = acos(BA.dot(BC) / (BA.norm() * BC.norm())) / 2.0;
+    x = offset / sin(alpha_half);
+    BA_dir = BA / BA.norm();
+    BC_dir = BC / BC.norm();
+    x_dir = -(BA_dir + BC_dir) / (BA_dir + BC_dir).norm();
 
-    newVertices[i] = B+x*x_dir;
+    newVertices[i] = B + x * x_dir;
   }
 
   A = vertices[std::size(vertices) - 2];
@@ -214,15 +215,15 @@ void scaleOffsetInPlace(std::vector<Vertex> &vertices, Millimeter const offset) 
   C = vertices[0];
   BA = A - B;
   BC = C - B;
-  alpha_half = acos(BA.dot(BC)/(BA.norm()*BC.norm()))/2.0;
-  x = offset/sin(alpha_half);
-  BA_dir = BA/BA.norm();
-  BC_dir = BC/BC.norm();
-  x_dir = -(BA_dir + BC_dir)/(BA_dir + BC_dir).norm();
+  alpha_half = acos(BA.dot(BC) / (BA.norm() * BC.norm())) / 2.0;
+  x = offset / sin(alpha_half);
+  BA_dir = BA / BA.norm();
+  BC_dir = BC / BC.norm();
+  x_dir = -(BA_dir + BC_dir) / (BA_dir + BC_dir).norm();
 
-  newVertices[std::size(vertices) - 1] = B+x*x_dir;
+  newVertices[std::size(vertices) - 1] = B + x * x_dir;
 
-  for(size_t i{0}; i < std::size(vertices); i++) {
+  for (size_t i{0}; i < std::size(vertices); i++) {
     vertices[i] = newVertices[i];
   }
 }
@@ -259,9 +260,8 @@ static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
 
 static auto findCollision(std::vector<Millimeter> const &heights,
                           Mesh const &partialPrintOriginal,
-                          Pivots const &pivots, bool hullIt,
-                          Millimeter offset, std::stop_token st)
-    -> Collision {
+                          Pivots const &pivots, bool hullIt, Millimeter offset,
+                          std::stop_token st) -> Collision {
   std::vector<std::size_t> clippedTriangles{};
   clippedTriangles.reserve(partialPrintOriginal.m_triangles.size() / 5);
   Mesh partialPrint{partialPrintOriginal};
