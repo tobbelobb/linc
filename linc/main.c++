@@ -27,13 +27,18 @@ auto main(int argc, char *argv[]) -> int {
                    "at z-heights this far apart.");
   args.addArgument(
       {"-m"}, &offset,
-      "Defaults to 0.0. Each layer will be stretched outwards from its median "
-      "point by this length. If you want to detect \"near collisions\", then "
-      "set this parameter to a few millimeters. If you want to ignore shallow "
-      "collisions, set it to negative a few millimeters.");
+      "Defaults to 0.0. Units: millimeter. Positive values create a horizontal "
+      "margin around the object where lines are not allowed to enter. If you "
+      "want to detect \"near collisions\" then set this parameter to a few "
+      "millimeters. If you wan to ignore shallow collisions, then set this "
+      "parameter to negative a few millimeters. Note that in an eventual "
+      "debug-stl, you will see your anchor points moved closer to the origin "
+      "by the specified margin, and the mover will float outside of the print "
+      "layer by the specified margin. Line will cross through the "
+      "debug-object.");
   args.addArgument(
       {"-o"}, &outFileName,
-      "A debug stl with this name is created upon collision detection."
+      "A debug-stl with this name is created upon collision detection. "
       "This stl is meant for visual inspection in another program. If no "
       "-o file name is specified, no debug-stl is generated.");
   args.addArgument({"-h", "--help"}, &printHelp, "Print this help.");
