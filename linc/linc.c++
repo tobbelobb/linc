@@ -178,16 +178,53 @@ void sortCcwInPlace(std::vector<Vertex> &vertices) {
 }
 
 void scaleOffsetInPlace(std::vector<Vertex> &vertices, Millimeter const offset) {
-  Vertex meanPoint{Vertex::Zero()};
-  for (auto const &vertex : vertices) {
-    meanPoint += vertex;
-  }
-  meanPoint = meanPoint / vertices.size();
+  std::vector<Vertex> newVertices;
+  newVertices.reserve(std::size(vertices));
 
-  std::for_each(vertices.begin(), vertices.end(), [&meanPoint, offset](auto &point) {
-      Vertex const diff = point - meanPoint;
-      point = meanPoint + ((diff.norm() + offset)/diff.norm()) * diff;
-  });
+  Vertex A = vertices.back();
+  Vertex B = vertices[0];
+  Vertex C = vertices[1];
+  Vertex BA = A - B;
+  Vertex BC = C - B;
+  double alpha_half = acos(BA.dot(BC)/(BA.norm()*BC.norm()))/2.0;
+  double x = offset/sin(alpha_half);
+  Vertex BA_dir = BA/BA.norm();
+  Vertex BC_dir = BC/BC.norm();
+  Normal x_dir = -(BA_dir + BC_dir)/(BA_dir + BC_dir).norm();
+
+  newVertices[0] = B+x*x_dir;
+
+  for(size_t i{1}; i < std::size(vertices) - 1; i++){
+    A = vertices[i-1];
+    B = vertices[i];
+    C = vertices[i+1];
+    BA = A - B;
+    BC = C - B;
+    alpha_half = acos(BA.dot(BC)/(BA.norm()*BC.norm()))/2.0;
+    x = offset/sin(alpha_half);
+    BA_dir = BA/BA.norm();
+    BC_dir = BC/BC.norm();
+    x_dir = -(BA_dir + BC_dir)/(BA_dir + BC_dir).norm();
+
+    newVertices[i] = B+x*x_dir;
+  }
+
+  A = vertices[std::size(vertices) - 2];
+  B = vertices[std::size(vertices) - 1];
+  C = vertices[0];
+  BA = A - B;
+  BC = C - B;
+  alpha_half = acos(BA.dot(BC)/(BA.norm()*BC.norm()))/2.0;
+  x = offset/sin(alpha_half);
+  BA_dir = BA/BA.norm();
+  BC_dir = BC/BC.norm();
+  x_dir = -(BA_dir + BC_dir)/(BA_dir + BC_dir).norm();
+
+  newVertices[std::size(vertices) - 1] = B+x*x_dir;
+
+  for(size_t i{0}; i < std::size(vertices); i++) {
+    vertices[i] = newVertices[i];
+  }
 }
 
 static void buildCone(Vertex const &anchorPivot, Vertex const &effectorPivot,
@@ -268,7 +305,7 @@ static auto findCollision(std::vector<Millimeter> const &heights,
       // TODO: We should use edges from model here instead of sorting ccw
       sortCcwInPlace(topVertices);
     }
-    if (std::abs(offset) > 0.0001) {
+    if (std::abs(offset) > VertexConstants::eps) {
       scaleOffsetInPlace(topVertices, offset);
     }
 

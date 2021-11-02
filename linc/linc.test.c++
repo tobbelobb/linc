@@ -18,11 +18,11 @@ auto main() -> int {
     }
     {
       std::vector<Vertex> vertices{{1, -2, 1}, {-2, -0.1_mm, 1}, {1, 2, 1}};
-      std::vector<Vertex> const scaled{{1.45325, -2.89139, 1},
-                                       {-2.99944, -0.13331, 1},
-                                       {1.44132, 2.89735, 1}};
+      std::vector<Vertex> const scaled{{ 2.0000, -3.8170, 1},
+                                       {-3.80326, -0.14162, 1},
+                                       {2.0000, 3.9207, 1}};
       scaleOffsetInPlace(vertices, 1.0_mm);
-      auto constexpr EPS = 0.00001;
+      auto constexpr EPS = 0.0001;
       check(std::abs(vertices[0][0] - scaled[0][0]) < EPS);
       check(std::abs(vertices[0][1] - scaled[0][1]) < EPS);
       check(std::abs(vertices[0][2] - scaled[0][2]) < EPS);
@@ -323,7 +323,7 @@ auto main() -> int {
     {
       Mesh const meshClipper{Stl{getPath("test-models/cube-470.ascii.stl")}};
       Pivots pivots{getPath("params-example")};
-      check(not willCollide(meshClipper, pivots, 10.0_mm, true, 2.0_mm));
+      check(willCollide(meshClipper, pivots, 10.0_mm, true, 2.0_mm));
     }
     {
       Mesh const meshClipper{Stl{getPath("test-models/cube-470.ascii.stl")}};

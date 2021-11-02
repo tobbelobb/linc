@@ -283,13 +283,24 @@ $* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-
 : Regex expects one, two, or three characters after z=
 $* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" &linc.log >~'/Collision detected at z=..?.?/' != 0
 
+: Big-benchy-no-collision-despite-margin
+: Analysis detects no collision even if we have a margin offset
+:
+: Regex expects one, two, or three characters after z=
+$* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-example" -m 35 -l 20 &linc.log > 'No collision detected'
+
 : Big-benchy-collision-because-of-margin
 : Analysis detects collision because of margin offset
 :
 : Regex expects one, two, or three characters after z=
-$* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-example" -m 55 &linc.log >~'/Collision detected at z=..?.?/' != 0
+$* "$src_base/test-models/broken/3DBenchy_scale15.binary.stl" "$src_base/params-example" -m 36 &linc.log >~'/Collision detected at z=..?.?/' != 0
+
+: Big-benchy-collision-not-saved-by-margin
+: Analysis detects collision because margin offset is too small to save the day
+:
+$* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" -m -17 &linc.log >~'/Collision detected at z=..?.?/' != 0
 
 : Big-benchy-almost-collision-saved-by-margin
 : Analysis detects no collision because of margin offset
 :
-$* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" -m -25 -l 20 &linc.log > 'No collision detected'
+$* "$src_base/test-models/broken/3DBenchy_scale16.binary.stl" "$src_base/params-example" -m -18 -l 20 &linc.log > 'No collision detected'

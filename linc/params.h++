@@ -48,7 +48,7 @@ public:
     INVALID = 6
   };
 
-  Pivots(std::string const &fileName);
+  Pivots(std::string const &fileName, double offset = 0.0);
 
 private:
   void save(PivotTokens const &);
