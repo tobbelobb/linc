@@ -10,7 +10,7 @@
 : The $0 will expand to the executable name
 $* &linc.log >>"EOE"
 Usage:
-$0 <3d-model> <params> [-l layer-height-in-mm] [-o out-file-name] [-h|--help]
+$0 <3d-model> <params> [-l layer-height-in-mm] [-m margin] [-o out-file-name] [-h|--help]
 
 -l          Defaults to 1.0. The analysis will search for collisions at z-heights
             this far apart.

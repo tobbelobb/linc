@@ -20,6 +20,7 @@ auto main(int argc, char *argv[]) -> int {
   usage << "Usage:\n"
         << *argv
         << " <3d-model> <params> [-l layer-height-in-mm] "
+           "[-m margin] "
            "[-o out-file-name] [-h|--help]\n";
   CommandLine args(usage.str());
   args.addArgument({"-l"}, &layerHeight,
